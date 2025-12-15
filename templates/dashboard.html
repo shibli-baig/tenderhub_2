@@ -1,0 +1,2131 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - TenderHub{% endblock %}
+
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h1 class="section-title">Welcome back, {{ current_user.name }}</h1>
+            <p class="section-subtitle">Manage your profile, company details and access all tender management features.</p>
+        </div>
+        <div class="section-actions">
+            <label for="certificateFileInput" class="btn btn-primary" style="cursor: pointer;">
+                📄 Upload Completion Certificates
+            </label>
+            <input type="file" id="certificateFileInput" multiple
+                   accept=".pdf,.jpg,.jpeg,.png,.zip" style="display: none;">
+            <button type="button" class="btn btn-danger" onclick="openDeleteAllCertificatesModal()" style="cursor: pointer;">
+                🗑️ Delete All Certificates
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Company Details -->
+<section class="panel" id="companyView">
+    <div class="profile-card__header">
+        <div>
+            <h2 class="surface-card__title">Company Details</h2>
+            <p class="panel-subtitle">Manage your organization information for tender applications and team management.</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <button id="editCompanyBtn" class="btn btn-outline" onclick="toggleCompanyEdit()">Edit Company</button>
+            <button id="addEmployeeBtn" class="btn btn-primary" onclick="showAddEmployeeModal()">Add Employee</button>
+            <button id="viewTeamBtn" class="btn btn-outline" onclick="showViewTeamModal()">View Team</button>
+        </div>
+    </div>
+    {% if company_details %}
+        {% set sectors_display = [] %}
+        {% if company_details.industry_sector %}
+            {% if company_details.industry_sector.startswith('[{') %}
+                {% set sectors_data = company_details.industry_sector|fromjson %}
+                {% for sector_obj in sectors_data %}
+                    {% set _ = sectors_display.append(sector_obj.sector) %}
+                {% endfor %}
+            {% elif company_details.industry_sector.startswith('[') %}
+                {% set sectors_display = company_details.industry_sector|fromjson %}
+            {% else %}
+                {% set sectors_display = [company_details.industry_sector] %}
+            {% endif %}
+        {% endif %}
+        {% set legal_details = company_details.legal_details or {} %}
+        {% set financial_details = company_details.financial_details or {} %}
+        {% set turnover_history = financial_details.get('turnover_history', []) %}
+
+        <div class="company-sections-stack">
+            <section class="company-section">
+                <h3 class="company-section__title">General Details</h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Company Name</span>
+                        <span class="detail-value">{{ company_details.company_name }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Registration Number</span>
+                        <span class="detail-value">{{ company_details.registration_number }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">GST Number</span>
+                        <span class="detail-value">{{ company_details.gst_number }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">PAN Number</span>
+                        <span class="detail-value">{{ company_details.pan_number }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Industry Sectors</span>
+                        <span class="detail-value">{{ sectors_display|join(', ') if sectors_display else 'Not specified' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Year Established</span>
+                        <span class="detail-value">{{ company_details.year_established }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Employee Count</span>
+                        <span class="detail-value">{{ company_details.employee_count }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Phone Number</span>
+                        <span class="detail-value">{{ company_details.phone_number }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Email Address</span>
+                        <span class="detail-value">{{ company_details.email_address }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Website</span>
+                        <span class="detail-value">{{ company_details.website_url or 'Not provided' }}</span>
+                    </div>
+                    <div class="detail-item detail-item--wide">
+                        <span class="detail-label">Registered Address</span>
+                        <span class="detail-value">{{ company_details.registered_address or 'Not provided' }}</span>
+                    </div>
+                    {% if company_details.operational_address %}
+                    <div class="detail-item detail-item--wide">
+                        <span class="detail-label">Operational Address</span>
+                        <span class="detail-value">{{ company_details.operational_address }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="detail-item detail-item--wide">
+                        <span class="detail-label">Key Services Offered</span>
+                        <span class="detail-value">{{ company_details.key_services or 'Not provided' }}</span>
+                    </div>
+                    <div class="detail-item detail-item--wide">
+                        <span class="detail-label">Specialized Areas</span>
+                        <span class="detail-value">{{ company_details.specialization_areas or 'Not provided' }}</span>
+                    </div>
+                    <div class="detail-item detail-item--wide">
+                        <span class="detail-label">Previous Government Projects</span>
+                        <span class="detail-value">{{ company_details.previous_govt_experience or 'Not provided' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Managing Director / CEO</span>
+                        <span class="detail-value">{{ company_details.managing_director or 'Not provided' }}</span>
+                    </div>
+                    {% if company_details.technical_head %}
+                    <div class="detail-item">
+                        <span class="detail-label">Technical Head</span>
+                        <span class="detail-value">{{ company_details.technical_head }}</span>
+                    </div>
+                    {% endif %}
+                    {% if company_details.compliance_officer %}
+                    <div class="detail-item">
+                        <span class="detail-label">Compliance Officer</span>
+                        <span class="detail-value">{{ company_details.compliance_officer }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section class="company-section">
+                <h3 class="company-section__title">Legal Details</h3>
+                {% if legal_details %}
+                    <div class="detail-grid">
+                        {% for key, label in {
+                            'company_type': 'Company Type',
+                            'msme_registration': 'MSME Registration',
+                            'udyam_registration': 'Udyam Registration',
+                            'tan_number': 'TAN Number',
+                            'esi_registration': 'ESI Registration',
+                            'pf_registration': 'PF Registration',
+                            'labour_license_number': 'Labour License Number'
+                        }.items() %}
+                            <div class="detail-item">
+                                <span class="detail-label">{{ label }}</span>
+                                <span class="detail-value">{{ legal_details.get(key, 'Not provided') or 'Not provided' }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">Legal details have not been provided yet.</p>
+                {% endif %}
+            </section>
+
+            <section class="company-section">
+                <h3 class="company-section__title">Financial Details</h3>
+                <div class="detail-grid">
+                    {% if company_details.bank_name %}
+                        <div class="detail-item">
+                            <span class="detail-label">Bank Name</span>
+                            <span class="detail-value">{{ company_details.bank_name }}</span>
+                        </div>
+                    {% endif %}
+                    {% if company_details.account_holder_name %}
+                        <div class="detail-item">
+                            <span class="detail-label">Account Holder</span>
+                            <span class="detail-value">{{ company_details.account_holder_name }}</span>
+                        </div>
+                    {% endif %}
+                    {% if company_details.account_number %}
+                        <div class="detail-item">
+                            <span class="detail-label">Account Number</span>
+                            <span class="detail-value">{{ company_details.account_number }}</span>
+                        </div>
+                    {% endif %}
+                    {% if company_details.ifsc_code %}
+                        <div class="detail-item">
+                            <span class="detail-label">IFSC Code</span>
+                            <span class="detail-value">{{ company_details.ifsc_code }}</span>
+                        </div>
+                    {% endif %}
+                    {% if financial_details.get('auditor_name') %}
+                        <div class="detail-item">
+                            <span class="detail-label">Statutory Auditor</span>
+                            <span class="detail-value">{{ financial_details.get('auditor_name') }}</span>
+                        </div>
+                    {% endif %}
+                    {% if financial_details.get('credit_rating') %}
+                        <div class="detail-item">
+                            <span class="detail-label">Credit Rating</span>
+                            <span class="detail-value">{{ financial_details.get('credit_rating') }}</span>
+                        </div>
+                    {% endif %}
+                    {% if financial_details.get('net_worth') %}
+                        <div class="detail-item">
+                            <span class="detail-label">Net Worth</span>
+                            <span class="detail-value">{{ financial_details.get('net_worth') }}</span>
+                        </div>
+                    {% endif %}
+                    {% if financial_details.get('credit_facility') %}
+                        <div class="detail-item">
+                            <span class="detail-label">Credit Facility</span>
+                            <span class="detail-value">{{ financial_details.get('credit_facility') }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+
+                {% if turnover_history %}
+                    <h4 style="margin-top: 24px; margin-bottom: 12px; font-size: 1.1rem; font-weight: 600;">Past 5 Years Turnover History</h4>
+                    <div class="turnover-table-wrapper">
+                        <table class="turnover-table">
+                            <thead>
+                                <tr>
+                                    <th>Financial Year</th>
+                                    <th>Turnover Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in turnover_history %}
+                                    <tr>
+                                        <td>{{ record.label }}</td>
+                                        <td>{{ record.raw_amount or record.amount or 'N/A' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted" style="margin-top: 16px;">
+                        <em>Turnover history for the past five years has not been provided.
+                        <a href="/company-details" style="color: #6366f1; text-decoration: underline;">Click here to add financial details</a></em>
+                    </p>
+                {% endif %}
+            </section>
+
+            <section class="company-section">
+                <h3 class="company-section__title">Certifications</h3>
+                {% if company_details.company_certifications %}
+                    <ul class="certification-list">
+                        {% for cert in company_details.company_certifications %}
+                            <li>
+                                <div>
+                                    <strong>{{ cert.name }}</strong>
+                                    <small class="text-muted">Uploaded {{ cert.uploaded_at.strftime('%d %b %Y') if cert.uploaded_at else '' }}</small>
+                                </div>
+                                <div>
+                                    <a class="btn btn-outline btn-sm" href="/company-certifications/{{ cert.id }}/download">Download</a>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">No supporting certifications have been uploaded yet.</p>
+                {% endif %}
+            </section>
+
+            <section class="company-section">
+                <h3 class="company-section__title">Feature Lock Settings</h3>
+                <p class="text-muted" style="margin-bottom: 20px;">
+                    Lock specific features with a PIN to share limited account access with others.
+                </p>
+
+                <div class="detail-grid">
+                    <!-- Enable/Disable Toggle -->
+                    <div class="detail-item detail-item--wide" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span class="detail-label">Feature Lock</span>
+                            <p class="text-muted" style="font-size: 0.875rem; margin-top: 4px;">
+                                Enable PIN protection for selected features
+                            </p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="featureLockEnabled" />
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Feature Lock Configuration (shown when enabled) -->
+                    <div id="featureLockConfig" style="display: none; grid-column: 1 / -1;">
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 12px;">Select Features to Lock</h4>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" class="feature-checkbox" value="/procurement" />
+                                    <span>Tender Search (Procurement)</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" class="feature-checkbox" value="/tender-management" />
+                                    <span>Tender Management</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" class="feature-checkbox" value="/projects" />
+                                    <span>Past Projects</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" class="feature-checkbox" value="/project-management" />
+                                    <span>Project Management</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 20px;">
+                            <div>
+                                <label class="detail-label" for="featureLockPin">6-Digit PIN</label>
+                                <input
+                                    type="password"
+                                    id="featureLockPin"
+                                    class="form-input"
+                                    placeholder="Enter 6-digit PIN"
+                                    maxlength="6"
+                                    pattern="[0-9]{6}"
+                                    style="margin-top: 4px;"
+                                />
+                            </div>
+                            <div>
+                                <label class="detail-label" for="featureLockPinConfirm">Confirm PIN</label>
+                                <input
+                                    type="password"
+                                    id="featureLockPinConfirm"
+                                    class="form-input"
+                                    placeholder="Re-enter PIN"
+                                    maxlength="6"
+                                    pattern="[0-9]{6}"
+                                    style="margin-top: 4px;"
+                                />
+                            </div>
+                            <div id="passwordFieldContainer" style="display: none;">
+                                <label class="detail-label" for="featureLockPassword">Password</label>
+                                <input
+                                    type="password"
+                                    id="featureLockPassword"
+                                    class="form-input"
+                                    placeholder="Enter password to update"
+                                    style="margin-top: 4px;"
+                                />
+                                <small class="text-muted">Required when updating existing settings</small>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 12px;">
+                            <button id="saveFeatureLockBtn" class="btn btn-primary">
+                                Save Feature Lock Settings
+                            </button>
+                            <button id="resetFeatureLockBtn" class="btn btn-outline" style="display: none;">
+                                Disable Feature Lock
+                            </button>
+                        </div>
+
+                        <div id="featureLockMessage" style="margin-top: 12px; padding: 12px; border-radius: 12px; display: none;"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    {% else %}
+    <div class="empty-state">
+        <h3>Company Details Not Set</h3>
+        <p>Please complete your company details to access all features.</p>
+        <a href="/company-details" class="btn btn-primary">Complete Company Details</a>
+    </div>
+    {% endif %}
+</section>
+
+<section class="panel hidden" id="companyEdit" hidden>
+    <div class="profile-card__header">
+        <div>
+            <h2 class="surface-card__title">Update Company Details</h2>
+            <p class="panel-subtitle">Keep your organization information current for tender applications.</p>
+        </div>
+        <button class="btn btn-outline" onclick="toggleCompanyEdit()">Cancel</button>
+    </div>
+    {% if company_details %}
+    {% set legal_details = company_details.legal_details or {} %}
+    {% set financial_details = company_details.financial_details or {} %}
+    {% set turnover_history = financial_details.get('turnover_history', []) %}
+    <form id="companyForm" method="post" action="/api/company-details" enctype="multipart/form-data">
+        <div class="form-stack">
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Basic Company Information</h3>
+                        <p class="panel-subtitle">Essential business registration details</p>
+                    </div>
+                </div>
+                <div class="form-grid two-col">
+                    <div class="form-group">
+                        <label for="edit_company_name" class="form-label">Company Name *</label>
+                        <input type="text" id="edit_company_name" name="company_name" required value="{{ company_details.company_name }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_registration_number" class="form-label">Registration Number *</label>
+                        <input type="text" id="edit_registration_number" name="registration_number" required value="{{ company_details.registration_number }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_gst_number" class="form-label">GST Number *</label>
+                        <input type="text" id="edit_gst_number" name="gst_number" required value="{{ company_details.gst_number }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_pan_number" class="form-label">PAN Number *</label>
+                        <input type="text" id="edit_pan_number" name="pan_number" required value="{{ company_details.pan_number }}">
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="edit_key_services" class="form-label">Key Services Offered *</label>
+                        <textarea id="edit_key_services" name="key_services" required rows="4">{{ company_details.key_services or '' }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_specialization_areas" class="form-label">Specialization Areas *</label>
+                        <textarea id="edit_specialization_areas" name="specialization_areas" required rows="4">{{ company_details.specialization_areas or '' }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_previous_govt_experience" class="form-label">Previous Government Projects</label>
+                        <textarea id="edit_previous_govt_experience" name="previous_govt_experience" rows="4">{{ company_details.previous_govt_experience or '' }}</textarea>
+                    </div>
+                </div>
+            </section>
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Business Details</h3>
+                        <p class="panel-subtitle">Company size and sector information</p>
+                    </div>
+                </div>
+                <div class="business-details-grid">
+                    <div class="business-details-grid__sectors" style="grid-column: span 2;">
+                        <label class="form-label">Sectors & Sub-Sectors *</label>
+                        <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem;">Add your business sectors and their sub-sectors (comma-separated)</p>
+                        <div id="editSectorSubsectorContainer">
+                            {% if company_details.industry_sector %}
+                                {% if company_details.industry_sector.startswith('[{') %}
+                                    {% set sectors_data = company_details.industry_sector|fromjson %}
+                                    {% for sector_obj in sectors_data %}
+                                    <div class="sector-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.75rem; margin-bottom: 0.75rem; align-items: start;">
+                                        <input type="text" placeholder="Sector (e.g., IT)" value="{{ sector_obj.sector }}" class="edit-sector-input" style="padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;">
+                                        <input type="text" placeholder="Sub-sectors (comma-separated, e.g., Cloud, AI, Cybersecurity)" value="{{ sector_obj.subsectors|join(', ') }}" class="edit-subsector-input" style="padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;">
+                                        <button type="button" onclick="removeEditSectorRow(this)" style="padding: 0.75rem 1rem; background: #fee; border: 1px solid #fcc; color: #e11d48; border-radius: 12px; cursor: pointer;">&times;</button>
+                                    </div>
+                                    {% endfor %}
+                                {% elif company_details.industry_sector.startswith('[') %}
+                                    {% set sectors_list = company_details.industry_sector|fromjson %}
+                                    {% for sector in sectors_list %}
+                                    <div class="sector-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.75rem; margin-bottom: 0.75rem; align-items: start;">
+                                        <input type="text" placeholder="Sector (e.g., IT)" value="{{ sector }}" class="edit-sector-input" style="padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;">
+                                        <input type="text" placeholder="Sub-sectors (comma-separated)" class="edit-subsector-input" style="padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;">
+                                        <button type="button" onclick="removeEditSectorRow(this)" style="padding: 0.75rem 1rem; background: #fee; border: 1px solid #fcc; color: #e11d48; border-radius: 12px; cursor: pointer;">&times;</button>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="sector-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.75rem; margin-bottom: 0.75rem; align-items: start;">
+                                        <input type="text" placeholder="Sector (e.g., IT)" value="{{ company_details.industry_sector }}" class="edit-sector-input" style="padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;">
+                                        <input type="text" placeholder="Sub-sectors (comma-separated)" class="edit-subsector-input" style="padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;">
+                                        <button type="button" onclick="removeEditSectorRow(this)" style="padding: 0.75rem 1rem; background: #fee; border: 1px solid #fcc; color: #e11d48; border-radius: 12px; cursor: pointer;">&times;</button>
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <div class="sector-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.75rem; margin-bottom: 0.75rem; align-items: start;">
+                                    <input type="text" placeholder="Sector (e.g., IT)" class="edit-sector-input" style="padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;">
+                                    <input type="text" placeholder="Sub-sectors (comma-separated)" class="edit-subsector-input" style="padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;">
+                                    <button type="button" onclick="removeEditSectorRow(this)" style="padding: 0.75rem 1rem; background: #fee; border: 1px solid #fcc; color: #e11d48; border-radius: 12px; cursor: pointer;">&times;</button>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <button type="button" onclick="addEditSectorRow()" style="margin-top: 0.5rem; margin-bottom: 1.5rem; padding: 0.75rem 1.25rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; display: inline-block; width: auto;">+ Add Another Sector</button>
+                        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem;">
+                            <div class="form-group">
+                                <label for="edit_year_established" class="form-label">Year Established *</label>
+                                <input type="number" id="edit_year_established" name="year_established" required min="1900" max="2100" value="{{ company_details.year_established }}">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit_employee_count" class="form-label">Employee Count *</label>
+                                <select id="edit_employee_count" name="employee_count" required>
+                                    <option value="">Select Employee Count</option>
+                                    <option value="1-10" {{ 'selected' if company_details.employee_count == '1-10' else '' }}>1-10</option>
+                                    <option value="11-50" {{ 'selected' if company_details.employee_count == '11-50' else '' }}>11-50</option>
+                                    <option value="51-100" {{ 'selected' if company_details.employee_count == '51-100' else '' }}>51-100</option>
+                                    <option value="101-250" {{ 'selected' if company_details.employee_count == '101-250' else '' }}>101-250</option>
+                                    <option value="251-500" {{ 'selected' if company_details.employee_count == '251-500' else '' }}>251-500</option>
+                                    <option value="500+" {{ 'selected' if company_details.employee_count == '500+' else '' }}>500+</option>
+                                </select>
+                            </div>
+                        </div>
+                        <input type="hidden" id="edit_industry_sector" name="industry_sector" required value="{{ company_details.industry_sector }}">
+                    </div>
+                </div>
+            </section>
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Contact Information</h3>
+                        <p class="panel-subtitle">Business address and communication details</p>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="edit_registered_address" class="form-label">Registered Address *</label>
+                        <textarea id="edit_registered_address" name="registered_address" required rows="3">{{ company_details.registered_address or '' }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_operational_address" class="form-label">Operational Address</label>
+                        <textarea id="edit_operational_address" name="operational_address" rows="3">{{ company_details.operational_address or '' }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_phone_number" class="form-label">Phone Number *</label>
+                        <input type="tel" id="edit_phone_number" name="phone_number" required value="{{ company_details.phone_number }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_email_address" class="form-label">Business Email *</label>
+                        <input type="email" id="edit_email_address" name="email_address" required value="{{ company_details.email_address }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_website_url" class="form-label">Website URL</label>
+                        <input type="url" id="edit_website_url" name="website_url" value="{{ company_details.website_url or '' }}">
+                    </div>
+                </div>
+            </section>
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Legal Details</h3>
+                        <p class="panel-subtitle">Licenses and statutory registrations</p>
+                    </div>
+                </div>
+                <div class="form-grid two-col">
+                    <div class="form-group">
+                        <label for="edit_company_type" class="form-label">Company Type</label>
+                        <input type="text" id="edit_company_type" name="company_type" value="{{ legal_details.get('company_type', '') }}" placeholder="e.g., Private Limited">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_msme_registration" class="form-label">MSME Registration</label>
+                        <input type="text" id="edit_msme_registration" name="msme_registration" value="{{ legal_details.get('msme_registration', '') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_udyam_registration" class="form-label">Udyam Registration</label>
+                        <input type="text" id="edit_udyam_registration" name="udyam_registration" value="{{ legal_details.get('udyam_registration', '') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_tan_number" class="form-label">TAN Number</label>
+                        <input type="text" id="edit_tan_number" name="tan_number" value="{{ legal_details.get('tan_number', '') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_esi_registration" class="form-label">ESI Registration</label>
+                        <input type="text" id="edit_esi_registration" name="esi_registration" value="{{ legal_details.get('esi_registration', '') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_pf_registration" class="form-label">PF Registration</label>
+                        <input type="text" id="edit_pf_registration" name="pf_registration" value="{{ legal_details.get('pf_registration', '') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_labour_license" class="form-label">Labour License Number</label>
+                        <input type="text" id="edit_labour_license" name="labour_license_number" value="{{ legal_details.get('labour_license_number', '') }}">
+                    </div>
+                </div>
+            </section>
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Financial Details</h3>
+                        <p class="panel-subtitle">Banking information and historical turnover</p>
+                    </div>
+                </div>
+                <div class="form-grid two-col">
+                    <div class="form-group">
+                        <label for="edit_bank_name" class="form-label">Bank Name</label>
+                        <input type="text" id="edit_bank_name" name="bank_name" value="{{ company_details.bank_name or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_account_holder_name" class="form-label">Account Holder Name</label>
+                        <input type="text" id="edit_account_holder_name" name="account_holder_name" value="{{ company_details.account_holder_name or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_account_number" class="form-label">Account Number</label>
+                        <input type="text" id="edit_account_number" name="account_number" value="{{ company_details.account_number or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_ifsc_code" class="form-label">IFSC Code</label>
+                        <input type="text" id="edit_ifsc_code" name="ifsc_code" value="{{ company_details.ifsc_code or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_auditor_name" class="form-label">Statutory Auditor</label>
+                        <input type="text" id="edit_auditor_name" name="auditor_name" value="{{ financial_details.get('auditor_name', '') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_credit_rating" class="form-label">Credit Rating</label>
+                        <input type="text" id="edit_credit_rating" name="credit_rating" value="{{ financial_details.get('credit_rating', '') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_net_worth" class="form-label">Net Worth</label>
+                        <input type="text" id="edit_net_worth" name="net_worth" value="{{ financial_details.get('net_worth', '') }}" placeholder="e.g., ₹50 Cr">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_credit_facility" class="form-label">Credit Facility</label>
+                        <input type="text" id="edit_credit_facility" name="credit_facility" value="{{ financial_details.get('credit_facility', '') }}">
+                    </div>
+                </div>
+                <div class="turnover-input-grid">
+                    <label class="form-label" style="grid-column: span 2;">Past 5 Years Turnover</label>
+                    {% for i in range(5) %}
+                        {% set record = turnover_history[i] if turnover_history|length > i else None %}
+                        <div class="form-group">
+                            <label class="form-label">Financial Year</label>
+                            <input type="text" name="turnover_year_labels[]" value="{{ record.label if record else '' }}" placeholder="e.g., FY 2023-24">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Turnover Amount</label>
+                            <input type="text" name="turnover_year_values[]" value="{{ record.raw_amount if record else '' }}" placeholder="e.g., ₹12 Cr">
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Key Personnel</h3>
+                        <p class="panel-subtitle">Important contacts and decision makers</p>
+                    </div>
+                </div>
+                <div class="form-grid three-col">
+                    <div class="form-group">
+                        <label for="edit_managing_director" class="form-label">Managing Director / CEO *</label>
+                        <input type="text" id="edit_managing_director" name="managing_director" required value="{{ company_details.managing_director or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_technical_head" class="form-label">Technical Head</label>
+                        <input type="text" id="edit_technical_head" name="technical_head" value="{{ company_details.technical_head or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_compliance_officer" class="form-label">Compliance Officer</label>
+                        <input type="text" id="edit_compliance_officer" name="compliance_officer" value="{{ company_details.compliance_officer or '' }}">
+                    </div>
+                </div>
+            </section>
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Supporting Certifications</h3>
+                        <p class="panel-subtitle">Upload relevant certifications and compliance documents</p>
+                    </div>
+                </div>
+                {% if company_details.company_certifications %}
+                    <div class="existing-certifications">
+                        <h4>Existing Certifications</h4>
+                        <ul class="certification-list">
+                            {% for cert in company_details.company_certifications %}
+                                <li>
+                                    <div>
+                                        <strong>{{ cert.name }}</strong>
+                                        <small class="text-muted">Uploaded {{ cert.uploaded_at.strftime('%d %b %Y') if cert.uploaded_at else '' }}</small>
+                                    </div>
+                                    <div class="cert-actions">
+                                        <label class="checkbox">
+                                            <input type="checkbox" name="remove_certification_ids" value="{{ cert.id }}">
+                                            <span>Remove</span>
+                                        </label>
+                                        <a class="btn btn-outline btn-sm" href="/company-certifications/{{ cert.id }}/download">Download</a>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+                <div class="new-certification-wrapper">
+                    <h4>Add New Certifications</h4>
+                    <div id="editCertificationContainer" class="certification-input-list">
+                        <div class="certification-input-row">
+                            <input type="text" name="certification_names[]" placeholder="Certification Name" class="form-input">
+                            <input type="file" name="certification_files[]" accept=".pdf,.jpg,.jpeg,.png" class="form-input">
+                            <button type="button" class="btn btn-outline btn-sm" onclick="removeCertificationRow(this)">Remove</button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline" onclick="addCertificationRow('editCertificationContainer')">+ Add Certification</button>
+                </div>
+            </section>
+
+            <!-- Contact Information -->
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Contact Information</h3>
+                        <p class="panel-subtitle">Company contact details and addresses</p>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="edit_registered_address" class="form-label">Registered Address *</label>
+                        <textarea id="edit_registered_address" name="registered_address" required rows="3">{{ company_details.registered_address or '' }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_operational_address" class="form-label">Operational Address</label>
+                        <textarea id="edit_operational_address" name="operational_address" rows="3">{{ company_details.operational_address or '' }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_phone_number" class="form-label">Phone Number *</label>
+                        <input type="tel" id="edit_phone_number" name="phone_number" required value="{{ company_details.phone_number }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_email_address" class="form-label">Business Email *</label>
+                        <input type="email" id="edit_email_address" name="email_address" required value="{{ company_details.email_address }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_website_url" class="form-label">Website URL</label>
+                        <input type="url" id="edit_website_url" name="website_url" value="{{ company_details.website_url or '' }}">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Key Personnel -->
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Key Personnel</h3>
+                        <p class="panel-subtitle">Important contacts and decision makers</p>
+                    </div>
+                </div>
+
+                <div class="form-grid three-col">
+                    <div class="form-group">
+                        <label for="edit_managing_director" class="form-label">Managing Director / CEO *</label>
+                        <input type="text" id="edit_managing_director" name="managing_director" required value="{{ company_details.managing_director or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_technical_head" class="form-label">Technical Head</label>
+                        <input type="text" id="edit_technical_head" name="technical_head" value="{{ company_details.technical_head or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_compliance_officer" class="form-label">Compliance Officer</label>
+                        <input type="text" id="edit_compliance_officer" name="compliance_officer" value="{{ company_details.compliance_officer or '' }}">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Submit Button -->
+            <section class="panel">
+                <div class="panel-actions">
+                    <button type="submit" class="btn btn-primary btn-lg">Update Company Details</button>
+                </div>
+            </section>
+        </div>
+    </form>
+    {% else %}
+    <div class="panel-subtitle">
+        <p>Company details not available. <a href="/company-details" class="btn btn-primary">Complete Setup</a></p>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Dashboard Cards -->
+<div class="dashboard-stats dashboard-section">
+    <div class="stat-card surface-card--clickable" onclick="navigateTo('/projects')">
+        <div class="stat-number">{{ total_projects }}</div>
+        <div class="stat-label">Past Projects</div>
+        <p class="text-muted mt-2">View and manage your completed project portfolio and historical tender wins.</p>
+        <div class="mt-3 d-flex gap-2 justify-center">
+            <span class="badge badge--success">{{ completed_projects }} Completed</span>
+            {% if total_project_value > 0 %}
+                <span class="badge badge--muted">₹{{ "{:,.0f}".format(total_project_value / 10000000) }} Cr Total Value</span>
+            {% else %}
+                <span class="badge badge--muted">No value recorded</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="stat-card surface-card--clickable" onclick="navigateTo('/procurement')">
+        <div class="stat-number">{{ formatted_tender_count }}</div>
+        <div class="stat-label">Tender Searching</div>
+        <p class="text-muted mt-2">Search and discover new government tenders matching your expertise and capabilities.</p>
+        <div class="mt-3 d-flex gap-2 justify-center">
+            <span class="badge badge--primary">{{ formatted_tender_count }} New This Week</span>
+        </div>
+    </div>
+
+    <div class="stat-card surface-card--clickable" onclick="navigateTo('/tender-management')">
+        <div class="stat-number">{{ favorite_count }}</div>
+        <div class="stat-label">Tender Management</div>
+        <p class="text-muted mt-2">Track favourite tenders, shortlist opportunities and manage your bidding pipeline.</p>
+        <div class="mt-3 d-flex gap-2 justify-center">
+            <span class="badge badge--primary">{{ favorite_count }} Favourites</span>
+            <span class="badge badge--success">{{ shortlisted_count }} Shortlisted</span>
+        </div>
+    </div>
+</div>
+
+
+<!-- Add Employee Modal -->
+<div id="addEmployeeModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 0; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px 12px 0 0;">
+            <div>
+                <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem; color: white; font-weight: 700;">Add New Employee</h2>
+                <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;">Add a team member to your organization</p>
+            </div>
+            <button onclick="closeAddEmployeeModal()" type="button" style="background: rgba(255,255,255,0.2); border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.5rem; color: white; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">&times;</button>
+        </div>
+        <div style="padding: 2rem;">
+
+        <form id="addEmployeeForm">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div style="grid-column: span 1;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333; font-size: 0.9rem;">Name</label>
+                    <input type="text" id="emp_name" name="name" placeholder="John Doe" style="width: 100%; padding: 0.75rem; border: 1.5px solid #d1d5db; border-radius: 12px; font-size: 0.95rem;">
+                </div>
+
+                <div style="grid-column: span 1;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333; font-size: 0.9rem;">Email <span style="color: red;">*</span></label>
+                    <input type="email" id="emp_email" name="email" placeholder="john@company.com" required style="width: 100%; padding: 0.75rem; border: 1.5px solid #d1d5db; border-radius: 12px; font-size: 0.95rem;">
+                </div>
+
+                <div style="grid-column: span 1;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333; font-size: 0.9rem;">Role</label>
+                    <input type="text" id="emp_role" name="role" placeholder="Project Manager" style="width: 100%; padding: 0.75rem; border: 1.5px solid #d1d5db; border-radius: 12px; font-size: 0.95rem;">
+                </div>
+
+                <div style="grid-column: span 1;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333; font-size: 0.9rem;">Team</label>
+                    <input type="text" id="emp_team" name="team" placeholder="Engineering" style="width: 100%; padding: 0.75rem; border: 1.5px solid #d1d5db; border-radius: 12px; font-size: 0.95rem;">
+                </div>
+
+                <div style="grid-column: span 2;">
+                    <label style="display: flex; align-items: center; margin-bottom: 1rem; font-weight: 600; color: #333; font-size: 0.95rem; cursor: pointer;">
+                        <input type="checkbox" id="emp_is_bd" name="is_bd" style="width: 18px; height: 18px; margin-right: 0.5rem; cursor: pointer; accent-color: #667eea;">
+                        <span>Is BD?</span>
+                    </label>
+                </div>
+
+                <div style="grid-column: span 2;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333; font-size: 0.9rem;">Password <span style="color: red;">*</span></label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="emp_password" name="password" required placeholder="Auto-generated password" style="flex: 1; padding: 0.75rem; border: 1.5px solid #d1d5db; border-radius: 12px; font-size: 0.95rem;">
+                        <button type="button" onclick="generatePassword()" style="padding: 0.75rem 1.25rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(102,126,234,0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">Generate</button>
+                    </div>
+                    <p style="font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem;">This will be the employee's login password. You can edit it before adding.</p>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333; font-size: 0.9rem;">Profile Picture</label>
+                <input type="file" id="emp_profile_picture" name="profile_picture" accept="image/*" style="width: 100%; padding: 0.75rem; border: 1.5px solid #d1d5db; border-radius: 12px;">
+                <div id="imagePreview" style="display: none; margin-top: 1rem; text-align: center;">
+                    <img id="previewImg" src="" alt="Preview" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #e5e7eb;">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem; justify-content: flex-end; padding-top: 1.5rem; margin-top: 1rem; border-top: 1px solid #e5e7eb;">
+                <button type="button" onclick="closeAddEmployeeModal()" style="padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 600; cursor: pointer; border: none; background: #f3f4f6; color: #374151; transition: all 0.2s;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f3f4f6'">Cancel</button>
+                <button type="submit" style="padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 600; cursor: pointer; border: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102,126,234,0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">Add Employee</button>
+            </div>
+        </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Team Modal -->
+<div id="viewTeamModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; width: 90%; max-width: 900px; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.4); display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div>
+                <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem; color: white; font-weight: 700;">Team Members</h2>
+                <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;">View and manage your organization's team</p>
+            </div>
+            <button onclick="closeViewTeamModal()" type="button" style="background: rgba(255,255,255,0.2); border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.5rem; color: white; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">&times;</button>
+        </div>
+
+        <div style="padding: 2rem; overflow-y: auto;">
+            <div style="position: relative; margin-bottom: 1.5rem;">
+                <input type="text" id="employeeSearch" placeholder="Search employees by name or role..." style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 0.95rem; transition: all 0.2s;" onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102,126,234,0.1)'" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'">
+            </div>
+
+            <div id="employeeList" style="max-height: 500px; overflow-y: auto;">
+                <div style="text-align: center; padding: 3rem; color: #6b7280;">
+                    <p>Loading employees...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete All Certificates Modal -->
+<div id="deleteAllCertificatesModal" class="upload-modal" style="display: none;">
+    <div class="upload-modal-overlay" onclick="closeDeleteAllCertificatesModal()"></div>
+    <div class="upload-modal-content">
+        <div class="upload-modal-header">
+            <h2>⚠️ Delete All Completion Certificates</h2>
+            <button type="button" class="upload-modal-close" onclick="closeDeleteAllCertificatesModal()">&times;</button>
+        </div>
+        <div class="upload-modal-body">
+            <div class="delete-warning-box">
+                <p class="delete-warning-title">🚨 Warning: This action cannot be undone!</p>
+                <p class="delete-warning-text">
+                    You are about to permanently delete <strong>ALL completion certificates from ALL projects</strong> in your portfolio.
+                    This will remove:
+                </p>
+                <ul class="delete-warning-list">
+                    <li>All completion certificate files from all projects</li>
+                    <li>All certificate metadata and references</li>
+                    <li>Physical files from storage</li>
+                    <li>Any extracted information from certificates</li>
+                </ul>
+                <p class="delete-warning-text">
+                    <strong>This is a global operation that affects your entire project portfolio.</strong>
+                </p>
+            </div>
+
+            <div class="delete-confirmation-section">
+                <label for="deleteAllCertificatesInput" class="delete-confirmation-label">
+                    To confirm deletion, type <strong class="delete-keyword">DELETE</strong> (all caps) below:
+                </label>
+                <input
+                    type="text"
+                    id="deleteAllCertificatesInput"
+                    class="delete-confirmation-input"
+                    placeholder="Type DELETE here"
+                    oninput="validateDeleteAllCertificatesConfirmation()"
+                    autocomplete="off"
+                />
+                <div id="deleteAllCertificatesConfirmationError" class="delete-confirmation-error" style="display: none;">
+                    Please type DELETE exactly as shown (all capital letters)
+                </div>
+            </div>
+
+            <div id="deleteAllCertificatesError" class="upload-error" style="display: none;"></div>
+        </div>
+        <div class="upload-modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeDeleteAllCertificatesModal()">Cancel</button>
+            <button
+                type="button"
+                class="btn btn-danger"
+                onclick="confirmDeleteAllCertificates()"
+                id="deleteAllCertificatesSubmitBtn"
+                disabled
+            >
+                <span id="deleteAllCertificatesBtnText">Delete All Certificates</span>
+                <span id="deleteAllCertificatesBtnSpinner" class="btn-spinner" style="display: none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner">
+                        <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                </span>
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+/* Modal Styles for Delete All Certificates */
+.upload-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.upload-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.upload-modal-content {
+    position: relative;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.upload-modal-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.upload-modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #1e293b;
+}
+
+.upload-modal-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: #64748b;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    transition: all 0.2s;
+}
+
+.upload-modal-close:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+.upload-modal-body {
+    padding: 2rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.upload-modal-footer {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.upload-error {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    color: #991b1b;
+    font-size: 0.875rem;
+}
+
+/* Delete Warning Styles */
+.delete-warning-box {
+    background: #fef2f2;
+    border: 2px solid #fecaca;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.delete-warning-title {
+    color: #991b1b;
+    font-weight: 700;
+    font-size: 1.125rem;
+    margin: 0 0 1rem 0;
+}
+
+.delete-warning-text {
+    color: #7f1d1d;
+    font-size: 0.9375rem;
+    margin: 0 0 0.75rem 0;
+    line-height: 1.6;
+}
+
+.delete-warning-list {
+    list-style: disc;
+    margin: 0.75rem 0 0.75rem 1.5rem;
+    padding: 0;
+}
+
+.delete-warning-list li {
+    color: #7f1d1d;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.delete-confirmation-section {
+    margin-bottom: 1.5rem;
+}
+
+.delete-confirmation-label {
+    display: block;
+    color: #1e293b;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    margin-bottom: 0.75rem;
+}
+
+.delete-keyword {
+    color: #dc2626;
+    background: #fee2e2;
+    padding: 0.125rem 0.375rem;
+    border-radius: 12px;
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+}
+
+.delete-confirmation-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    border: 2px solid #cbd5e1;
+    border-radius: 12px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+}
+
+.delete-confirmation-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.delete-confirmation-error {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    color: #991b1b;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.btn-spinner {
+    display: inline-block;
+}
+
+.btn-spinner .spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const companyView = document.getElementById('companyView');
+    const companyEdit = document.getElementById('companyEdit');
+    if (companyView) {
+        companyView.classList.remove('hidden');
+        companyView.removeAttribute('aria-hidden');
+    }
+    if (companyEdit) {
+        companyEdit.classList.add('hidden');
+        companyEdit.setAttribute('aria-hidden', 'true');
+        companyEdit.hidden = true;
+    }
+});
+
+// Profile editing functionality
+function toggleProfileEdit() {
+    const view = document.getElementById('profileView');
+    const edit = document.getElementById('profileEdit');
+    if (!view || !edit) return;
+    view.classList.toggle('hidden');
+    edit.classList.toggle('hidden');
+}
+
+// Company editing functionality
+function toggleCompanyEdit() {
+    const view = document.getElementById('companyView');
+    const edit = document.getElementById('companyEdit');
+    const trigger = document.getElementById('editCompanyBtn');
+    if (!view || !edit) return;
+
+    const isHidden = edit.classList.contains('hidden') || edit.hidden;
+
+    if (isHidden) {
+        view.classList.add('hidden');
+        view.setAttribute('aria-hidden', 'true');
+
+        edit.classList.remove('hidden');
+        edit.hidden = false;
+        edit.removeAttribute('aria-hidden');
+
+        if (trigger) trigger.setAttribute('aria-expanded', 'true');
+    } else {
+        edit.classList.add('hidden');
+        edit.hidden = true;
+        edit.setAttribute('aria-hidden', 'true');
+
+        view.classList.remove('hidden');
+        view.removeAttribute('aria-hidden');
+
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    }
+}
+
+function addCertificationRow(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'certification-input-row';
+    row.innerHTML = `
+        <input type="text" name="certification_names[]" placeholder="Certification Name" class="form-input">
+        <input type="file" name="certification_files[]" accept=".pdf,.jpg,.jpeg,.png" class="form-input">
+        <button type="button" class="btn btn-outline btn-sm" onclick="removeCertificationRow(this)">Remove</button>
+    `;
+
+    container.appendChild(row);
+}
+
+function removeCertificationRow(button) {
+    const row = button.closest('.certification-input-row');
+    if (!row) return;
+
+    const container = row.parentElement;
+    if (!container) return;
+
+    if (container.children.length === 1) {
+        row.querySelectorAll('input').forEach((input) => {
+            if (input.type === 'file') {
+                input.value = '';
+            } else {
+                input.value = '';
+            }
+        });
+    } else {
+        container.removeChild(row);
+    }
+}
+
+// Enhanced form submission handling
+function enhanceProfileForm() {
+    const form = document.getElementById('profileForm');
+    if (form) {
+        form.addEventListener('submit', function () {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.textContent = 'Updating…';
+                submitBtn.disabled = true;
+            }
+        });
+    }
+}
+
+function enhanceCompanyForm() {
+    const form = document.getElementById('companyForm');
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault(); // Prevent default form submission
+
+            // Collect sector/subsector data
+            const sectorsData = collectEditSectorData();
+            const hiddenSectorInput = document.getElementById('edit_industry_sector');
+
+            if (sectorsData.length === 0) {
+                alert('Please add at least one sector.');
+                return;
+            }
+
+            hiddenSectorInput.value = JSON.stringify(sectorsData);
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Updating…';
+            submitBtn.disabled = true;
+
+            // Submit form via fetch
+            const formData = new FormData(form);
+
+            fetch('/api/company-details', {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            })
+            .then(response => {
+                if (response.ok) {
+                    showNotification('Company details updated successfully!', 'success');
+                    // Reload the page to show updated data
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    return response.text().then(text => {
+                        throw new Error(text);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error updating company details. Please try again.', 'error');
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+    }
+}
+
+// Industry sector checkbox handling for edit form
+function initEditIndustrySectorGrid() {
+    const container = document.getElementById('editIndustrySectors');
+    if (!container) return;
+
+    const checkboxes = Array.from(container.querySelectorAll('input[type="checkbox"]'));
+    const hiddenInput = container.querySelector('#edit_industry_sector');
+    const summary = container.querySelector('#editIndustrySelectionSummary');
+    const placeholderTemplate = '<span class="placeholder-text">Select industry sectors...</span>';
+
+    function parseHiddenValue() {
+        const value = hiddenInput.value.trim();
+        if (!value || value === '[]') return [];
+
+        // Try to parse as JSON array first
+        if (value.startsWith('[')) {
+            try {
+                const parsed = JSON.parse(value);
+                if (Array.isArray(parsed)) {
+                    return parsed.map(String);
+                }
+            } catch (error) {
+                console.error('Error parsing industry sector JSON:', error);
+            }
+        }
+
+        // If it's a single value, return it as an array
+        return [String(value)];
+    }
+
+    function applySelection(values) {
+        const lookup = new Set(values.map(String));
+        checkboxes.forEach((checkbox) => {
+            checkbox.checked = lookup.has(checkbox.value);
+        });
+    }
+
+    function collectSelectedValues() {
+        return checkboxes
+            .filter((checkbox) => checkbox.checked)
+            .map((checkbox) => checkbox.value);
+    }
+
+    function updateHiddenInput(selectedValues) {
+        if (selectedValues.length) {
+            hiddenInput.value = JSON.stringify(selectedValues);
+            hiddenInput.setCustomValidity('');
+        } else {
+            hiddenInput.value = '[]';
+            hiddenInput.setCustomValidity('Please select at least one industry sector.');
+        }
+    }
+
+    function renderSummary(selectedValues) {
+        if (!summary) return;
+
+        if (!selectedValues.length) {
+            summary.innerHTML = placeholderTemplate;
+            return;
+        }
+
+        summary.innerHTML = selectedValues
+            .map((value) => `<span class="selected-tag">${value}</span>`)
+            .join('');
+    }
+
+    function syncFromCheckboxes() {
+        const selected = collectSelectedValues();
+        updateHiddenInput(selected);
+        renderSummary(selected);
+    }
+
+    const initialValues = parseHiddenValue();
+    console.log('Edit form - Initial industry sector values:', initialValues);
+
+    if (initialValues.length) {
+        applySelection(initialValues);
+        console.log('Edit form - Applied selection to checkboxes');
+    }
+
+    syncFromCheckboxes();
+
+    checkboxes.forEach((checkbox) => {
+        checkbox.addEventListener('change', syncFromCheckboxes);
+    });
+
+    // Expose sync function so form submission can refresh latest values
+    container.syncSelections = syncFromCheckboxes;
+}
+
+// Functions for dynamic sector/sub-sector rows in Edit Company
+function addEditSectorRow() {
+    const container = document.getElementById('editSectorSubsectorContainer');
+    const newRow = document.createElement('div');
+    newRow.className = 'sector-row';
+    newRow.style.cssText = 'display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.75rem; margin-bottom: 0.75rem; align-items: start;';
+    newRow.innerHTML = `
+        <input type="text" placeholder="Sector (e.g., IT)" class="edit-sector-input" style="padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;">
+        <input type="text" placeholder="Sub-sectors (comma-separated, e.g., Cloud, AI, Cybersecurity)" class="edit-subsector-input" style="padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;">
+        <button type="button" onclick="removeEditSectorRow(this)" style="padding: 0.75rem 1rem; background: #fee; border: 1px solid #fcc; color: #e11d48; border-radius: 12px; cursor: pointer;">&times;</button>
+    `;
+    container.appendChild(newRow);
+}
+
+function removeEditSectorRow(button) {
+    const container = document.getElementById('editSectorSubsectorContainer');
+    const rows = container.querySelectorAll('.sector-row');
+
+    if (rows.length > 1) {
+        button.closest('.sector-row').remove();
+    } else {
+        alert('At least one sector is required.');
+    }
+}
+
+function collectEditSectorData() {
+    const container = document.getElementById('editSectorSubsectorContainer');
+    const rows = container.querySelectorAll('.sector-row');
+    const sectorsData = [];
+
+    rows.forEach(row => {
+        const sectorInput = row.querySelector('.edit-sector-input');
+        const subsectorInput = row.querySelector('.edit-subsector-input');
+
+        const sector = sectorInput.value.trim();
+        const subsectorsText = subsectorInput.value.trim();
+
+        if (sector) {
+            const subsectors = subsectorsText
+                ? subsectorsText.split(',').map(s => s.trim()).filter(s => s)
+                : [];
+
+            sectorsData.push({
+                sector: sector,
+                subsectors: subsectors
+            });
+        }
+    });
+
+    return sectorsData;
+}
+
+// Navigation for action cards
+function navigateTo(path) {
+    window.location.href = path;
+}
+
+// Simple notification function
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `upload-notification ${type}`;
+    notification.innerHTML = `
+        <div style="font-weight: 500; margin-bottom: 0.5rem;">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'} ${type.charAt(0).toUpperCase() + type.slice(1)}</div>
+        <div>${message}</div>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        notification.remove();
+    }, 5000);
+}
+
+// Certificate upload handling
+async function handleCertificateUpload(files) {
+    const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.zip'];
+    const validFiles = Array.from(files).filter(file => {
+        const extension = '.' + file.name.split('.').pop().toLowerCase();
+        return validExtensions.includes(extension);
+    });
+
+    if (validFiles.length === 0) {
+        showNotification('Please select valid certificate files (PDF, JPG, JPEG, PNG, or ZIP)', 'error');
+        return;
+    }
+
+    if (validFiles.length !== files.length) {
+        showNotification('Some files were skipped. Only PDF, JPG, JPEG, PNG, and ZIP files are supported.', 'error');
+    }
+
+    showNotification(`Processing ${validFiles.length} certificate(s)...`, 'info');
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Upload all files at once instead of one-by-one
+    try {
+        const formData = new FormData();
+        validFiles.forEach(file => {
+            formData.append('files', file);
+        });
+
+        const response = await fetch('/api/certificates/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            successCount = result.total_files || validFiles.length;
+            console.log(`✅ ${successCount} certificate(s) uploaded successfully`);
+
+            // Show batch progress if batch_id is returned
+            if (result.batch_id) {
+                console.log(`Batch ID: ${result.batch_id}`);
+                if (result.skipped_files > 0) {
+                    console.log(`⊘ ${result.skipped_files} duplicate(s) skipped`);
+                }
+            }
+        } else {
+            errorCount = validFiles.length;
+            console.error(`❌ Upload failed: ${result.detail || 'Unknown error'}`);
+        }
+    } catch (error) {
+        errorCount = validFiles.length;
+        console.error(`❌ Upload failed:`, error);
+    }
+
+    // Show final results
+    if (successCount > 0) {
+        showNotification(`${successCount} certificate(s) processed successfully!`, 'success');
+    }
+    if (errorCount > 0) {
+        showNotification(`${errorCount} certificate(s) failed to process.`, 'error');
+    }
+}
+
+// Generate random password (8 characters with letters and numbers)
+function generatePassword() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let password = '';
+    for (let i = 0; i < 8; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const passwordInput = document.getElementById('emp_password');
+    if (passwordInput) {
+        passwordInput.value = password;
+    }
+    return password;
+}
+
+// Modal functions for Add Employee
+function showAddEmployeeModal() {
+    const modal = document.getElementById('addEmployeeModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        // Auto-generate password when modal opens
+        generatePassword();
+    }
+}
+
+function closeAddEmployeeModal() {
+    const modal = document.getElementById('addEmployeeModal');
+    const form = document.getElementById('addEmployeeForm');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+    if (form) {
+        form.reset();
+        const preview = document.getElementById('imagePreview');
+        if (preview) {
+            preview.style.display = 'none';
+        }
+    }
+}
+
+// Modal functions for View Team
+function showViewTeamModal() {
+    const modal = document.getElementById('viewTeamModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        loadEmployees();
+    }
+}
+
+function closeViewTeamModal() {
+    const modal = document.getElementById('viewTeamModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+}
+
+// Image preview for profile picture
+document.addEventListener('DOMContentLoaded', () => {
+    const profilePicInput = document.getElementById('emp_profile_picture');
+    if (profilePicInput) {
+        profilePicInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const preview = document.getElementById('imagePreview');
+                    const previewImg = document.getElementById('previewImg');
+                    if (preview && previewImg) {
+                        previewImg.src = event.target.result;
+                        preview.style.display = 'block';
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+});
+
+// Handle Add Employee form submission
+async function handleAddEmployeeSubmit(e) {
+    e.preventDefault();
+
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Saving...';
+    submitBtn.disabled = true;
+
+    try {
+        const formData = new FormData(form);
+
+        // Explicitly set the is_bd checkbox value
+        const isBdCheckbox = document.getElementById('emp_is_bd');
+        if (isBdCheckbox.checked) {
+            formData.set('is_bd', 'true');
+        } else {
+            formData.set('is_bd', 'false');
+        }
+
+        const response = await fetch('/api/employees', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            const password = result.password;
+            showNotification(`Employee added successfully! Login password: ${password}`, 'success');
+            closeAddEmployeeModal();
+            form.reset();
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || 'Error adding employee. Please try again.', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error adding employee. Please try again.', 'error');
+    } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+// Load employees for View Team modal
+async function loadEmployees() {
+    const employeeList = document.getElementById('employeeList');
+    if (!employeeList) return;
+
+    employeeList.innerHTML = `
+        <div class="employee-loading">
+            <div class="employee-spinner"></div>
+            <p>Loading employees...</p>
+        </div>
+    `;
+
+    try {
+        const response = await fetch('/api/employees', {
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            const employees = await response.json();
+            renderEmployeeList(employees);
+        } else {
+            employeeList.innerHTML = `
+                <div class="empty-state">
+                    <h3>Error Loading Employees</h3>
+                    <p>Unable to load team members. Please try again.</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        employeeList.innerHTML = `
+            <div class="empty-state">
+                <h3>Error Loading Employees</h3>
+                <p>Unable to load team members. Please try again.</p>
+            </div>
+        `;
+    }
+}
+
+// Render employee list grouped by team
+function renderEmployeeList(employees) {
+    const employeeList = document.getElementById('employeeList');
+    if (!employeeList) return;
+
+    if (employees.length === 0) {
+        employeeList.innerHTML = '<div style="text-align: center; padding: 3rem; color: #6b7280;"><h3 style="color: #374151; margin-bottom: 0.5rem;">No Employees</h3><p>Add employees to get started.</p></div>';
+        return;
+    }
+
+    // Group employees by team
+    const grouped = {};
+    employees.forEach(emp => {
+        const team = emp.team || 'Unassigned';
+        if (!grouped[team]) {
+            grouped[team] = [];
+        }
+        grouped[team].push(emp);
+    });
+
+    // Sort teams alphabetically
+    const sortedTeams = Object.keys(grouped).sort();
+
+    let html = '';
+    sortedTeams.forEach(team => {
+        // Sort employees within team alphabetically by name
+        grouped[team].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+        html += `<div style="margin-bottom: 2rem;">
+            <div style="font-weight: 700; font-size: 1rem; color: #667eea; margin-bottom: 1rem; padding: 0.75rem 1rem; background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%); border-left: 4px solid #667eea; border-radius: 12px;">${team}</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">`;
+
+        grouped[team].forEach(emp => {
+            const initials = (emp.name || emp.email.charAt(0)).split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+            const displayName = emp.name || '-';
+            const displayRole = emp.role || '-';
+            const displayEmail = emp.email || '-';
+
+            html += `<div class="employee-card" style="background: white; border: 2px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; text-align: center; transition: all 0.2s; position: relative;" onmouseover="this.style.borderColor='#667eea'; this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 16px rgba(102,126,234,0.15)'" onmouseout="this.style.borderColor='#e5e7eb'; this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                <button onclick="deleteEmployee('${emp.id}', '${displayName.replace(/'/g, "\\'")}')" style="position: absolute; top: 8px; right: 8px; background: #fee; border: 1px solid #fcc; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 0.9rem; color: #e11d48; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='#e11d48'; this.style.color='white'; this.style.borderColor='#e11d48'" onmouseout="this.style.background='#fee'; this.style.color='#e11d48'; this.style.borderColor='#fcc'" title="Delete employee">&times;</button>`;
+
+            if (emp.profile_picture) {
+                html += `<img src="${emp.profile_picture}" alt="${displayName}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #667eea; margin: 0 auto 1rem;">`;
+            } else {
+                html += `<div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.5rem; margin: 0 auto 1rem; box-shadow: 0 4px 8px rgba(102,126,234,0.3);">${initials}</div>`;
+            }
+
+            html += `
+                <div style="font-weight: 700; font-size: 0.95rem; color: #111; margin-bottom: 0.25rem;">${displayName}</div>
+                <div style="font-size: 0.85rem; color: #667eea; margin-bottom: 0.5rem;">${displayRole}</div>
+                <div style="font-size: 0.8rem; color: #6b7280; word-break: break-word;">${displayEmail}</div>
+            </div>`;
+        });
+
+        html += `</div></div>`;
+    });
+
+    employeeList.innerHTML = html;
+}
+
+// Delete employee function
+async function deleteEmployee(employeeId, employeeName) {
+    if (!confirm(`Are you sure you want to delete ${employeeName}?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/employees/${employeeId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            showNotification('Employee deleted successfully!', 'success');
+            // Reload the employee list
+            loadEmployees();
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || 'Error deleting employee.', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error deleting employee. Please try again.', 'error');
+    }
+}
+
+// Search functionality for employees
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('employeeSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const employeeCards = document.querySelectorAll('.employee-card');
+
+            employeeCards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    }
+});
+
+// Initialize dashboard functionality
+document.addEventListener('DOMContentLoaded', () => {
+    enhanceProfileForm();
+    enhanceCompanyForm();
+
+    // Handle file input change
+    const fileInput = document.getElementById('certificateFileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files && e.target.files.length > 0) {
+                handleCertificateUpload(e.target.files);
+                // Reset input so same files can be selected again
+                e.target.value = '';
+            }
+        });
+    }
+
+    // Attach Add Employee form submit handler
+    const addEmployeeForm = document.getElementById('addEmployeeForm');
+    if (addEmployeeForm) {
+        addEmployeeForm.addEventListener('submit', handleAddEmployeeSubmit);
+    }
+
+});
+
+// Delete All Certificates Modal Functions
+function openDeleteAllCertificatesModal() {
+    const modal = document.getElementById('deleteAllCertificatesModal');
+    const input = document.getElementById('deleteAllCertificatesInput');
+    const submitBtn = document.getElementById('deleteAllCertificatesSubmitBtn');
+    const errorEl = document.getElementById('deleteAllCertificatesError');
+    const confirmErrorEl = document.getElementById('deleteAllCertificatesConfirmationError');
+
+    // Reset modal state
+    input.value = '';
+    submitBtn.disabled = true;
+    errorEl.style.display = 'none';
+    confirmErrorEl.style.display = 'none';
+
+    // Show modal
+    modal.style.display = 'flex';
+
+    // Focus on input
+    setTimeout(() => input.focus(), 100);
+}
+
+function closeDeleteAllCertificatesModal() {
+    const modal = document.getElementById('deleteAllCertificatesModal');
+    modal.style.display = 'none';
+}
+
+function validateDeleteAllCertificatesConfirmation() {
+    const input = document.getElementById('deleteAllCertificatesInput');
+    const submitBtn = document.getElementById('deleteAllCertificatesSubmitBtn');
+    const errorEl = document.getElementById('deleteAllCertificatesConfirmationError');
+
+    if (input.value === 'DELETE') {
+        // Correct input
+        submitBtn.disabled = false;
+        errorEl.style.display = 'none';
+        input.style.borderColor = '#22c55e'; // Green border
+    } else if (input.value.length > 0) {
+        // Wrong input
+        submitBtn.disabled = true;
+        errorEl.textContent = 'Please type DELETE exactly as shown (all capital letters)';
+        errorEl.style.display = 'block';
+        input.style.borderColor = '#ef4444'; // Red border
+    } else {
+        // Empty input
+        submitBtn.disabled = true;
+        errorEl.style.display = 'none';
+        input.style.borderColor = ''; // Default border
+    }
+}
+
+async function confirmDeleteAllCertificates() {
+    const input = document.getElementById('deleteAllCertificatesInput');
+    const submitBtn = document.getElementById('deleteAllCertificatesSubmitBtn');
+    const btnText = document.getElementById('deleteAllCertificatesBtnText');
+    const btnSpinner = document.getElementById('deleteAllCertificatesBtnSpinner');
+    const errorEl = document.getElementById('deleteAllCertificatesError');
+
+    // Final validation
+    if (input.value !== 'DELETE') {
+        errorEl.textContent = 'Please type DELETE exactly as shown (all capital letters)';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    // Disable button and show loading state
+    submitBtn.disabled = true;
+    btnText.style.display = 'none';
+    btnSpinner.style.display = 'inline-block';
+
+    try {
+        const response = await fetch('/api/certificates/delete-all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                confirmation_text: input.value
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Success - close modal and reload page
+            closeDeleteAllCertificatesModal();
+
+            // Show success message with details
+            const message = data.deleted_count > 0
+                ? `✅ Successfully deleted ${data.deleted_count} completion certificate(s) from ${data.affected_projects} project(s).`
+                : '✅ No completion certificates found to delete.';
+
+            alert(message);
+
+            // Reload page to reflect changes
+            window.location.reload();
+        } else {
+            // Error from server
+            errorEl.textContent = data.error || 'Failed to delete certificates. Please try again.';
+            errorEl.style.display = 'block';
+
+            // Re-enable button
+            submitBtn.disabled = false;
+            btnText.style.display = 'inline-block';
+            btnSpinner.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        errorEl.textContent = 'Network error occurred. Please try again.';
+        errorEl.style.display = 'block';
+
+        // Re-enable button
+        submitBtn.disabled = false;
+        btnText.style.display = 'inline-block';
+        btnSpinner.style.display = 'none';
+    }
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('deleteAllCertificatesModal');
+    if (modal && event.target === modal) {
+        closeDeleteAllCertificatesModal();
+    }
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const modal = document.getElementById('deleteAllCertificatesModal');
+        if (modal && modal.style.display === 'flex') {
+            closeDeleteAllCertificatesModal();
+        }
+    }
+});
+
+// =============================================================================
+// FEATURE LOCK MANAGEMENT
+// =============================================================================
+
+// Load feature lock status on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadFeatureLockStatus();
+});
+
+// Toggle feature lock configuration visibility
+document.getElementById('featureLockEnabled').addEventListener('change', function() {
+    const config = document.getElementById('featureLockConfig');
+    if (this.checked) {
+        config.style.display = 'block';
+    } else {
+        config.style.display = 'none';
+    }
+});
+
+// Load current feature lock status
+async function loadFeatureLockStatus() {
+    try {
+        const response = await fetch('/api/feature-lock/status');
+        const data = await response.json();
+
+        if (data.success) {
+            const enabled = data.enabled;
+            const lockedFeatures = data.locked_features || [];
+
+            // Set toggle
+            document.getElementById('featureLockEnabled').checked = enabled;
+
+            // Show/hide config
+            document.getElementById('featureLockConfig').style.display = enabled ? 'block' : 'none';
+
+            // Check locked features
+            document.querySelectorAll('.feature-checkbox').forEach(checkbox => {
+                checkbox.checked = lockedFeatures.includes(checkbox.value);
+            });
+
+            // Show/hide password field and reset button if already configured
+            if (enabled) {
+                document.getElementById('passwordFieldContainer').style.display = 'block';
+                document.getElementById('resetFeatureLockBtn').style.display = 'inline-block';
+            } else {
+                document.getElementById('passwordFieldContainer').style.display = 'none';
+                document.getElementById('resetFeatureLockBtn').style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading feature lock status:', error);
+    }
+}
+
+// Save feature lock settings
+document.getElementById('saveFeatureLockBtn').addEventListener('click', async () => {
+    const messageEl = document.getElementById('featureLockMessage');
+    const pin = document.getElementById('featureLockPin').value;
+    const pinConfirm = document.getElementById('featureLockPinConfirm').value;
+    const password = document.getElementById('featureLockPassword').value;
+
+    // Validate PIN
+    if (!pin || pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+        showFeatureLockMessage('PIN must be exactly 6 digits', 'error');
+        return;
+    }
+
+    // Validate PIN confirmation
+    if (pin !== pinConfirm) {
+        showFeatureLockMessage('PINs do not match', 'error');
+        return;
+    }
+
+    // Get selected features
+    const lockedFeatures = Array.from(document.querySelectorAll('.feature-checkbox:checked'))
+        .map(cb => cb.value);
+
+    if (lockedFeatures.length === 0) {
+        showFeatureLockMessage('Please select at least one feature to lock', 'error');
+        return;
+    }
+
+    // Check if this is an update (password field visible)
+    const isUpdate = document.getElementById('passwordFieldContainer').style.display !== 'none';
+
+    try {
+        const response = await fetch('/api/feature-lock/setup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pin: pin,
+                locked_features: lockedFeatures,
+                password: password  // Will be empty for first-time setup
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showFeatureLockMessage(data.message, 'success');
+            // Clear PIN fields
+            document.getElementById('featureLockPin').value = '';
+            document.getElementById('featureLockPinConfirm').value = '';
+            document.getElementById('featureLockPassword').value = '';
+            // Reload status
+            await loadFeatureLockStatus();
+        } else {
+            showFeatureLockMessage(data.error, 'error');
+        }
+    } catch (error) {
+        showFeatureLockMessage('Error saving settings: ' + error.message, 'error');
+    }
+});
+
+// Reset/disable feature lock
+document.getElementById('resetFeatureLockBtn').addEventListener('click', async () => {
+    const password = prompt('Enter your password to disable feature lock:');
+    if (!password) return;
+
+    try {
+        const response = await fetch('/api/feature-lock/reset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showFeatureLockMessage(data.message, 'success');
+            // Reload status
+            await loadFeatureLockStatus();
+            // Uncheck toggle
+            document.getElementById('featureLockEnabled').checked = false;
+            document.getElementById('featureLockConfig').style.display = 'none';
+        } else {
+            showFeatureLockMessage(data.error, 'error');
+        }
+    } catch (error) {
+        showFeatureLockMessage('Error disabling feature lock: ' + error.message, 'error');
+    }
+});
+
+// Show message helper
+function showFeatureLockMessage(message, type) {
+    const messageEl = document.getElementById('featureLockMessage');
+    messageEl.textContent = message;
+    messageEl.style.display = 'block';
+    messageEl.style.backgroundColor = type === 'success' ? '#dcfce7' : '#fee2e2';
+    messageEl.style.color = type === 'success' ? '#166534' : '#991b1b';
+    messageEl.style.border = type === 'success' ? '1px solid #bbf7d0' : '1px solid #fecaca';
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        messageEl.style.display = 'none';
+    }, 5000);
+}
+
+</script>
+{% endblock %}

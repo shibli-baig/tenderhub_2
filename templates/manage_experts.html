@@ -1,0 +1,1225 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Experts - TenderHub{% endblock %}
+
+{% block extra_head %}
+<style>
+    .manage-experts-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .page-subtitle {
+        font-size: 1rem;
+        color: var(--text-secondary);
+    }
+
+    /* Tabs */
+    .tabs-container {
+        background: white;
+        border-radius: 12px;
+        padding: 0.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .tabs {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .tab-btn {
+        flex: 1;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        background: transparent;
+        border-radius: 12px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: var(--text-secondary);
+    }
+
+    .tab-btn.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .tab-btn:hover:not(.active) {
+        background: #f3f4f6;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Request Card */
+    .request-card {
+        background: white;
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+    }
+
+    .request-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .request-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1rem;
+    }
+
+    .request-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .request-meta {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+    }
+
+    .request-description {
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+
+    .request-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color, #e5e7eb);
+    }
+
+    .request-stats {
+        display: flex;
+        gap: 1.5rem;
+        font-size: 0.875rem;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .stat-value {
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .request-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .btn-action {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 12px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-view {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-view:hover {
+        background: #2563eb;
+    }
+
+    .btn-close {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-close:hover {
+        background: #dc2626;
+    }
+
+    /* Application Card */
+    .application-card {
+        background: white;
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .application-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1rem;
+    }
+
+    .expert-info {
+        flex: 1;
+    }
+
+    .expert-name {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .expert-details {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+
+    .status-badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-shortlisted {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .status-accepted {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-completed {
+        background: #ede9fe;
+        color: #5b21b6;
+    }
+
+    .application-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .btn-accept {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-accept:hover {
+        background: #059669;
+    }
+
+    .btn-reject {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-reject:hover {
+        background: #dc2626;
+    }
+
+    .btn-complete {
+        background: #8b5cf6;
+        color: white;
+    }
+
+    .btn-complete:hover {
+        background: #7c3aed;
+    }
+
+    .btn-shortlist {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-shortlist:hover {
+        background: #2563eb;
+    }
+
+    /* Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    .modal-header {
+        padding: 2rem;
+        border-bottom: 1px solid var(--border-color, #e5e7eb);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .modal-close {
+        background: transparent;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--text-secondary);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-secondary);
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    .loading-state {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+
+    .spinner {
+        border: 3px solid #f3f4f6;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manage-experts-container">
+    <div class="page-back" style="margin-bottom: 0.75rem;">
+        <a href="/project-management" class="btn-icon" title="Back to Project Management" aria-label="Back to Project Management"
+           style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 999px; color: var(--text-primary); background: var(--card-bg);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </a>
+    </div>
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">Manage Experts</h1>
+        <p class="page-subtitle">View and manage expert hiring requests and applications</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-container">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('requests')">My Hiring Requests</button>
+            <button class="tab-btn" onclick="switchTab('applications')">Expert Applications</button>
+        </div>
+    </div>
+
+    <!-- Requests Tab -->
+    <div id="requestsTab" class="tab-content active">
+        <div id="requestsLoading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading hiring requests...</p>
+        </div>
+        <div id="requestsList"></div>
+        <div id="requestsEmpty" class="empty-state" style="display: none;">
+            <div class="empty-state-icon">📭</div>
+            <h3>No Hiring Requests</h3>
+            <p>You haven't created any expert hiring requests yet.</p>
+            <p style="margin-top: 1rem;">Go to <a href="/project-management">Project Management</a> and click "Hire Expert" on any project card to create a request.</p>
+        </div>
+    </div>
+
+    <!-- Applications Tab -->
+    <div id="applicationsTab" class="tab-content">
+        <div id="applicationsLoading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading applications...</p>
+        </div>
+        <div id="applicationsList"></div>
+        <div id="applicationsEmpty" class="empty-state" style="display: none;">
+            <div class="empty-state-icon">📋</div>
+            <h3>No Applications</h3>
+            <p>No experts have applied to your hiring requests yet.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Application Detail Modal -->
+<div id="applicationModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Application Details</h2>
+            <button class="modal-close" onclick="closeApplicationModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="applicationModalBody">
+            <!-- Content loaded dynamically -->
+        </div>
+    </div>
+</div>
+
+<!-- Rating Modal -->
+<div id="ratingModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Rate Expert</h2>
+            <button class="modal-close" onclick="closeRatingModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="margin-bottom: 1rem;">Provide a rating for <strong id="ratingExpertName"></strong>.</p>
+            <div style="margin-bottom: 1.5rem;">
+                <label for="ratingSlider" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Rating: <span id="ratingValue">8</span>/10</label>
+                <input type="range" min="1" max="10" value="8" id="ratingSlider" oninput="updateRatingSliderValue(this.value)" style="width: 100%;">
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label for="ratingReview" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Review (optional)</label>
+                <textarea id="ratingReview" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px; font-size: 0.875rem; resize: vertical;"></textarea>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                <button class="btn-action" style="background: #6b7280; color: white;" onclick="closeRatingModal()">Cancel</button>
+                <button class="btn-action btn-complete" onclick="submitExpertRating()">Submit Rating</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let allRequests = [];
+    let allApplications = [];
+    let ratingTargetApplication = null;
+
+    // Debug function - can be called from browser console
+    window.debugExpertApplications = function() {
+        console.log('=== Expert Applications Debug Info ===');
+        console.log('Total Requests:', allRequests.length);
+        console.log('Total Applications:', allApplications.length);
+        console.log('Requests:', allRequests);
+        console.log('Applications:', allApplications);
+        
+        if (allApplications.length > 0) {
+            console.log('Sample Application:', allApplications[0]);
+            const statuses = {};
+            allApplications.forEach(app => {
+                statuses[app.status] = (statuses[app.status] || 0) + 1;
+            });
+            console.log('Applications by Status:', statuses);
+        }
+        
+        // Force reload
+        console.log('Reloading applications...');
+        loadApplications();
+    };
+
+    // Tab switching
+    function switchTab(tabName) {
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        
+        event.target.classList.add('active');
+        document.getElementById(tabName + 'Tab').classList.add('active');
+        
+        // Load data for the tab
+        if (tabName === 'requests') {
+            loadRequests();
+        } else {
+            loadApplications();
+        }
+    }
+
+    // Load hiring requests
+    async function loadRequests() {
+        const loadingEl = document.getElementById('requestsLoading');
+        const listEl = document.getElementById('requestsList');
+        const emptyEl = document.getElementById('requestsEmpty');
+        
+        loadingEl.style.display = 'block';
+        listEl.innerHTML = '';
+        emptyEl.style.display = 'none';
+        
+        try {
+            const response = await fetch('/api/expert-requests');
+            if (!response.ok) throw new Error('Failed to load requests');
+            
+            const data = await response.json();
+            allRequests = data.requests || [];
+            
+            loadingEl.style.display = 'none';
+            
+            if (allRequests.length === 0) {
+                emptyEl.style.display = 'block';
+            } else {
+                renderRequests(allRequests);
+            }
+        } catch (error) {
+            console.error('Error loading requests:', error);
+            loadingEl.style.display = 'none';
+            listEl.innerHTML = '<p style="color: #ef4444; text-align: center;">Error loading requests. Please try again.</p>';
+        }
+    }
+
+    // Render requests
+    function renderRequests(requests) {
+        const listEl = document.getElementById('requestsList');
+        
+        listEl.innerHTML = requests.map(req => `
+            <div class="request-card">
+                <div class="request-header">
+                    <div style="flex: 1;">
+                        <div class="request-title">${escapeHtml(req.request_name)}</div>
+                        <div class="request-meta">
+                            <span>📅 Created: ${formatDate(req.created_at)}</span>
+                            <span>📍 ${req.company_location || 'Location not specified'}</span>
+                            <span>🏭 ${req.tender_sector || 'Sector not specified'}</span>
+                            <span>💰 ${req.budget_display}</span>
+                        </div>
+                    </div>
+                    <span class="status-badge status-${req.status}" style="margin-left: 1rem;">
+                        ${req.status}
+                    </span>
+                </div>
+                <div class="request-description">
+                    ${escapeHtml(req.description.substring(0, 200))}${req.description.length > 200 ? '...' : ''}
+                </div>
+                ${req.tender_title ? `<div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                    <strong>Related Tender:</strong> ${escapeHtml(req.tender_title)}
+                </div>` : ''}
+                <div class="request-footer">
+                    <div class="request-stats">
+                        <div class="stat-item">
+                            <span class="stat-value">${req.application_stats.total}</span>
+                            <span>Total Applications</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" style="color: #f59e0b;">${req.application_stats.pending}</span>
+                            <span>Pending</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" style="color: #10b981;">${req.application_stats.accepted}</span>
+                            <span>Accepted</span>
+                        </div>
+                    </div>
+                    <div class="request-actions">
+                        <button class="btn-action btn-view" onclick="viewRequestApplications('${req.id}')">
+                            View Applications
+                        </button>
+                        ${req.status === 'open' ? `
+                            <button class="btn-action btn-close" onclick="closeRequest('${req.id}')">
+                                Close Request
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Load applications
+    async function loadApplications() {
+        const loadingEl = document.getElementById('applicationsLoading');
+        const listEl = document.getElementById('applicationsList');
+        const emptyEl = document.getElementById('applicationsEmpty');
+        
+        loadingEl.style.display = 'block';
+        listEl.innerHTML = '';
+        emptyEl.style.display = 'none';
+        
+        console.log('[loadApplications] Starting to load applications...');
+        
+        try {
+            // Get all requests first
+            console.log('[loadApplications] Fetching hiring requests...');
+            const requestsResponse = await fetch('/api/expert-requests');
+            if (!requestsResponse.ok) {
+                console.error('[loadApplications] Failed to load requests:', requestsResponse.status, requestsResponse.statusText);
+                throw new Error('Failed to load requests');
+            }
+            
+            const requestsData = await requestsResponse.json();
+            const requests = requestsData.requests || [];
+            console.log(`[loadApplications] Found ${requests.length} hiring requests`);
+            
+            // Get applications for each request
+            allApplications = [];
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (const req of requests) {
+                try {
+                    console.log(`[loadApplications] Fetching applications for request ${req.id} (${req.request_name})...`);
+                    console.log(`[loadApplications] Request stats: total=${req.application_stats.total}, pending=${req.application_stats.pending}, accepted=${req.application_stats.accepted}`);
+                    
+                    const appResponse = await fetch(`/api/expert-request/${req.id}/applications`);
+                    if (appResponse.ok) {
+                        const appData = await appResponse.json();
+                        console.log(`[loadApplications] ✓ Found ${appData.applications.length} applications for request ${req.id}`);
+                        if (appData.applications.length > 0) {
+                            console.log(`[loadApplications] Sample application:`, appData.applications[0]);
+                        }
+                        appData.applications.forEach(app => {
+                            app.request_name = req.request_name;
+                            app.request_id = req.id;
+                        });
+                        allApplications.push(...appData.applications);
+                        successCount++;
+                    } else {
+                        const errorText = await appResponse.text();
+                        console.error(`[loadApplications] ✗ Failed to load applications for request ${req.id}:`, {
+                            status: appResponse.status,
+                            statusText: appResponse.statusText,
+                            error: errorText,
+                            requestStats: req.application_stats
+                        });
+                        
+                        // Show user-friendly error if there are supposed to be applications
+                        if (req.application_stats.total > 0) {
+                            console.warn(`[loadApplications] ⚠️ WARNING: Request ${req.id} has ${req.application_stats.total} applications but API returned ${appResponse.status}`);
+                        }
+                        errorCount++;
+                    }
+                } catch (e) {
+                    console.error(`[loadApplications] ✗ Exception loading applications for request ${req.id}:`, e);
+                    errorCount++;
+                }
+            }
+            
+            console.log(`[loadApplications] Completed: ${successCount} requests succeeded, ${errorCount} failed, ${allApplications.length} total applications`);
+            
+            loadingEl.style.display = 'none';
+            
+            if (allApplications.length === 0) {
+                console.log('[loadApplications] No applications found, showing empty state');
+                
+                // Check if there SHOULD be applications based on request stats
+                const expectedApps = requests.reduce((sum, req) => sum + (req.application_stats?.total || 0), 0);
+                if (expectedApps > 0 && errorCount > 0) {
+                    console.error(`[loadApplications] ⚠️ DATA MISMATCH: Expected ${expectedApps} applications but got 0. ${errorCount} requests failed.`);
+                    listEl.innerHTML = `
+                        <div style="padding: 2rem; text-align: center; background: #fef3c7; border-radius: 12px; border: 2px solid #f59e0b;">
+                            <h3 style="color: #92400e; margin-bottom: 1rem;">⚠️ Unable to Load Applications</h3>
+                            <p style="color: #78350f; margin-bottom: 1rem;">
+                                There are ${expectedApps} application(s) in the system, but we couldn't load them.
+                                This might be a permission or data consistency issue.
+                            </p>
+                            <p style="color: #78350f; font-size: 0.875rem;">
+                                Please check the browser console for detailed error messages or contact support.
+                            </p>
+                            <button onclick="loadApplications()" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #f59e0b; color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer;">
+                                Retry Loading Applications
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    emptyEl.style.display = 'block';
+                }
+            } else {
+                console.log('[loadApplications] Rendering applications...');
+                renderApplications(allApplications);
+            }
+        } catch (error) {
+            console.error('[loadApplications] Fatal error loading applications:', error);
+            loadingEl.style.display = 'none';
+            listEl.innerHTML = '<p style="color: #ef4444; text-align: center;">Error loading applications. Please try again. Check console for details.</p>';
+        }
+    }
+
+    // Render applications
+    function renderApplications(applications) {
+        console.log(`[renderApplications] Rendering ${applications.length} applications`);
+        const listEl = document.getElementById('applicationsList');
+        
+        // Group by status
+        const grouped = {
+            pending: applications.filter(a => a.status === 'pending'),
+            shortlisted: applications.filter(a => a.status === 'shortlisted'),
+            accepted: applications.filter(a => a.status === 'accepted'),
+            rejected: applications.filter(a => a.status === 'rejected'),
+            completed: applications.filter(a => a.status === 'completed')
+        };
+        
+        console.log('[renderApplications] Grouped applications:', {
+            pending: grouped.pending.length,
+            shortlisted: grouped.shortlisted.length,
+            accepted: grouped.accepted.length,
+            rejected: grouped.rejected.length,
+            completed: grouped.completed.length
+        });
+        
+        let html = '';
+        
+        ['pending', 'shortlisted', 'accepted', 'rejected', 'completed'].forEach(status => {
+            if (grouped[status].length > 0) {
+                console.log(`[renderApplications] Rendering ${grouped[status].length} ${status} applications`);
+                html += `<h3 style="font-size: 1rem; font-weight: 600; margin: 2rem 0 1rem 0; text-transform: capitalize;">${status} (${grouped[status].length})</h3>`;
+                html += grouped[status].map(app => `
+                    <div class="application-card">
+                        <div class="application-header">
+                            <div class="expert-info">
+                                <div class="expert-name">${escapeHtml(app.expert_name)}</div>
+                                <div class="expert-details">
+                                    ${app.expert_email ? `${escapeHtml(app.expert_email)} • ` : ''}
+                                    ${app.expert_location ? `${escapeHtml(app.expert_location)} • ` : ''}
+                                    ${app.expert_experience_years ? `${app.expert_experience_years} years experience` : ''}
+                                    ${app.expert_rating ? ` • ⭐ ${app.expert_rating.toFixed(1)}` : ''}
+                                </div>
+                                <div style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                    <strong>Request:</strong> ${escapeHtml(app.request_name)}
+                                </div>
+                            </div>
+                            <span class="status-badge status-${app.status}">${app.status}</span>
+                        </div>
+                        <div style="margin: 1rem 0; padding: 1rem; background: #f9fafb; border-radius: 12px;">
+                            <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;"><strong>Cover Letter:</strong></div>
+                            <div style="color: var(--text-primary); line-height: 1.6;">
+                                ${escapeHtml(app.cover_letter.substring(0, 200))}${app.cover_letter.length > 200 ? '...' : ''}
+                            </div>
+                        </div>
+                        ${app.proposed_rate ? `<div style="font-size: 0.875rem; margin-bottom: 0.5rem;">
+                            <strong>Proposed Rate:</strong> ₹${app.proposed_rate.toLocaleString()}
+                        </div>` : ''}
+                        ${app.estimated_timeline ? `<div style="font-size: 0.875rem; margin-bottom: 0.5rem;">
+                            <strong>Timeline:</strong> ${escapeHtml(app.estimated_timeline)}
+                        </div>` : ''}
+                        ${app.status === 'completed' ? `
+                            <div style="font-size: 0.875rem; margin-bottom: 0.5rem;">
+                                <strong>Rating:</strong>
+                                ${app.rating_value ? `${app.rating_value}/10${app.rating_review ? ` - ${escapeHtml(app.rating_review)}` : ''}` : 'Not rated yet'}
+                            </div>
+                        ` : ''}
+                        <div class="application-actions">
+                            <button class="btn-action btn-view" onclick="viewApplicationDetails('${app.id}')">
+                                View Full Application
+                            </button>
+                            ${app.status === 'pending' ? `
+                                <button class="btn-action btn-shortlist" onclick="updateApplicationStatus('${app.id}', 'shortlisted')">
+                                    Shortlist
+                                </button>
+                                <button class="btn-action btn-accept" onclick="updateApplicationStatus('${app.id}', 'accepted')">
+                                    Accept
+                                </button>
+                                <button class="btn-action btn-reject" onclick="updateApplicationStatus('${app.id}', 'rejected')">
+                                    Reject
+                                </button>
+                            ` : ''}
+                            ${app.status === 'shortlisted' ? `
+                                <button class="btn-action btn-accept" onclick="updateApplicationStatus('${app.id}', 'accepted')">
+                                    Accept
+                                </button>
+                                <button class="btn-action btn-reject" onclick="updateApplicationStatus('${app.id}', 'rejected')">
+                                    Reject
+                                </button>
+                            ` : ''}
+                            ${app.status === 'accepted' ? `
+                                <button class="btn-action btn-complete" onclick="closeApplicationProject('${app.id}')">
+                                    Close Project
+                                </button>
+                            ` : ''}
+                            ${app.status === 'completed' && !app.rating_value ? `
+                                <button class="btn-action btn-complete" data-app-id="${app.id}" data-expert-name="${escapeHtml(app.expert_name)}" onclick="openRatingModalFromButton(event)">
+                                    Rate Expert
+                                </button>
+                            ` : ''}
+                            ${app.status === 'completed' && app.rating_value ? `
+                                <span style="font-size: 0.875rem; color: #5b21b6; font-weight: 600;">Rated ${app.rating_value}/10</span>
+                            ` : ''}
+                            ${app.status === 'completed' && !app.rating_value ? `
+                                <span style="font-size: 0.875rem; color: var(--text-secondary); font-weight: 600;">Project closed</span>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            }
+        });
+        
+        if (html) {
+            console.log('[renderApplications] Setting HTML content');
+            listEl.innerHTML = html;
+        } else {
+            console.log('[renderApplications] No HTML generated, showing empty state');
+            listEl.innerHTML = '';
+            document.getElementById('applicationsEmpty').style.display = 'block';
+        }
+    }
+
+    // View request applications
+    async function viewRequestApplications(requestId) {
+        try {
+            const response = await fetch(`/api/expert-request/${requestId}/applications`);
+            if (!response.ok) throw new Error('Failed to load applications');
+            
+            const data = await response.json();
+            
+            // Switch to applications tab and filter
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.getElementById('applicationsTab').classList.add('active');
+            
+            // Filter applications for this request
+            const filtered = data.applications.map(app => ({
+                ...app,
+                request_name: data.request_name,
+                request_id: requestId
+            }));
+            
+            renderApplications(filtered);
+        } catch (error) {
+            console.error('Error loading applications:', error);
+            alert('Error loading applications: ' + error.message);
+        }
+    }
+
+    // View application details
+    async function viewApplicationDetails(applicationId) {
+        // Find application in allApplications
+        const application = allApplications.find(a => a.id === applicationId);
+        if (!application) {
+            // Try to find in requests
+            for (const req of allRequests) {
+                try {
+                    const response = await fetch(`/api/expert-request/${req.id}/applications`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        const app = data.applications.find(a => a.id === applicationId);
+                        if (app) {
+                            showApplicationModal({...app, request_name: data.request_name});
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+            alert('Application not found');
+            return;
+        }
+        
+        showApplicationModal(application);
+    }
+
+    // Show application modal
+    function showApplicationModal(app) {
+        const modal = document.getElementById('applicationModal');
+        const body = document.getElementById('applicationModalBody');
+        
+        body.innerHTML = `
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">${escapeHtml(app.expert_name)}</h3>
+                <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                    ${app.expert_email ? `${escapeHtml(app.expert_email)} • ` : ''}
+                    ${app.expert_location ? `${escapeHtml(app.expert_location)} • ` : ''}
+                    ${app.expert_experience_years ? `${app.expert_experience_years} years experience` : ''}
+                    ${app.expert_rating ? ` • ⭐ ${app.expert_rating.toFixed(1)}` : ''}
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">Request:</div>
+                <div style="color: var(--text-secondary);">${escapeHtml(app.request_name)}</div>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">Cover Letter:</div>
+                <div style="padding: 1rem; background: #f9fafb; border-radius: 12px; white-space: pre-wrap; line-height: 1.6;">
+                    ${escapeHtml(app.cover_letter)}
+                </div>
+            </div>
+            
+            ${app.proposed_rate ? `
+            <div style="margin-bottom: 1.5rem;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">Proposed Rate:</div>
+                <div>₹${app.proposed_rate.toLocaleString()}</div>
+            </div>
+            ` : ''}
+            
+            ${app.estimated_timeline ? `
+            <div style="margin-bottom: 1.5rem;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">Estimated Timeline:</div>
+                <div>${escapeHtml(app.estimated_timeline)}</div>
+            </div>
+            ` : ''}
+            
+            ${app.relevant_experience ? `
+            <div style="margin-bottom: 1.5rem;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">Relevant Experience:</div>
+                <div style="padding: 1rem; background: #f9fafb; border-radius: 12px; white-space: pre-wrap; line-height: 1.6;">
+                    ${escapeHtml(app.relevant_experience)}
+                </div>
+            </div>
+            ` : ''}
+            
+            ${app.expert_expertise_areas && app.expert_expertise_areas.length > 0 ? `
+            <div style="margin-bottom: 1.5rem;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">Expertise Areas:</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                    ${app.expert_expertise_areas.map(area => `
+                        <span style="padding: 0.25rem 0.75rem; background: #e0e7ff; color: #3730a3; border-radius: 12px; font-size: 0.75rem;">
+                            ${escapeHtml(area)}
+                        </span>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+            
+            ${app.manager_notes ? `
+            <div style="margin-bottom: 1.5rem;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">Your Notes:</div>
+                <div style="padding: 1rem; background: #fef3c7; border-radius: 12px;">
+                    ${escapeHtml(app.manager_notes)}
+                </div>
+            </div>
+            ` : ''}
+
+            ${app.status === 'completed' ? `
+            <div style="margin-bottom: 1.5rem;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">Project Rating</div>
+                <div style="padding: 1rem; background: #ede9fe; border-radius: 12px;">
+                    ${app.rating_value ? `
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #5b21b6;">${app.rating_value}/10</div>
+                        ${app.rating_review ? `<p style="margin-top: 0.5rem; color: var(--text-primary); white-space: pre-wrap;">${escapeHtml(app.rating_review)}</p>` : ''}
+                    ` : `
+                        <div style="color: var(--text-secondary);">Not rated yet.</div>
+                    `}
+                </div>
+            </div>
+            ` : ''}
+            
+            <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+                <div style="font-weight: 600; margin-bottom: 0.75rem;">Add Notes:</div>
+                <textarea id="managerNotes" rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px; font-size: 0.875rem; resize: vertical;"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+                ${app.status === 'pending' ? `
+                    <button class="btn-action btn-shortlist" onclick="updateApplicationStatus('${app.id}', 'shortlisted', true)">
+                        Shortlist
+                    </button>
+                    <button class="btn-action btn-accept" onclick="updateApplicationStatus('${app.id}', 'accepted', true)">
+                        Accept
+                    </button>
+                    <button class="btn-action btn-reject" onclick="updateApplicationStatus('${app.id}', 'rejected', true)">
+                        Reject
+                    </button>
+                ` : ''}
+                ${app.status === 'shortlisted' ? `
+                    <button class="btn-action btn-accept" onclick="updateApplicationStatus('${app.id}', 'accepted', true)">
+                        Accept
+                    </button>
+                    <button class="btn-action btn-reject" onclick="updateApplicationStatus('${app.id}', 'rejected', true)">
+                        Reject
+                    </button>
+                ` : ''}
+                ${app.status === 'accepted' ? `
+                    <button class="btn-action btn-complete" onclick="closeApplicationProject('${app.id}', true)">
+                        Close Project
+                    </button>
+                ` : ''}
+                ${app.status === 'completed' && !app.rating_value ? `
+                    <button class="btn-action btn-complete" data-app-id="${app.id}" data-expert-name="${escapeHtml(app.expert_name)}" onclick="openRatingModalFromButton(event)">
+                        Rate Expert
+                    </button>
+                ` : ''}
+                ${app.status === 'completed' ? `
+                    <span style="font-weight: 600; color: #5b21b6; align-self: center;">Project closed</span>
+                ` : ''}
+                <button class="btn-action" style="background: #6b7280; color: white;" onclick="closeApplicationModal()">
+                    Close
+                </button>
+            </div>
+        `;
+        
+        if (app.manager_notes) {
+            document.getElementById('managerNotes').value = app.manager_notes;
+        }
+        
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Close application modal
+    function closeApplicationModal() {
+        const modal = document.getElementById('applicationModal');
+        modal.classList.remove('active');
+        if (!document.getElementById('ratingModal').classList.contains('active')) {
+            document.body.style.overflow = '';
+        }
+    }
+
+    function openRatingModalFromButton(event) {
+        const btn = event.currentTarget;
+        openRatingModal(btn.dataset.appId, btn.dataset.expertName);
+    }
+
+    function openRatingModal(applicationId, expertName) {
+        ratingTargetApplication = applicationId;
+        document.getElementById('ratingExpertName').textContent = expertName || 'the expert';
+        const slider = document.getElementById('ratingSlider');
+        slider.value = 8;
+        document.getElementById('ratingValue').textContent = '8';
+        document.getElementById('ratingReview').value = '';
+        document.getElementById('ratingModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeRatingModal() {
+        ratingTargetApplication = null;
+        document.getElementById('ratingModal').classList.remove('active');
+        const applicationModalActive = document.getElementById('applicationModal').classList.contains('active');
+        document.body.style.overflow = applicationModalActive ? 'hidden' : '';
+    }
+
+    function updateRatingSliderValue(value) {
+        document.getElementById('ratingValue').textContent = value;
+    }
+
+    async function submitExpertRating() {
+        if (!ratingTargetApplication) {
+            alert('Invalid rating target');
+            return;
+        }
+
+        const slider = document.getElementById('ratingSlider');
+        const rating = parseInt(slider.value, 10);
+        const review = document.getElementById('ratingReview').value.trim();
+
+        try {
+            const response = await fetch(`/api/expert-application/${ratingTargetApplication}/rate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    rating,
+                    review
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.detail || 'Failed to submit rating');
+            }
+
+            alert('Rating submitted successfully.');
+            closeRatingModal();
+            loadRequests();
+            loadApplications();
+        } catch (error) {
+            console.error('Error submitting rating:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Update application status
+    async function updateApplicationStatus(applicationId, newStatus, closeModal = false) {
+        const notes = document.getElementById('managerNotes') ? document.getElementById('managerNotes').value : '';
+        const closeRequest = newStatus === 'accepted' && confirm('Do you want to close this hiring request?');
+        
+        try {
+            const response = await fetch(`/api/expert-application/${applicationId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    status: newStatus,
+                    manager_notes: notes,
+                    close_request: closeRequest
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.detail || 'Failed to update application status');
+            }
+            
+            alert(`Application ${newStatus} successfully!`);
+            
+            if (closeModal) {
+                closeApplicationModal();
+            }
+            
+            // Reload data
+            loadRequests();
+            loadApplications();
+        } catch (error) {
+            console.error('Error updating application status:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function closeApplicationProject(applicationId, closeModal = false) {
+        if (!confirm('Are you sure you want to close this project for the selected expert? This will remove their access until they apply again.')) {
+            return;
+        }
+
+        let closingNotes = '';
+        try {
+            const noteInput = prompt('Add a closing note for the expert (optional):', '');
+            if (noteInput !== null) {
+                closingNotes = noteInput;
+            }
+        } catch (_) {
+            /* ignore prompt errors */
+        }
+
+        try {
+            const response = await fetch(`/api/expert-application/${applicationId}/close-project`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    closing_notes: closingNotes
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.detail || 'Failed to close project');
+            }
+
+            alert('Project closed successfully.');
+
+            if (closeModal) {
+                closeApplicationModal();
+            }
+
+            loadRequests();
+            loadApplications();
+        } catch (error) {
+            console.error('Error closing project:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Close request
+    async function closeRequest(requestId) {
+        if (!confirm('Are you sure you want to close this hiring request? This will prevent new applications.')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/expert-request/${requestId}/close`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to close request');
+            }
+            
+            alert('Request closed successfully');
+            loadRequests();
+        } catch (error) {
+            console.error('Error closing request:', error);
+            alert('Error closing request: ' + error.message);
+        }
+    }
+
+    // Utility functions
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    // Load initial data
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('[DOMContentLoaded] Page loaded, loading requests and applications...');
+        loadRequests();
+        // Pre-load applications in background for better UX
+        loadApplications();
+    });
+</script>
+{% endblock %}

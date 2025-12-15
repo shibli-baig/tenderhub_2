@@ -1,0 +1,908 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.title }} - Project Workspace - TenderHub{% endblock %}
+
+{% block extra_head %}
+<style>
+    .expert-task-workspace {
+        display: grid;
+        grid-template-columns: 300px 1fr 350px;
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+        min-height: calc(100vh - 200px);
+    }
+
+    .workspace-sidebar,
+    .workspace-main,
+    .workspace-chat {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Sticky Chat Box */
+    .workspace-chat {
+        position: sticky;
+        top: 1.5rem;
+        align-self: start;
+        max-height: calc(100vh - 3rem);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .workspace-sidebar h3,
+    .workspace-main h3,
+    .workspace-chat h3 {
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+    }
+
+    .workspace-chat h3 {
+        flex-shrink: 0;
+    }
+
+    /* Sidebar */
+    .project-info {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .project-info h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+        color: var(--primary-color);
+    }
+
+    .project-meta {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+    }
+
+    .project-meta > div {
+        margin-bottom: 0.5rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card-mini {
+        background: var(--background);
+        padding: 0.75rem;
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    .stat-card-mini .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+
+    .stat-card-mini .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    .team-members {
+        margin-bottom: 1.5rem;
+    }
+
+    .team-member {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: var(--background);
+        border-radius: 12px;
+        margin-bottom: 0.5rem;
+    }
+
+    .team-member-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+
+    .team-member-info h4 {
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .team-member-info p {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+
+    /* Main Content */
+    .task-list {
+        margin-bottom: 2rem;
+    }
+
+    .task-card {
+        background: var(--background);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .task-card.priority-high {
+        border-left: 4px solid #ef4444;
+    }
+
+    .task-card.priority-medium {
+        border-left: 4px solid #f59e0b;
+    }
+
+    .task-card.priority-low {
+        border-left: 4px solid #10b981;
+    }
+
+    .task-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 0.75rem;
+    }
+
+    .task-title {
+    font-size: 1rem;
+    font-weight: 600;
+        margin: 0;
+        color: var(--text-primary);
+}
+
+    .task-badges {
+    display: flex;
+        gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+    .task-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-weight: 500;
+    }
+
+    .task-badge.status-pending {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    .task-badge.status-in_progress {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .task-badge.status-completed {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .task-meta {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-bottom: 0.75rem;
+    }
+
+    .task-description {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.75rem;
+        line-height: 1.5;
+    }
+
+    .task-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.75rem;
+    }
+
+    .btn-sm {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        background: var(--primary-color);
+        color: white;
+        transition: all 0.2s;
+    }
+
+    .btn-sm:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+
+    .btn-sm.btn-secondary {
+        background: #6b7280;
+    }
+
+    .btn-sm.btn-success {
+        background: #10b981;
+    }
+
+    .btn-sm:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* Progress Tracking Section */
+    .progress-section {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: var(--background);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+
+    .progress-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+        margin-bottom: 1rem;
+    }
+
+    .progress-header h5 {
+        font-size: 0.9rem;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .progress-toggle {
+        font-size: 1.2rem;
+        transition: transform 0.3s;
+    }
+
+    .progress-toggle.expanded {
+        transform: rotate(180deg);
+    }
+
+    .progress-content {
+        display: none;
+    }
+
+    .progress-content.show {
+        display: block;
+    }
+
+    .progress-form {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+
+    .progress-form textarea {
+        width: 100%;
+        min-height: 80px;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-family: inherit;
+        resize: vertical;
+        margin-bottom: 0.5rem;
+    }
+
+    .progress-form textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+
+    .progress-form-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .char-counter {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .char-counter.warning {
+        color: #e67e22;
+    }
+
+    .char-counter.error {
+        color: var(--error-color);
+    }
+
+    .progress-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .progress-item {
+        padding: 1rem;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 0.75rem;
+    }
+
+    .progress-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .progress-item-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .progress-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .progress-author-info {
+        flex: 1;
+    }
+
+    .progress-author-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+    }
+
+    .progress-date {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .progress-text {
+        margin-left: 2.5rem;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    .progress-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .progress-delete-btn {
+        background: none;
+        border: none;
+        color: var(--error-color);
+        font-size: 0.8rem;
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .progress-delete-btn:hover {
+        text-decoration: underline;
+    }
+
+    .progress-empty {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: var(--text-muted);
+    }
+
+    .progress-empty svg {
+        width: 48px;
+        height: 48px;
+        margin-bottom: 0.5rem;
+        opacity: 0.5;
+    }
+
+    /* Files Section */
+    .files-section {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .files-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem;
+        background: var(--card-bg);
+        border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex: 1;
+    }
+
+    .file-icon {
+        font-size: 1.5rem;
+    }
+
+    .file-details h6 {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+    }
+
+    .file-details p {
+        margin: 0.25rem 0 0 0;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .file-upload-area {
+        border: 2px dashed var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+        margin-top: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .file-upload-area:hover {
+        border-color: var(--primary-color);
+        background: rgba(59, 130, 246, 0.05);
+    }
+
+    .file-upload-area input[type="file"] {
+        display: none;
+    }
+
+    /* Chat */
+    .chat-messages {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+    border: 1px solid var(--border-color);
+        border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+        background: var(--background);
+    }
+
+    .chat-message {
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        border-radius: 12px;
+        background: var(--card-bg);
+    }
+
+    .chat-message.from-manager {
+        background: #dbeafe;
+        margin-left: 2rem;
+    }
+
+    .chat-message.from-expert {
+        background: var(--background);
+        margin-right: 2rem;
+    }
+
+    .chat-sender {
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        color: var(--text-primary);
+    }
+
+    .chat-text {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
+    }
+
+    .chat-time {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .chat-input-form {
+    display: flex;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    .chat-input {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 0.9rem;
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+
+    .btn-send {
+        padding: 0.75rem 1.5rem;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    .btn-send:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+    align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 2rem;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-header h2 {
+        font-size: 1.3rem;
+        margin: 0;
+    }
+
+    .modal-close {
+        font-size: 1.5rem;
+        cursor: pointer;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        padding: 0;
+        width: 30px;
+        height: 30px;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 0.9rem;
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    .btn-group {
+    display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-muted);
+    }
+
+    .empty-state svg {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+        .expert-task-workspace {
+            grid-template-columns: 250px 1fr 300px;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .expert-task-workspace {
+            grid-template-columns: 1fr;
+        }
+
+        .workspace-chat {
+            order: 3;
+            position: static;
+            max-height: none;
+        }
+
+        .chat-messages {
+            height: 400px;
+            flex: none;
+        }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1600px;">
+    <!-- Page Header -->
+    <div style="margin-bottom: 1.5rem;">
+        <a href="/expert/projects" class="btn-sm btn-secondary" style="display: inline-block; text-decoration: none; margin-bottom: 1rem;">
+            ← Back to Projects
+        </a>
+        <h1 style="font-size: 1.8rem; margin: 0 0 0.5rem 0;">{{ project.title }}</h1>
+        <p style="color: var(--text-muted); margin: 0;">Manage your tasks, upload deliverables, and communicate with your team</p>
+    </div>
+
+    <!-- Task Workspace Grid -->
+    <div class="expert-task-workspace">
+        <!-- Left Sidebar -->
+        <div class="workspace-sidebar">
+            <!-- Project Info -->
+            <div class="project-info">
+                <h2>{{ project.title }}</h2>
+                <div class="project-meta">
+                    <div>📋 {{ project.type }}</div>
+                    {% if project.company %}
+                    <div>🏛️ {{ project.company }}</div>
+                    {% endif %}
+                    {% if project.location %}
+                    <div>📍 {{ project.location }}</div>
+                    {% endif %}
+                    {% if project.sector %}
+                    <div>🏭 {{ project.sector }}</div>
+                    {% endif %}
+                    {% if project.deadline %}
+                    <div>⏰ Due: {{ project.deadline.strftime('%d %b %Y') if project.deadline is not string else project.deadline }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <h3>My Progress</h3>
+            <div class="stats-grid">
+                <div class="stat-card-mini">
+                    <div class="stat-value" id="totalTasksCount">0</div>
+                    <div class="stat-label">Total Tasks</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div class="stat-value" id="completedTasksCount">0</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div class="stat-value" id="pendingTasksCount">0</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div class="stat-value" id="inProgressTasksCount">0</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+            </div>
+
+            <!-- Team Members -->
+            <h3>Team</h3>
+            <div class="team-members">
+                {% if participants %}
+                    {% for participant in participants %}
+                    <div class="team-member">
+                        <div class="team-member-avatar">
+                            {{ participant.name[0].upper() }}
+                        </div>
+                        <div class="team-member-info">
+                            <h4>{{ participant.name }}</h4>
+                            <p>Team Member</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">No team members yet</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="workspace-main">
+            <!-- Task List -->
+            <div class="task-list">
+                <h3>My Tasks <span id="taskCountBadge">(0)</span></h3>
+                <div id="tasksContainer">
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <h4>Loading tasks...</h4>
+                        <p>Please wait while we fetch your tasks</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Chat -->
+        <div class="workspace-chat">
+            <h3>Project Chat</h3>
+            <div class="chat-messages" id="chatMessages">
+                <div class="empty-state">
+                    <p>Loading messages...</p>
+                </div>
+            </div>
+
+            <form class="chat-input-form" onsubmit="sendMessage(event)">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." required {% if not project_active %}disabled{% endif %}>
+                <button type="submit" class="btn-send" {% if not project_active %}disabled{% endif %}>Send</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- File Upload Modal -->
+<div id="fileUploadModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Upload Deliverable</h2>
+            <button class="modal-close" onclick="closeFileUploadModal()">&times;</button>
+        </div>
+
+        <form id="fileUploadForm" onsubmit="uploadTaskFile(event)">
+            <input type="hidden" id="uploadTaskId" name="task_id">
+
+            <div class="form-group">
+                <label for="fileInput">Select File *</label>
+                <div class="file-upload-area" onclick="document.getElementById('fileInput').click()">
+                    <p>Click to select file or drag and drop</p>
+                    <input type="file" id="fileInput" name="file" required accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.jpg,.jpeg,.png">
+                </div>
+                <p id="fileName" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);"></p>
+            </div>
+
+            <div class="form-group">
+                <label for="fileDescription">Description (Optional)</label>
+                <textarea id="fileDescription" name="description" placeholder="Brief description of the deliverable..."></textarea>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn-sm">Upload</button>
+                <button type="button" class="btn-sm btn-secondary" onclick="closeFileUploadModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Raise Query Modal -->
+<div id="queryModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Raise Query/Concern</h2>
+            <button class="modal-close" onclick="closeQueryModal()">&times;</button>
+        </div>
+
+        <form id="queryForm" onsubmit="submitQuery(event)">
+            <input type="hidden" id="queryTaskId" name="task_id">
+
+            <div class="form-group">
+                <label for="queryType">Type *</label>
+                <select id="queryType" name="query_type" required>
+                    <option value="clarification">Clarification</option>
+                    <option value="timeline">Timeline Issue</option>
+                    <option value="resources">Resource Request</option>
+                    <option value="blocker">Blocker</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="queryTitle">Title *</label>
+                <input type="text" id="queryTitle" name="title" required placeholder="Brief title for your query...">
+            </div>
+
+            <div class="form-group">
+                <label for="queryDescription">Description *</label>
+                <textarea id="queryDescription" name="description" required placeholder="Provide details about your query or concern..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="queryPriority">Priority</label>
+                <select id="queryPriority" name="priority">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                </select>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn-sm">Submit Query</button>
+                <button type="button" class="btn-sm btn-secondary" onclick="closeQueryModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const channelType = "{{ channel_type }}";
+    const channelId = "{{ channel_id }}";
+    const projectActive = {{ 'true' if project_active else 'false' }};
+    const currentExpertId = "{{ current_expert.id if current_expert else '' }}";
+    const currentUserId = "{{ current_user.id if current_user else '' }}";
+    const currentUserName = "{{ current_expert.name if current_expert else (current_user.name if current_user else '') }}";
+</script>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', path='js/expert_task_detail.js') }}"></script>
+{% endblock %}

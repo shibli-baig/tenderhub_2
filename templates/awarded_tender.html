@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Awarded Tenders - TenderHub{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <span class="chip chip--accent">Awarded Tenders</span>
+            <h1 class="section-title">Your Awarded Tenders</h1>
+            <p class="section-subtitle">Track and manage tenders you've successfully won.</p>
+        </div>
+        <div class="panel-actions">
+            <a href="/tender-management" class="btn btn-outline">← Back to Tender Management</a>
+        </div>
+    </div>
+</section>
+
+<!-- Awarded Tenders Grid -->
+{% if awarded_tenders %}
+<section class="section section--surface">
+    <div class="card-grid">
+        {% for awarded in awarded_tenders %}
+        <article class="surface-card surface-card--clickable" onclick="window.location.href='/tender/{{ awarded.tender.id }}'">
+            <div class="surface-card__header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="chip chip--success">🏆 Awarded</span>
+                    {% if awarded.awarded_date %}
+                    <span class="text-muted" style="font-size: 0.875rem;">{{ awarded.awarded_date.strftime('%d %b %Y') }}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <h3 class="surface-card__title mt-3">{{ awarded.tender.title }}</h3>
+
+            <div class="definition-grid mt-3">
+                {% if awarded.tender.tender_reference_number %}
+                <div class="definition-item">
+                    <span class="definition-term">Tender ID</span>
+                    <span class="definition-value">{{ awarded.tender.tender_reference_number }}</span>
+                </div>
+                {% endif %}
+
+                {% if awarded.tender.authority %}
+                <div class="definition-item">
+                    <span class="definition-term">Authority</span>
+                    <span class="definition-value">{{ awarded.tender.authority }}</span>
+                </div>
+                {% endif %}
+
+                {% if awarded.tender.estimated_value %}
+                <div class="definition-item">
+                    <span class="definition-term">Contract Value</span>
+                    <span class="definition-value">₹{{ "{:,.0f}".format(awarded.tender.estimated_value) }}</span>
+                </div>
+                {% endif %}
+
+                {% if awarded.tender.state %}
+                <div class="definition-item">
+                    <span class="definition-term">Location</span>
+                    <span class="definition-value">{{ awarded.tender.state }}</span>
+                </div>
+                {% endif %}
+
+                {% if awarded.tender.category %}
+                <div class="definition-item">
+                    <span class="definition-term">Category</span>
+                    <span class="definition-value">{{ awarded.tender.category }}</span>
+                </div>
+                {% endif %}
+
+                {% if awarded.tender.deadline %}
+                <div class="definition-item">
+                    <span class="definition-term">Original Deadline</span>
+                    <span class="definition-value">{{ awarded.tender.deadline.strftime('%d %b %Y') }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if awarded.notes %}
+            <div class="mt-3">
+                <p class="text-muted" style="font-size: 0.875rem; font-style: italic;">
+                    Note: {{ awarded.notes[:150] }}{% if awarded.notes|length > 150 %}...{% endif %}
+                </p>
+            </div>
+            {% endif %}
+
+            <div class="surface-card__footer mt-4">
+                <a href="/tender/{{ awarded.tender.id }}" class="btn btn-primary btn-sm">View Details</a>
+                <button type="button" class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadTenderDoc('{{ awarded.tender.id }}')">Download</button>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% else %}
+<section class="section section--surface">
+    <div class="empty-state">
+        <div class="empty-state__icon">🏆</div>
+        <h3 class="empty-state__title">No Awarded Tenders Yet</h3>
+        <p class="empty-state__message">Tenders you win will appear here. Keep bidding!</p>
+        <div class="empty-state__actions">
+            <a href="/procurement" class="btn btn-primary">Search Tenders</a>
+            <a href="/tender-management" class="btn btn-outline">Back to Management</a>
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function downloadTenderDoc(tenderId) {
+    // Placeholder for document download functionality
+    console.log('Download tender:', tenderId);
+    alert('Document download feature coming soon!');
+}
+</script>
+{% endblock %}

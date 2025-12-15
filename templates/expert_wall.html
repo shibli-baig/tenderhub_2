@@ -1,0 +1,591 @@
+{% extends "base.html" %}
+
+{% block title %}Expert Wall - TenderHub Expert-Verse{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h1 class="section-title">Expert Wall</h1>
+            <p class="section-subtitle">Share your insights, articles, and case studies with the community</p>
+        </div>
+        <div class="section-actions">
+            <button onclick="showPublishModal()" class="btn btn-primary">+ Publish Content</button>
+            <a href="/expert/dashboard" class="btn btn-outline">Back to Dashboard</a>
+        </div>
+    </div>
+</section>
+
+<!-- Content Type Filter -->
+<section class="panel" style="margin-bottom: 1.5rem;">
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <a href="?type=all" class="btn btn-sm {% if content_type == 'all' %}btn-primary{% else %}btn-outline{% endif %}">All</a>
+        <a href="?type=article" class="btn btn-sm {% if content_type == 'article' %}btn-primary{% else %}btn-outline{% endif %}">Articles</a>
+        <a href="?type=case_study" class="btn btn-sm {% if content_type == 'case_study' %}btn-primary{% else %}btn-outline{% endif %}">Case Studies</a>
+        <a href="?type=whitepaper" class="btn btn-sm {% if content_type == 'whitepaper' %}btn-primary{% else %}btn-outline{% endif %}">Whitepapers</a>
+        <a href="?type=insight" class="btn btn-sm {% if content_type == 'insight' %}btn-primary{% else %}btn-outline{% endif %}">Insights</a>
+    </div>
+</section>
+
+<!-- My Content Summary -->
+{% if my_content and my_content|length > 0 %}
+<section class="panel" style="margin-bottom: 1.5rem;">
+    <div class="profile-card__header" style="margin-bottom: 1rem;">
+        <div>
+            <h2 class="surface-card__title">Your Recent Content</h2>
+            <p class="panel-subtitle">{{ my_content|length }} recent publications</p>
+        </div>
+    </div>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        {% for content in my_content %}
+        <a href="#content-{{ content.id }}" class="badge badge-info" style="text-decoration: none;">
+            {{ content.title }}
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Content Feed -->
+<section class="panel">
+    <div class="profile-card__header" style="margin-bottom: 1.5rem;">
+        <div>
+            <h2 class="surface-card__title">Community Content</h2>
+            <p class="panel-subtitle">{{ total_content }} publications</p>
+        </div>
+    </div>
+
+    {% if content_items and content_items|length > 0 %}
+    <div class="content-feed" style="display: grid; gap: 1.5rem;">
+        {% for item in content_items %}
+        <article id="content-{{ item.id }}" class="content-card surface-card" style="padding: 1.5rem;">
+            <!-- Author Info -->
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <div class="avatar" style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 1.25rem;">
+                    {{ item.expert.name[0].upper() if item.expert else '?' }}
+                </div>
+                <div>
+                    <div style="font-weight: 600; color: var(--text-primary);">{{ item.expert.name if item.expert else 'Anonymous' }}</div>
+                    <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                        {{ item.published_at.strftime('%b %d, %Y') if item.published_at else 'N/A' }}
+                        · <span class="badge" style="padding: 0.125rem 0.5rem; font-size: 0.75rem;">{{ item.content_type|title }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <h3 style="font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.75rem;">
+                {{ item.title }}
+            </h3>
+
+            <div class="content-preview" style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 1rem;">
+                {{ item.content[:300] }}{% if item.content|length > 300 %}...{% endif %}
+            </div>
+
+            {% if item.tags and item.tags|length > 0 %}
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+                {% for tag in item.tags %}
+                <span class="badge badge-secondary" style="text-transform: none;">#{{ tag }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Actions -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                <div style="display: flex; gap: 1.5rem;">
+                    <button onclick="toggleLike('{{ item.id }}')" class="like-btn like-btn-{{ item.id }}" style="background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9375rem;">
+                        <span class="like-icon-{{ item.id }}">{% if item.is_liked %}❤️{% else %}🤍{% endif %}</span>
+                        <span class="like-count-{{ item.id }}">{{ item.like_count or 0 }}</span>
+                    </button>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9375rem;">
+                        <span>💬</span>
+                        <span>{{ item.comment_count or 0 }}</span>
+                    </div>
+                </div>
+                <a href="#" class="btn btn-sm btn-outline">Read More</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination" style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem;">
+        {% if has_prev %}
+        <a href="?page={{ page - 1 }}&type={{ content_type }}" class="btn btn-sm btn-outline">← Previous</a>
+        {% endif %}
+
+        <span class="btn btn-sm btn-primary" style="pointer-events: none;">Page {{ page }} of {{ total_pages }}</span>
+
+        {% if has_next %}
+        <a href="?page={{ page + 1 }}&type={{ content_type }}" class="btn btn-sm btn-outline">Next →</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state__icon">📝</div>
+        <h3 class="empty-state__title">No content yet</h3>
+        <p class="empty-state__description">Be the first to share your expertise with the community!</p>
+        <button onclick="showPublishModal()" class="btn btn-primary" style="margin-top: 1rem;">Publish Your First Article</button>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Publish Modal -->
+<div id="publishModal" class="publish-modal" role="dialog" aria-modal="true" aria-labelledby="publishModalTitle" aria-hidden="true" style="display: none;">
+    <div class="publish-modal-overlay" onclick="closePublishModal()"></div>
+    <div class="publish-modal-content">
+        <div class="publish-modal-header">
+            <h2 id="publishModalTitle" class="publish-modal-title">Publish Content</h2>
+            <button onclick="closePublishModal()" class="publish-modal-close">&times;</button>
+        </div>
+        <form id="publishForm" onsubmit="publishContent(event)">
+            <div class="publish-modal-body">
+                <div class="publish-form-group">
+                    <label for="title" class="publish-form-label">TITLE *</label>
+                    <input type="text" id="title" name="title" class="publish-form-input" required placeholder="Enter content title">
+                </div>
+
+                <div class="publish-form-group">
+                    <label for="content_type" class="publish-form-label">CONTENT TYPE *</label>
+                    <select id="content_type" name="content_type" class="publish-form-select" required>
+                        <option value="article">Article</option>
+                        <option value="case_study">Case Study</option>
+                        <option value="whitepaper">Whitepaper</option>
+                        <option value="insight">Insight</option>
+                        <option value="blog">Blog Post</option>
+                    </select>
+                </div>
+
+                <div class="publish-form-group">
+                    <label for="content" class="publish-form-label">CONTENT *</label>
+                    <textarea id="content" name="content" class="publish-form-textarea" required rows="10" placeholder="Write your content here...
+(Markdown supported)"></textarea>
+                </div>
+
+                <div class="publish-form-group">
+                    <label for="tags" class="publish-form-label">TAGS (COMMA-SEPARATED)</label>
+                    <input type="text" id="tags" name="tags" class="publish-form-input" placeholder="e.g., tender management, compliance, bid writing">
+                    <small class="publish-form-help">Add tags to help others discover your content</small>
+                </div>
+            </div>
+
+            <div class="publish-modal-footer">
+                <button type="button" onclick="closePublishModal()" class="btn btn-outline">Cancel</button>
+                <button type="submit" class="btn btn-primary">Publish</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let previousBodyOverflow = '';
+
+function showPublishModal() {
+    const modal = document.getElementById('publishModal');
+    if (!modal) {
+        return;
+    }
+
+    previousBodyOverflow = document.body.style.overflow;
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden'; // Prevent body scroll when modal is open
+}
+
+function closePublishModal() {
+    const modal = document.getElementById('publishModal');
+    if (!modal) {
+        return;
+    }
+
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+
+    const form = document.getElementById('publishForm');
+    if (form) {
+        form.reset();
+    }
+
+    document.body.style.overflow = previousBodyOverflow || '';
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const modal = document.getElementById('publishModal');
+        if (!modal || modal.style.display === 'none') {
+            return;
+        }
+        closePublishModal();
+    }
+});
+
+async function publishContent(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+
+    try {
+        const response = await fetch('/api/expert/content/publish', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            alert(data.message);
+            window.location.href = data.redirect || '/expert/wall';
+        } else {
+            alert(data.detail || 'Failed to publish content');
+        }
+    } catch (error) {
+        console.error('Error publishing content:', error);
+        alert('An error occurred. Please try again.');
+    }
+}
+
+async function toggleLike(contentId) {
+    try {
+        const response = await fetch(`/api/expert/content/${contentId}/like`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            const likeIcon = document.querySelector(`.like-icon-${contentId}`);
+            const likeCount = document.querySelector(`.like-count-${contentId}`);
+
+            likeIcon.textContent = data.action === 'liked' ? '❤️' : '🤍';
+            likeCount.textContent = data.like_count;
+        }
+    } catch (error) {
+        console.error('Error toggling like:', error);
+        alert('Failed to update like status');
+    }
+}
+</script>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+/* ========================
+   PUBLISH MODAL STYLES
+   ======================== */
+.publish-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.publish-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease;
+}
+
+.publish-modal-content {
+    position: relative;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-width: 700px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    z-index: 10000;
+    animation: slideUp 0.3s ease;
+    margin: 1rem;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Modal Header */
+.publish-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.publish-modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+.publish-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.75rem;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.publish-modal-close:hover {
+    background-color: #f3f4f6;
+    color: #111827;
+}
+
+/* Modal Body */
+.publish-modal-body {
+    padding: 2rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Form Groups */
+.publish-form-group {
+    margin-bottom: 1.5rem;
+}
+
+.publish-form-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+/* Form Inputs */
+.publish-form-input,
+.publish-form-select,
+.publish-form-textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    color: #111827;
+    background-color: #ffffff;
+    border: 1.5px solid #d1d5db;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.publish-form-input:focus,
+.publish-form-select:focus,
+.publish-form-textarea:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.publish-form-input::placeholder,
+.publish-form-textarea::placeholder {
+    color: #9ca3af;
+}
+
+.publish-form-textarea {
+    resize: vertical;
+    min-height: 200px;
+    line-height: 1.6;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.publish-form-select {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25rem;
+    padding-right: 2.5rem;
+    appearance: none;
+}
+
+.publish-form-help {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+/* Modal Footer */
+.publish-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1.5rem 2rem;
+    border-top: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.empty-state__icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.empty-state__description {
+    color: var(--text-secondary);
+}
+
+/* Badge Styles */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.badge-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.badge-secondary {
+    background-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.badge-info {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.like-btn:hover {
+    color: var(--primary-color);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .publish-modal-content {
+        max-width: 100%;
+        max-height: 95vh;
+        border-radius: 12px;
+        margin: 0.5rem;
+    }
+
+    .publish-modal-header,
+    .publish-modal-body,
+    .publish-modal-footer {
+        padding: 1.25rem;
+    }
+
+    .publish-modal-title {
+        font-size: 1.25rem;
+    }
+
+    .publish-form-textarea {
+        min-height: 150px;
+    }
+}
+
+/* Dark Mode Support */
+body.dark-mode .publish-modal-content {
+    background: #1f2937;
+}
+
+body.dark-mode .publish-modal-header,
+body.dark-mode .publish-modal-footer {
+    border-color: #374151;
+}
+
+body.dark-mode .publish-modal-title {
+    color: #f9fafb;
+}
+
+body.dark-mode .publish-modal-close {
+    color: #9ca3af;
+}
+
+body.dark-mode .publish-modal-close:hover {
+    background-color: #374151;
+    color: #f9fafb;
+}
+
+body.dark-mode .publish-form-label {
+    color: #d1d5db;
+}
+
+body.dark-mode .publish-form-input,
+body.dark-mode .publish-form-select,
+body.dark-mode .publish-form-textarea {
+    background-color: #111827;
+    border-color: #374151;
+    color: #f9fafb;
+}
+
+body.dark-mode .publish-form-input:focus,
+body.dark-mode .publish-form-select:focus,
+body.dark-mode .publish-form-textarea:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+body.dark-mode .publish-form-help {
+    color: #9ca3af;
+}
+</style>
+{% endblock %}

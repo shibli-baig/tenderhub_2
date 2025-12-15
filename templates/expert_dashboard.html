@@ -1,0 +1,526 @@
+{% extends "base.html" %}
+
+{% block title %}Expert Dashboard - TenderHub Expert-Verse{% endblock %}
+
+{% block content %}
+<!-- Welcome Section -->
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h1 class="section-title">Welcome back, {{ expert.name }}</h1>
+            <p class="section-subtitle">Manage your expert profile, view service requests, and discover tender opportunities.</p>
+        </div>
+        <div class="section-actions">
+            <a href="/expert/opportunities" class="btn btn-primary">Browse Opportunities</a>
+            <a href="/expert/profile" class="btn btn-outline">Edit Profile</a>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Cards -->
+<section class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div class="stat-card surface-card">
+        <div class="stat-card__icon" style="font-size: 2rem;">📨</div>
+        <div class="stat-card__content">
+            <div class="stat-card__value">{{ stats.service_requests or 0 }}</div>
+            <div class="stat-card__label">Service Requests</div>
+        </div>
+    </div>
+
+    <div class="stat-card surface-card">
+        <div class="stat-card__icon" style="font-size: 2rem;">📝</div>
+        <div class="stat-card__content">
+            <div class="stat-card__value">{{ stats.applications or 0 }}</div>
+            <div class="stat-card__label">Applications Sent</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.35rem;">
+                {{ stats.hiring_applications or 0 }} hiring · {{ stats.proactive_applications or 0 }} proactive
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card surface-card">
+        <div class="stat-card__icon" style="font-size: 2rem;">🚀</div>
+        <div class="stat-card__content">
+            <div class="stat-card__value">{{ stats.active_projects or 0 }}</div>
+            <div class="stat-card__label">Active Projects</div>
+        </div>
+    </div>
+
+    <div class="stat-card surface-card">
+        <div class="stat-card__icon" style="font-size: 2rem;">⭐</div>
+        <div class="stat-card__content">
+            <div class="stat-card__value">{{ expert.rating_average|round(1) if expert.rating_average else 'N/A' }}</div>
+            <div class="stat-card__label">Expert Rating</div>
+        </div>
+    </div>
+</section>
+
+<!-- Profile Summary -->
+<section class="panel">
+    <div class="profile-card__header">
+        <div>
+            <h2 class="surface-card__title">Profile Summary</h2>
+            <p class="panel-subtitle">Your professional expertise and availability</p>
+        </div>
+        <div>
+            <span class="badge badge-{{ 'success' if profile.availability_status == 'available' else 'warning' if profile.availability_status == 'busy' else 'secondary' }}">
+                {{ profile.availability_status|title }}
+            </span>
+        </div>
+    </div>
+
+    {% if profile %}
+    <div class="company-sections-stack">
+        <!-- Expertise and Services -->
+        <section class="company-section">
+            <h3 class="company-section__title">Areas of Expertise</h3>
+            <div class="tags-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem;">
+                {% for area in profile.expertise_areas %}
+                <span class="badge badge-primary">{{ area }}</span>
+                {% endfor %}
+            </div>
+
+            <h3 class="company-section__title">Services Offered</h3>
+            <div class="tags-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                {% for service in profile.services_offered %}
+                <span class="badge badge-info">{{ service }}</span>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Professional Details -->
+        <section class="company-section">
+            <h3 class="company-section__title">Professional Details</h3>
+            <div class="detail-grid">
+                {% if profile.employment_type %}
+                <div class="detail-item">
+                    <span class="detail-label">Employment Type</span>
+                    <span class="detail-value">{{ profile.employment_type|title }}</span>
+                </div>
+                {% endif %}
+
+                {% if profile.experience_years %}
+                <div class="detail-item">
+                    <span class="detail-label">Years of Experience</span>
+                    <span class="detail-value">{{ profile.experience_years }} years</span>
+                </div>
+                {% endif %}
+
+                {% if profile.location %}
+                <div class="detail-item">
+                    <span class="detail-label">Location</span>
+                    <span class="detail-value">{{ profile.location }}</span>
+                </div>
+                {% endif %}
+
+                {% if profile.hourly_rate %}
+                <div class="detail-item">
+                    <span class="detail-label">Hourly Rate</span>
+                    <span class="detail-value">₹{{ profile.hourly_rate }}/hour</span>
+                </div>
+                {% endif %}
+
+                {% if profile.languages %}
+                <div class="detail-item">
+                    <span class="detail-label">Languages</span>
+                    <span class="detail-value">{{ profile.languages }}</span>
+                </div>
+                {% endif %}
+
+                <div class="detail-item">
+                    <span class="detail-label">Willing to Travel</span>
+                    <span class="detail-value">{{ 'Yes' if profile.willing_to_travel else 'No' }}</span>
+                </div>
+            </div>
+        </section>
+
+        {% if profile.bio %}
+        <section class="company-section">
+            <h3 class="company-section__title">Professional Bio</h3>
+            <p style="color: var(--text-secondary); line-height: 1.6;">{{ profile.bio }}</p>
+        </section>
+        {% endif %}
+
+        <!-- Qualifications -->
+        {% if profile.qualifications and profile.qualifications|length > 0 %}
+        <section class="company-section">
+            <h3 class="company-section__title">Qualifications</h3>
+            <div class="list-stack">
+                {% for qual in profile.qualifications %}
+                <div class="list-item">
+                    <strong>{{ qual.degree }}</strong>
+                    {% if qual.institution %} - {{ qual.institution }}{% endif %}
+                    {% if qual.year %} ({{ qual.year }}){% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Certifications -->
+        {% if profile.certifications and profile.certifications|length > 0 %}
+        <section class="company-section">
+            <h3 class="company-section__title">Certifications</h3>
+            <div class="list-stack">
+                {% for cert in profile.certifications %}
+                <div class="list-item" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>{{ cert.name }}</strong>
+                        {% if cert.issuer %} - {{ cert.issuer }}{% endif %}
+                    </div>
+                    {% if cert.file_path %}
+                    <a href="/{{ cert.file_path }}" target="_blank" class="btn btn-sm btn-outline">View Certificate</a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="alert alert-warning">
+        <svg class="alert-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        <div>
+            <strong>Profile Incomplete</strong>
+            <p>Please complete your profile to start receiving service requests.</p>
+            <a href="/expert/profile-setup" class="btn btn-sm btn-primary" style="margin-top: 0.5rem;">Complete Profile</a>
+        </div>
+    </div>
+{% endif %}
+</section>
+
+{% block extra_scripts %}
+<script>
+async function markExpertNotificationRead(notificationId) {
+    try {
+        const response = await fetch(`/api/expert/notifications/${notificationId}/mark-read`, {
+            method: 'POST'
+        });
+        if (!response.ok) {
+            throw new Error('Unable to mark notification as read');
+        }
+        window.location.reload();
+    } catch (error) {
+        console.error('Notification update failed', error);
+        alert('Could not mark notification as read. Please try again.');
+    }
+}
+
+async function markAllExpertNotifications() {
+    try {
+        const response = await fetch('/api/expert/notifications/mark-all-read', {
+            method: 'POST'
+        });
+        if (!response.ok) {
+            throw new Error('Unable to mark notifications');
+        }
+        window.location.reload();
+    } catch (error) {
+        console.error('Failed to mark all notifications', error);
+        alert('Unable to update notifications at the moment.');
+    }
+}
+</script>
+{% endblock %}
+
+<!-- Recent Service Requests -->
+<section class="panel">
+    <div class="profile-card__header">
+        <div>
+            <h2 class="surface-card__title">Recent Service Requests</h2>
+            <p class="panel-subtitle">Companies seeking your expertise</p>
+        </div>
+        <a href="/expert/requests" class="btn btn-outline">View All</a>
+    </div>
+
+    {% if service_requests and service_requests|length > 0 %}
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Company</th>
+                    <th>Tender</th>
+                    <th>Service Required</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for request in service_requests[:5] %}
+                <tr>
+                    <td>{{ request.company_name }}</td>
+                    <td>{{ request.tender_title }}</td>
+                    <td>{{ request.service_type }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'warning' if request.status == 'pending' else 'info' if request.status == 'accepted' else 'secondary' }}">
+                            {{ request.status|title }}
+                        </span>
+                    </td>
+                    <td>{{ request.created_at.strftime('%b %d, %Y') if request.created_at else 'N/A' }}</td>
+                    <td>
+                        <a href="/expert/request/{{ request.id }}" class="btn btn-sm btn-primary">View Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state__icon">📭</div>
+        <h3 class="empty-state__title">No service requests yet</h3>
+        <p class="empty-state__description">Companies will be able to send you service requests based on your expertise.</p>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Expert Notifications -->
+<section class="panel">
+    <div class="profile-card__header">
+        <div>
+            <h2 class="surface-card__title">Notifications</h2>
+            <p class="panel-subtitle">{{ unread_notifications }} unread</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="markAllExpertNotifications()">Mark all read</button>
+            <a href="/expert/opportunities" class="btn btn-sm btn-outline">Go to Opportunities</a>
+        </div>
+    </div>
+
+    {% if notifications %}
+    <div class="list-stack">
+        {% for notification in notifications %}
+        <article class="list-item" style="display: flex; justify-content: space-between; gap: 1rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 12px; background: {{ 'rgba(99,102,241,0.08)' if not notification.is_read else 'var(--card-bg)' }};">
+            <div>
+                <h3 style="margin: 0 0 0.35rem 0; font-size: 1rem;">{{ notification.title }}</h3>
+                <p style="margin: 0; color: var(--text-secondary); line-height: 1.5;">{{ notification.message }}</p>
+                <p style="margin: 0.35rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
+                    {{ notification.created_at.strftime('%d %b %Y · %I:%M %p') if notification.created_at else '' }}
+                </p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                {% if notification.link %}
+                <a href="{{ notification.link }}" class="btn btn-sm btn-outline">View</a>
+                {% endif %}
+                {% if not notification.is_read %}
+                <button type="button" class="btn btn-sm btn-secondary" onclick="markExpertNotificationRead('{{ notification.id }}')">Mark read</button>
+                {% else %}
+                <span class="badge badge-secondary">Read</span>
+                {% endif %}
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state__icon">🔔</div>
+        <h3 class="empty-state__title">No notifications yet</h3>
+        <p class="empty-state__description">Updates about your hiring applications will appear here.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+/* Stats Cards */
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.75rem;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.stat-card__icon {
+    font-size: 2.75rem;
+    flex-shrink: 0;
+}
+
+.stat-card__content {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-card__value {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+}
+
+.stat-card__label {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-top: 0;
+    letter-spacing: 0.01em;
+}
+
+/* Badge Variants */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.badge-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.badge-info {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.badge-success {
+    background-color: #10b981;
+    color: white;
+}
+
+.badge-warning {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.badge-secondary {
+    background-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+/* Tags Container */
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+/* List Items */
+.list-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.list-item {
+    padding: 0.75rem;
+    background-color: var(--surface-color);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.empty-state__icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.empty-state__description {
+    color: var(--text-secondary);
+}
+
+/* Opportunity Cards */
+.opportunity-card {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+}
+
+.opportunity-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 1rem;
+}
+
+.opportunity-card__title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    flex: 1;
+}
+
+.opportunity-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    flex: 1;
+}
+
+.opportunity-card__detail {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.opportunity-card__footer {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+
+/* Action Cards */
+.action-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.5rem;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.action-card__icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.action-card__title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.action-card__description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+</style>
+{% endblock %}

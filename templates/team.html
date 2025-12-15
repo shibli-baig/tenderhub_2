@@ -1,0 +1,422 @@
+{% extends "base.html" %}
+
+{% block title %}Team · {{ tender.title }}{% endblock %}
+
+{% set assignment_list = assignments or [] %}
+{% set comment_list = comments or [] %}
+{% set message_list = messages or [] %}
+{% set stats = namespace(team_size=assignment_list|length, total_tasks=0, overdue_tasks=0) %}
+{% for assignment in assignment_list %}
+    {% for task in assignment.tasks %}
+        {% set stats.total_tasks = stats.total_tasks + 1 %}
+        {% if task.deadline and task.deadline < now and task.status != 'completed' %}
+            {% set stats.overdue_tasks = stats.overdue_tasks + 1 %}
+        {% endif %}
+    {% endfor %}
+{% endfor %}
+{% set comment_count = comment_list|length %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <span class="chip chip--neutral">Tender team</span>
+            <h1 class="section-title">{{ tender.title }}</h1>
+            <p class="section-subtitle">Coordinate your assigned teammates, review their progress and respond to task feedback.</p>
+        </div>
+        <div class="panel-actions">
+            <a href="/employee/task-assignment" class="btn btn-outline btn-sm">Back to assignments</a>
+        </div>
+    </div>
+
+    <div class="employee-stats-grid">
+        <article class="employee-stat-card">
+            <span class="employee-stat-label">Team members</span>
+            <span class="employee-stat-value">{{ stats.team_size }}</span>
+            <p class="employee-stat-hint">Employees currently mapped to this tender.</p>
+        </article>
+        <article class="employee-stat-card">
+            <span class="employee-stat-label">Total tasks</span>
+            <span class="employee-stat-value">{{ stats.total_tasks }}</span>
+            <p class="employee-stat-hint">Active workload across the team.</p>
+        </article>
+        <article class="employee-stat-card {{ 'employee-stat-card--alert' if stats.overdue_tasks > 0 else '' }}">
+            <span class="employee-stat-label">Overdue tasks</span>
+            <span class="employee-stat-value">{{ stats.overdue_tasks }}</span>
+            <p class="employee-stat-hint">Follow up with owners to unblock timelines.</p>
+        </article>
+        <article class="employee-stat-card">
+            <span class="employee-stat-label">Recent comments</span>
+            <span class="employee-stat-value">{{ comment_count }}</span>
+            <p class="employee-stat-hint">Latest task updates from the team.</p>
+        </article>
+    </div>
+</section>
+
+<div class="team-layout">
+    <div class="team-layout__main">
+        <section class="panel team-tender-panel">
+            <div class="panel-header">
+                <div>
+                    <h2 class="surface-card__title">Tender summary</h2>
+                    <p class="panel-subtitle">Key information about this opportunity.</p>
+                </div>
+                {% if tender.deadline %}
+                <span class="badge badge--muted">Deadline · {{ tender.deadline.strftime('%d %b %Y') }}</span>
+                {% endif %}
+            </div>
+
+            <div class="team-tender-grid">
+                <div>
+                    <span class="team-tender-label">Authority</span>
+                    <span class="team-tender-value">{{ tender.authority }}</span>
+                </div>
+                <div>
+                    <span class="team-tender-label">Estimated value</span>
+                    <span class="team-tender-value">₹{{ "{:,.0f}".format(tender.estimated_value) if tender.estimated_value else 'N/A' }}</span>
+                </div>
+                <div>
+                    <span class="team-tender-label">State</span>
+                    <span class="team-tender-value">{{ tender.state }}</span>
+                </div>
+                <div>
+                    <span class="team-tender-label">Reference</span>
+                    <span class="team-tender-value">{{ tender.tender_id or tender.id[:8] }}</span>
+                </div>
+            </div>
+
+            {% if tender.description %}
+            <div class="team-tender-description">
+                <h3 class="surface-card__title">Scope highlight</h3>
+                <p>{{ tender.description }}</p>
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2 class="surface-card__title">Team members</h2>
+                    <p class="panel-subtitle">Monitor assigned tasks and manage access.</p>
+                </div>
+            </div>
+
+            {% if assignment_list %}
+            <div class="team-assignments-grid" id="teamAssignments">
+                {% for assignment in assignment_list %}
+                {% set completed_tasks = assignment.tasks | selectattr('status', 'equalto', 'completed') | list | length %}
+                <article class="surface-card team-assignment-card" data-assignment-id="{{ assignment.id }}" data-employee-name="{{ assignment.employee.name }}">
+                    <header class="team-assignment-card__header">
+                        <div class="team-assignment-card__identity">
+                            <span class="employee-roster-avatar">{{ assignment.employee.name[0] if assignment.employee.name else '?' }}</span>
+                            <div>
+                                <h3 class="team-assignment-card__name">{{ assignment.employee.name }}</h3>
+                                <p class="team-assignment-card__meta">{{ assignment.employee.email }}</p>
+                                <p class="team-assignment-card__role">{{ assignment.role }}</p>
+                            </div>
+                        </div>
+                        <div class="team-assignment-card__badges">
+                            <span class="badge {{ 'badge--danger' if assignment.priority == 'high' else 'badge--warning' if assignment.priority == 'medium' else 'badge--success' }}">{{ assignment.priority.title() }} priority</span>
+                            <span class="badge badge--muted">{{ completed_tasks }} / {{ assignment.tasks|length }} done</span>
+                        </div>
+                    </header>
+
+                    {% if assignment.tasks %}
+                    <div class="team-assignment-card__tasks">
+                        {% for task in assignment.tasks %}
+                        {% set task_overdue = task.deadline and task.deadline < now and task.status != 'completed' %}
+                        <div class="team-task">
+                            <div class="team-task__heading">
+                                <span class="team-task__title">{{ task.title }}</span>
+                                <span class="badge {{ 'badge--success' if task.status == 'completed' else 'badge--warning' if task.status == 'in_progress' else 'badge--muted' }}">{{ task.status.replace('_', ' ').title() }}</span>
+                            </div>
+                            <div class="team-task__meta">
+                                {% if task.deadline %}
+                                    <span class="team-task__deadline {{ 'is-overdue' if task_overdue else '' }}">Due {{ task.deadline.strftime('%d %b %Y') }}</span>
+                                {% else %}
+                                    <span class="team-task__deadline">No deadline</span>
+                                {% endif %}
+                                {% if task.priority %}
+                                    <span class="team-task__priority">Priority · {{ task.priority.title() }}</span>
+                                {% endif %}
+                                {% if task.estimated_hours %}
+                                    <span class="team-task__hours">Est. {{ task.estimated_hours }}h</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="employee-placeholder">No tasks assigned yet.</div>
+                    {% endif %}
+
+                    <footer class="team-assignment-card__actions">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="viewEmployeeDetails('{{ assignment.employee.id }}', '{{ assignment.employee.name }}')">View details</button>
+                        <button type="button" class="btn btn-outline btn-sm btn-danger" onclick="unassignEmployee({{ assignment.id }}, '{{ assignment.employee.name }}')">Unassign</button>
+                    </footer>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <h3>No team members yet</h3>
+                <p>Assign employees from the task assignment workspace to build your delivery squad.</p>
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2 class="surface-card__title">Task comments</h2>
+                    <p class="panel-subtitle">Live feed from employee updates across tasks.</p>
+                </div>
+                <span class="badge badge--muted">{{ comment_count }} entries</span>
+            </div>
+
+            {% if comment_list %}
+            <div class="team-comments-list">
+                {% for comment in comment_list %}
+                <article class="team-comment">
+                    <header class="team-comment__header">
+                        <div>
+                            <span class="team-comment__author">{{ comment.employee.name if comment.employee else 'Team member' }}</span>
+                            {% if comment.task %}
+                                <span class="team-comment__task">Task · {{ comment.task.title }}</span>
+                            {% elif comment.task_title %}
+                                <span class="team-comment__task">Task · {{ comment.task_title }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="team-comment__time">{{ comment.created_at.strftime('%d %b %Y · %I:%M %p') if comment.created_at else '' }}</span>
+                    </header>
+                    <p class="team-comment__body">{{ comment.comment }}</p>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <h3>No comments yet</h3>
+                <p>Task comments submitted by employees will appear here for quick review.</p>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <aside class="team-layout__aside">
+        <div class="panel employee-task-chat">
+            <div class="employee-task-chat__header">
+                <h2 class="surface-card__title">Team chat</h2>
+                <div class="employee-task-chat__team">
+                    {% for assignment in assignment_list %}
+                    <span class="employee-roster-avatar" title="{{ assignment.employee.name }}">{{ assignment.employee.name[0] if assignment.employee.name else '?' }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="employee-task-chat__messages" id="chatMessages">
+                {% for message in message_list %}
+                <div class="employee-chat-message {{ 'employee-chat-message--own' if not message.employee_id else 'employee-chat-message--peer' }}">
+                    <span class="employee-chat-meta">{{ message.employee_name or 'Manager' }} • {{ message.created_at.strftime('%d %b %Y · %I:%M %p') if message.created_at else '' }}</span>
+                    <p>{{ message.message }}</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="employee-task-chat__input">
+                <textarea id="messageInput" rows="2" placeholder="Share an update…" onkeypress="handleEnter(event)"></textarea>
+                <button type="button" class="btn btn-primary" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const currentTenderId = '{{ tender.id }}';
+    const currentUserId = '{{ current_user.id }}';
+    const currentUserName = '{{ current_user.name }}';
+
+    const wsAuthToken = {{ (request.cookies.get('session_token') or request.cookies.get('employee_session_token') or '') | tojson }};
+
+    let websocket = null;
+    let reconnectTimer = null;
+    let historyLoaded = false;
+    const pendingMessages = [];
+    const RECONNECT_DELAY = 2000;
+
+    function initWebSocket(force = false) {
+        if (websocket && (websocket.readyState === WebSocket.OPEN || websocket.readyState === WebSocket.CONNECTING) && !force) {
+            return;
+        }
+
+        clearTimeout(reconnectTimer);
+
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const tokenQuery = wsAuthToken ? `?token=${encodeURIComponent(wsAuthToken)}` : '';
+        const wsUrl = `${protocol}//${window.location.host}/ws/chat/${currentTenderId}${tokenQuery}`;
+        websocket = new WebSocket(wsUrl);
+
+        websocket.onopen = () => {
+            flushPendingMessages();
+        };
+
+        websocket.onmessage = event => {
+            try {
+                const payload = JSON.parse(event.data);
+                if (payload.type === 'new_message' && payload.message) {
+                    addMessageToChat(payload.message);
+                }
+            } catch (error) {
+                console.error('Unable to parse chat message', error);
+            }
+        };
+
+        websocket.onclose = () => {
+            websocket = null;
+            scheduleReconnect();
+        };
+
+        websocket.onerror = error => {
+            console.error('Chat WebSocket error', error);
+        };
+    }
+
+    function scheduleReconnect() {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(() => initWebSocket(true), RECONNECT_DELAY);
+    }
+
+    function loadExistingMessages() {
+        const container = document.getElementById('chatMessages');
+        fetch(`/api/employee/messages/tender/${currentTenderId}`)
+            .then(response => response.ok ? response.json() : response.json().then(err => Promise.reject(err)))
+            .then(data => {
+                const messages = (data && Array.isArray(data.messages)) ? data.messages : [];
+                container.innerHTML = '';
+
+                if (messages.length) {
+                    messages.forEach(message => addMessageToChat(message));
+                } else {
+                    addMessageToChat({ employee_name: 'System', message: 'No messages yet. Start the conversation!', created_at: new Date().toISOString() }, true);
+                }
+                historyLoaded = true;
+            })
+            .catch(error => {
+                console.error('Error loading existing messages', error);
+                if (!container.children.length) {
+                    addMessageToChat({ employee_name: 'System', message: 'Unable to load previous messages.', created_at: new Date().toISOString() }, true);
+                }
+                historyLoaded = true;
+            });
+    }
+
+    function addMessageToChat(messageData, isSystem = false) {
+        const container = document.getElementById('chatMessages');
+        const messageEl = document.createElement('div');
+
+        let isOwn = false;
+        if (isSystem) {
+            messageEl.className = 'employee-chat-message employee-chat-message--system';
+        } else {
+            const messageOwner = messageData.employee_id ? messageData.employee_id.toString() : null;
+            isOwn = !messageOwner || messageOwner === currentUserId.toString();
+            messageEl.className = `employee-chat-message ${isOwn ? 'employee-chat-message--own' : 'employee-chat-message--peer'}`;
+        }
+
+        const meta = document.createElement('span');
+        meta.className = 'employee-chat-meta';
+        const timestamp = messageData.created_at ? new Date(messageData.created_at).toLocaleString() : new Date().toLocaleString();
+        meta.textContent = `${messageData.employee_name || (isOwn ? currentUserName : 'Team member')} • ${timestamp}`;
+
+        const body = document.createElement('p');
+        body.textContent = messageData.message;
+
+        messageEl.append(meta, body);
+        container.appendChild(messageEl);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function queueMessage(payload) {
+        pendingMessages.push(payload);
+        flushPendingMessages();
+    }
+
+    function flushPendingMessages() {
+        if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+            initWebSocket();
+            return;
+        }
+
+        while (pendingMessages.length) {
+            const payload = pendingMessages.shift();
+            try {
+                websocket.send(JSON.stringify(payload));
+            } catch (error) {
+                console.error('Failed to send message, re-queuing', error);
+                pendingMessages.unshift(payload);
+                initWebSocket(true);
+                break;
+            }
+        }
+    }
+
+    function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
+        if (!message) { return; }
+
+        const payload = { type: 'message', message };
+        queueMessage(payload);
+        input.value = '';
+
+        addMessageToChat({
+            employee_id: currentUserId,
+            employee_name: `${currentUserName} (Manager)`,
+            message,
+            created_at: new Date().toISOString()
+        });
+    }
+
+    function handleEnter(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    }
+
+    function unassignEmployee(assignmentId, employeeName) {
+        if (!confirm(`Unassign ${employeeName}? This will also remove their tasks for this tender.`)) {
+            return;
+        }
+
+        fetch(`/api/employee/assignments/${assignmentId}`, { method: 'DELETE' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(`${employeeName} has been unassigned.`);
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + (data.detail || 'Unable to unassign employee'));
+                }
+            })
+            .catch(error => {
+                console.error('Error unassigning employee', error);
+                alert('Unexpected error while unassigning.');
+            });
+    }
+
+    function viewEmployeeDetails(employeeId, employeeName) {
+        alert(`Detailed analytics for ${employeeName} will appear here soon.`);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!historyLoaded) {
+            loadExistingMessages();
+        }
+        initWebSocket();
+        const container = document.getElementById('chatMessages');
+        container.scrollTop = container.scrollHeight;
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tender.title }} - TenderHub Expert-Verse{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h1 class="section-title">Tender Details</h1>
+            <p class="section-subtitle">Review opportunity and submit your application</p>
+        </div>
+        <div class="section-actions">
+            <a href="/expert/opportunities" class="btn btn-outline">← Back to Opportunities</a>
+        </div>
+    </div>
+</section>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+    <!-- Main Content -->
+    <div>
+        <!-- Tender Information -->
+        <section class="panel" style="margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem;">
+                {{ tender.title }}
+            </h2>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem;">
+                <span class="badge badge-primary">{{ tender.category }}</span>
+                {% if tender.state %}
+                <span class="badge badge-secondary">{{ tender.state }}</span>
+                {% endif %}
+                {% if has_applied %}
+                <span class="badge badge-success">✓ Applied</span>
+                {% endif %}
+                {% if is_favorited %}
+                <span class="badge badge-info">★ Favorited</span>
+                {% endif %}
+            </div>
+
+            <div class="detail-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+                <div>
+                    <span class="detail-label">Organization</span>
+                    <p class="detail-value" style="margin-top: 0.5rem;">{{ tender.authority }}</p>
+                </div>
+
+                {% if tender.deadline %}
+                <div>
+                    <span class="detail-label">Submission Deadline</span>
+                    <p class="detail-value" style="margin-top: 0.5rem;">{{ tender.deadline.strftime('%b %d, %Y') }}</p>
+                </div>
+                {% endif %}
+
+                {% if tender.estimated_value %}
+                <div>
+                    <span class="detail-label">Estimated Value</span>
+                    <p class="detail-value" style="margin-top: 0.5rem;">{{ tender.estimated_value }}</p>
+                </div>
+                {% endif %}
+
+                <div>
+                    <span class="detail-label">Published On</span>
+                    <p class="detail-value" style="margin-top: 0.5rem;">{{ tender.scraped_at.strftime('%b %d, %Y') if tender.scraped_at else 'N/A' }}</p>
+                </div>
+
+                {% if tender.state %}
+                <div>
+                    <span class="detail-label">Location</span>
+                    <p class="detail-value" style="margin-top: 0.5rem;">{{ tender.state }}</p>
+                </div>
+                {% endif %}
+
+                {% if tender.bid_opening_date %}
+                <div>
+                    <span class="detail-label">Bid Opening Date</span>
+                    <p class="detail-value" style="margin-top: 0.5rem;">{{ tender.bid_opening_date.strftime('%b %d, %Y') }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if tender.description %}
+            <div style="margin-bottom: 2rem;">
+                <h3 class="detail-label" style="font-size: 1rem; margin-bottom: 0.75rem;">Description</h3>
+                <div style="color: var(--text-secondary); line-height: 1.7;">
+                    {{ tender.description }}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if tender.tender_url %}
+            <div>
+                <a href="{{ tender.tender_url }}" target="_blank" class="btn btn-outline">View Original Tender Document</a>
+            </div>
+            {% endif %}
+        </section>
+
+        <!-- Application Form -->
+        {% if not has_applied %}
+        <section class="panel" id="apply">
+            <h2 class="surface-card__title" style="margin-bottom: 1.5rem;">Submit Your Application</h2>
+            
+            <form id="applicationForm" onsubmit="submitApplication(event)">
+                <div class="form-group">
+                    <label for="proposal" class="form-label">Your Proposal *</label>
+                    <textarea id="proposal" name="proposal" required rows="8" placeholder="Describe how you can help with this tender, your approach, and relevant experience..."></textarea>
+                    <small class="form-help">Explain your expertise and how you can add value to this tender</small>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="proposed_fee" class="form-label">Proposed Fee (₹) *</label>
+                        <input type="number" id="proposed_fee" name="proposed_fee" required min="0" step="100" placeholder="Your consulting fee">
+                        <small class="form-help">Enter your expected fee for this project</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="estimated_duration" class="form-label">Estimated Duration *</label>
+                        <input type="text" id="estimated_duration" name="estimated_duration" required placeholder="e.g., 2 weeks, 1 month">
+                        <small class="form-help">How long will it take to complete?</small>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem;">
+                    <a href="/expert/opportunities" class="btn btn-outline">Cancel</a>
+                    <button type="submit" class="btn btn-success">Submit Application</button>
+                </div>
+            </form>
+        </section>
+        {% else %}
+        <section class="panel">
+            <div class="alert alert-success">
+                <svg class="alert-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div>
+                    <strong>Application Submitted</strong>
+                    <p>You have already applied to this tender. The company will review your application and contact you if interested.</p>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div>
+        <!-- Quick Actions -->
+        <section class="panel" style="margin-bottom: 1.5rem;">
+            <h2 class="surface-card__title" style="margin-bottom: 1rem;">Quick Actions</h2>
+            
+            <div style="display: grid; gap: 0.75rem;">
+                <button onclick="toggleFavorite()" class="btn btn-outline w-100" id="favoriteBtn">
+                    {% if is_favorited %}★ Remove from Favorites{% else %}☆ Add to Favorites{% endif %}
+                </button>
+                {% if not has_applied %}
+                <a href="#apply" class="btn btn-primary w-100">Apply to This Tender</a>
+                {% endif %}
+                <button onclick="shareTender()" class="btn btn-outline w-100">Share Tender</button>
+            </div>
+        </section>
+
+        <!-- Tender Stats -->
+        <section class="panel">
+            <h2 class="surface-card__title" style="margin-bottom: 1rem;">Tender Information</h2>
+            
+            <div class="detail-grid" style="display: grid; gap: 1rem;">
+                <div>
+                    <span class="detail-label">Tender ID</span>
+                    <p class="detail-value" style="margin-top: 0.25rem;">{{ tender.tender_id or 'N/A' }}</p>
+                </div>
+
+                {% if tender.tender_value %}
+                <div>
+                    <span class="detail-label">Tender Value</span>
+                    <p class="detail-value" style="margin-top: 0.25rem;">{{ tender.tender_value }}</p>
+                </div>
+                {% endif %}
+
+                <div>
+                    <span class="detail-label">Source</span>
+                    <p class="detail-value" style="margin-top: 0.25rem;">{{ tender.source or 'Government Portal' }}</p>
+                </div>
+
+                {% if tender.category %}
+                <div>
+                    <span class="detail-label">Category</span>
+                    <p class="detail-value" style="margin-top: 0.25rem;">{{ tender.category }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function submitApplication(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+
+    try {
+        const response = await fetch('/expert/apply/{{ tender.id }}', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            alert(data.message);
+            window.location.href = data.redirect || '/expert/opportunities';
+        } else {
+            alert(data.detail || 'Failed to submit application');
+        }
+    } catch (error) {
+        console.error('Error submitting application:', error);
+        alert('An error occurred. Please try again.');
+    }
+}
+
+async function toggleFavorite() {
+    try {
+        const response = await fetch('/api/expert/favorite/{{ tender.id }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            const btn = document.getElementById('favoriteBtn');
+            if (data.is_favorited) {
+                btn.textContent = '★ Remove from Favorites';
+            } else {
+                btn.textContent = '☆ Add to Favorites';
+            }
+            alert(data.action === 'added' ? 'Added to favorites' : 'Removed from favorites');
+        }
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+        alert('Failed to update favorite status');
+    }
+}
+
+function shareTender() {
+    const url = window.location.href;
+    if (navigator.share) {
+        navigator.share({
+            title: '{{ tender.title }}',
+            text: 'Check out this tender opportunity on TenderHub',
+            url: url
+        }).catch(err => console.log('Error sharing:', err));
+    } else {
+        navigator.clipboard.writeText(url);
+        alert('Tender link copied to clipboard!');
+    }
+}
+</script>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+.detail-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.detail-value {
+    font-size: 1rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.badge-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.badge-secondary {
+    background-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.badge-success {
+    background-color: #10b981;
+    color: white;
+}
+
+.badge-info {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.btn-success {
+    background-color: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #059669;
+}
+</style>
+{% endblock %}
+

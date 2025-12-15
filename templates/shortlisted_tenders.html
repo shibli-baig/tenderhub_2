@@ -1,0 +1,1656 @@
+{% extends "base.html" %}
+
+{% block title %}Shortlisted Tenders - TenderHub{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h1 class="section-title">Shortlisted Tenders</h1>
+            <p class="section-subtitle">Tenders you've shortlisted for bidding. Track your progress and manage documents.</p>
+        </div>
+        <div class="panel-actions">
+            <a href="/tender-management" class="btn btn-outline">← Back to Favourites</a>
+        </div>
+    </div>
+
+    <!-- Shortlisted Tenders Table -->
+    <div class="panel">
+        {% if shortlisted_tenders %}
+        <div class="table-container">
+            <table class="tender-table">
+                <thead>
+                    <tr>
+                        <!-- Basic Tender Information -->
+                        <th style="min-width: 150px;">Tender ID</th>
+                        <th style="min-width: 300px;">Title</th>
+                        <th style="min-width: 150px;">Download Date</th>
+                        <th style="min-width: 150px;">Publish Date</th>
+                        <th style="min-width: 100px;">Details</th>
+                        <th style="min-width: 150px;">Documents</th>
+                        <th style="min-width: 150px;">Portal</th>
+                        <th style="min-width: 150px;">Contract Type</th>
+                        <th style="min-width: 120px;">Tenure (Days)</th>
+                        <th style="min-width: 120px;">Tender Type</th>
+                        <th style="min-width: 150px;">State</th>
+                        <th style="min-width: 200px;">Client</th>
+                        <th style="min-width: 150px;">EMD</th>
+                        <th style="min-width: 150px;">Consultancy Fee</th>
+                        <th style="min-width: 150px;">Pre-Bid Date</th>
+                        <th style="min-width: 150px;">Submission Date</th>
+                        <th style="min-width: 150px;">Bid Opening Date</th>
+                        <!-- Admin Fields (Read-Only) -->
+                        <th style="min-width: 200px;">PQ Eligibility</th>
+                        <th style="min-width: 200px;">JV Eligibility</th>
+                        <th style="min-width: 150px;">Estimated Margin</th>
+                        <th style="min-width: 200px;">Need of Liaison</th>
+                        <th style="min-width: 250px;">Next Steps</th>
+                        <th style="min-width: 200px;">Project Owner</th>
+                        <!-- Reason for Shortlisting -->
+                        <th style="min-width: 300px;">Reason for Shortlisting</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in shortlisted_tenders %}
+                    <tr class="tender-row shortlisted-row" data-tender-id="{{ item.shortlisted.tender.id }}" data-shortlist-id="{{ item.shortlisted.id }}">
+                        <!-- Basic Tender Information -->
+                        <td>{{ item.shortlisted.tender.tender_reference_number or 'N/A' }}</td>
+                        <td class="tender-title-cell">{{ item.shortlisted.tender.title }}</td>
+                        <td>{{ item.shortlisted.tender.scraped_at.strftime('%d %b %Y') if item.shortlisted.tender.scraped_at else 'N/A' }}</td>
+                        <td>{{ item.shortlisted.tender.published_at.strftime('%d %b %Y') if item.shortlisted.tender.published_at else 'N/A' }}</td>
+                        <td>
+                            <a href="/tender/{{ item.shortlisted.tender.id }}" class="btn btn-sm btn-outline" onclick="event.stopPropagation()">View</a>
+                        </td>
+                        <td class="documents-cell" data-documents='{{ item.shortlisted.tender.tender_documents | tojson if item.shortlisted.tender.tender_documents else "[]" }}'>
+                            <span class="doc-count">{{ (item.shortlisted.tender.tender_documents | length) if item.shortlisted.tender.tender_documents else 0 }} docs</span>
+                        </td>
+                        <td>{{ item.shortlisted.tender.source or 'N/A' }}</td>
+                        <td>{{ item.shortlisted.tender.form_of_contract or item.shortlisted.tender.tender_type or 'N/A' }}</td>
+                        <td class="tenure-cell" data-work-details='{{ item.shortlisted.tender.work_item_details | tojson if item.shortlisted.tender.work_item_details else "{}" }}'>
+                            <span class="tenure-value">-</span>
+                        </td>
+                        <td>{{ item.shortlisted.tender.tender_category or item.shortlisted.tender.tender_type or 'N/A' }}</td>
+                        <td>{{ item.shortlisted.tender.state or 'N/A' }}</td>
+                        <td class="client-cell" data-authority='{{ item.shortlisted.tender.tender_inviting_authority | tojson if item.shortlisted.tender.tender_inviting_authority else "{}" }}'>
+                            {{ item.shortlisted.tender.authority or 'N/A' }}
+                        </td>
+                        <td class="emd-cell" data-emd='{{ item.shortlisted.tender.emd_fee_details | tojson if item.shortlisted.tender.emd_fee_details else "{}" }}'>
+                            <span class="emd-value">{{ item.shortlisted.tender.display_emd_amount or 'N/A' }}</span>
+                        </td>
+                        <td class="fee-cell" data-fee='{{ item.shortlisted.tender.tender_fee_details | tojson if item.shortlisted.tender.tender_fee_details else "{}" }}'>
+                            <span class="fee-value">{{ item.shortlisted.tender.display_tender_fee or 'N/A' }}</span>
+                        </td>
+                        <td class="date-cell prebid-cell" data-dates='{{ item.shortlisted.tender.critical_dates | tojson if item.shortlisted.tender.critical_dates else "{}" }}'>
+                            <span class="prebid-value">-</span>
+                        </td>
+                        <td class="date-cell submission-cell">
+                            {{ item.shortlisted.tender.deadline.strftime('%d %b %Y') if item.shortlisted.tender.deadline else 'N/A' }}
+                        </td>
+                        <td class="date-cell opening-cell">
+                            <span class="opening-value">-</span>
+                        </td>
+                        <!-- Admin Fields (Read-Only) -->
+                        <td>{{ (item.favorite.user_filled_data.pq_eligibility if item.favorite and item.favorite.user_filled_data and item.favorite.user_filled_data.pq_eligibility else 'N/A') }}</td>
+                        <td>{{ (item.favorite.user_filled_data.jv_eligibility if item.favorite and item.favorite.user_filled_data and item.favorite.user_filled_data.jv_eligibility else 'N/A') }}</td>
+                        <td>{{ (item.favorite.user_filled_data.estimated_margin if item.favorite and item.favorite.user_filled_data and item.favorite.user_filled_data.estimated_margin else 'N/A') }}</td>
+                        <td>{{ (item.favorite.user_filled_data.need_of_liaison if item.favorite and item.favorite.user_filled_data and item.favorite.user_filled_data.need_of_liaison else 'N/A') }}</td>
+                        <td>{{ (item.favorite.user_filled_data.next_steps if item.favorite and item.favorite.user_filled_data and item.favorite.user_filled_data.next_steps else 'N/A') }}</td>
+                        <td>{{ (item.favorite.user_filled_data.project_owner if item.favorite and item.favorite.user_filled_data and item.favorite.user_filled_data.project_owner else 'N/A') }}</td>
+                        <!-- Reason for Shortlisting -->
+                        <td class="reason-cell">{{ item.shortlisted.reason }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>No shortlisted tenders yet</h3>
+            <p class="empty-state__message">Shortlist tenders from your favourites to track them here.</p>
+            <a href="/tender-management" class="btn btn-primary" style="margin-top: 1rem;">Go to Favourites</a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Progress Tracking Modal -->
+<div class="modal" id="progressModal" aria-hidden="true" role="dialog" style="display: none;">
+    <div class="modal__overlay" onclick="closeProgressModal()"></div>
+    <div class="modal__dialog" style="max-width: 936px;">
+        <header class="modal__header">
+            <div>
+                <h2 class="modal__title" id="progressModalTitle">Tender Progress Tracking</h2>
+                <p class="modal__subtitle" id="progressModalSubtitle" style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-muted);"></p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button type="button" id="showDocsBtn" class="btn btn-sm btn-outline" onclick="showDocumentsView()" style="white-space: nowrap; min-width: 140px;">📄 Show All Docs</button>
+                <button type="button" id="backToProgressBtn" class="btn btn-sm btn-outline" onclick="showProgressView()" style="white-space: nowrap; min-width: 140px; display: none;">← Back to Progress</button>
+                <button type="button" class="modal__close" onclick="closeProgressModal()">×</button>
+            </div>
+        </header>
+        <div class="modal__body" id="progressView">
+            <!-- 6 Step Progress Tracking -->
+            <div class="progress-steps">
+
+                <!-- Step 1: Pre Bid Meeting -->
+                <div class="progress-step">
+                    <label class="progress-step__label">1. Pre Bid Meeting</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="step1" class="progress-step__select" style="flex: 1;" onchange="handleStepChange(1, this.value)">
+                            <option value="">Select Status</option>
+                            <option value="Attended">Attended</option>
+                            <option value="Not Attended">Not Attended</option>
+                            <option value="Not Applicable">Not Applicable</option>
+                            <option value="Cancelled" class="removal-option">Cancelled (Tender Closed)</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="openUploadModal(1)" title="Upload Document">📎</button>
+                    </div>
+                    <!-- Employee Assignment -->
+                    <div class="employee-assignment">
+                        <label class="employee-assignment-label">Assigned Team Members</label>
+                        <div class="employee-badges" id="employeeBadges1"></div>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="employeeInput1" class="employee-input" placeholder="Type to add employee..." autocomplete="off" oninput="handleEmployeeInput(1, this.value)" onkeydown="handleEmployeeKeydown(1, event)">
+                            <div class="autocomplete-dropdown" id="autocomplete1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Proposal Submission -->
+                <div class="progress-step">
+                    <label class="progress-step__label">2. Proposal Submission</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="step2" class="progress-step__select" style="flex: 1;" onchange="handleStepChange(2, this.value)">
+                            <option value="">Select Status</option>
+                            <option value="Submitted">Submitted</option>
+                            <option value="Not Submitted">Not Submitted</option>
+                            <option value="Tender Cancelled" class="removal-option">Tender Cancelled (Tender Closed)</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="openUploadModal(2)" title="Upload Document">📎</button>
+                    </div>
+                    <!-- Employee Assignment -->
+                    <div class="employee-assignment">
+                        <label class="employee-assignment-label">Assigned Team Members</label>
+                        <div class="employee-badges" id="employeeBadges2"></div>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="employeeInput2" class="employee-input" placeholder="Type to add employee..." autocomplete="off" oninput="handleEmployeeInput(2, this.value)" onkeydown="handleEmployeeKeydown(2, event)">
+                            <div class="autocomplete-dropdown" id="autocomplete2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Technical Proposal Opening -->
+                <div class="progress-step">
+                    <label class="progress-step__label">3. Technical Proposal Opening</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="step3" class="progress-step__select" style="flex: 1;" onchange="handleStepChange(3, this.value)">
+                            <option value="">Select Status</option>
+                            <option value="Not Opened">Not Opened</option>
+                            <option value="Opened & Qualified">Opened & Qualified</option>
+                            <option value="Opened & Not Qualified" class="removal-option">Opened & Not Qualified (Tender Closed)</option>
+                            <option value="Tender Cancelled" class="removal-option">Tender Cancelled (Tender Closed)</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="openUploadModal(3)" title="Upload Document">📎</button>
+                    </div>
+                    <!-- Employee Assignment -->
+                    <div class="employee-assignment">
+                        <label class="employee-assignment-label">Assigned Team Members</label>
+                        <div class="employee-badges" id="employeeBadges3"></div>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="employeeInput3" class="employee-input" placeholder="Type to add employee..." autocomplete="off" oninput="handleEmployeeInput(3, this.value)" onkeydown="handleEmployeeKeydown(3, event)">
+                            <div class="autocomplete-dropdown" id="autocomplete3"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Financial Proposal -->
+                <div class="progress-step">
+                    <label class="progress-step__label">4. Financial Proposal</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="step4" class="progress-step__select" style="flex: 1;" onchange="handleStepChange(4, this.value)">
+                            <option value="">Select Status</option>
+                            <option value="Not Opened">Not Opened</option>
+                            <option value="Opened & Won">Opened & Won</option>
+                            <option value="Opened & Lost" class="removal-option">Opened & Lost (Tender Closed)</option>
+                            <option value="Opened & Not Eligible" class="removal-option">Opened & Not Eligible (Tender Closed)</option>
+                            <option value="Tender Cancelled" class="removal-option">Tender Cancelled (Tender Closed)</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="openUploadModal(4)" title="Upload Document">📎</button>
+                    </div>
+                    <!-- Employee Assignment -->
+                    <div class="employee-assignment">
+                        <label class="employee-assignment-label">Assigned Team Members</label>
+                        <div class="employee-badges" id="employeeBadges4"></div>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="employeeInput4" class="employee-input" placeholder="Type to add employee..." autocomplete="off" oninput="handleEmployeeInput(4, this.value)" onkeydown="handleEmployeeKeydown(4, event)">
+                            <div class="autocomplete-dropdown" id="autocomplete4"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Further Negotiations -->
+                <div class="progress-step">
+                    <label class="progress-step__label">5. Further Negotiations</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="step5" class="progress-step__select" style="flex: 1;" onchange="handleStepChange(5, this.value)">
+                            <option value="">Select Status</option>
+                            <option value="Applicable">Applicable</option>
+                            <option value="Not Applicable">Not Applicable</option>
+                            <option value="Tender Cancelled" class="removal-option">Tender Cancelled (Tender Closed)</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="openUploadModal(5)" title="Upload Document">📎</button>
+                    </div>
+                    <!-- Employee Assignment -->
+                    <div class="employee-assignment">
+                        <label class="employee-assignment-label">Assigned Team Members</label>
+                        <div class="employee-badges" id="employeeBadges5"></div>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="employeeInput5" class="employee-input" placeholder="Type to add employee..." autocomplete="off" oninput="handleEmployeeInput(5, this.value)" onkeydown="handleEmployeeKeydown(5, event)">
+                            <div class="autocomplete-dropdown" id="autocomplete5"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 6: Tender Awarded -->
+                <div class="progress-step">
+                    <label class="progress-step__label">6. Tender Awarded</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="step6" class="progress-step__select" style="flex: 1;" onchange="handleStepChange(6, this.value)">
+                            <option value="">Select Status</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No" class="removal-option">No (Tender Closed)</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="openUploadModal(6)" title="Upload Document">📎</button>
+                    </div>
+                    <!-- Employee Assignment -->
+                    <div class="employee-assignment">
+                        <label class="employee-assignment-label">Assigned Team Members</label>
+                        <div class="employee-badges" id="employeeBadges6"></div>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="employeeInput6" class="employee-input" placeholder="Type to add employee..." autocomplete="off" oninput="handleEmployeeInput(6, this.value)" onkeydown="handleEmployeeKeydown(6, event)">
+                            <div class="autocomplete-dropdown" id="autocomplete6"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="progress-last-updated" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-muted);">
+                Last Updated: <span id="lastUpdated">-</span>
+            </div>
+        </div>
+
+        <!-- Documents View (hidden by default) -->
+        <div class="modal__body" id="documentsView" style="display: none;">
+            <div id="allDocsContainer" style="max-height: 60vh; overflow-y: auto;">
+                <div class="loading-state">Loading documents...</div>
+            </div>
+        </div>
+
+        <footer class="modal__footer" id="progressFooter">
+            <button type="button" class="btn btn-secondary" onclick="closeProgressModal()">Close</button>
+            <button type="button" class="btn btn-primary" onclick="saveAllProgress()">💾 Save Progress</button>
+        </footer>
+        <footer class="modal__footer" id="documentsFooter" style="display: none;">
+            <button type="button" class="btn btn-secondary" onclick="closeProgressModal()">Close</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Upload Document Modal -->
+<div class="modal" id="uploadModal" aria-hidden="true" role="dialog" style="display: none;">
+    <div class="modal__overlay" onclick="closeUploadModal()"></div>
+    <div class="modal__dialog" style="max-width: 500px;">
+        <header class="modal__header">
+            <h2 class="modal__title">Upload Document for <span id="uploadStepName"></span></h2>
+            <button type="button" class="modal__close" onclick="closeUploadModal()">×</button>
+        </header>
+        <div class="modal__body">
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="docTitle" class="form-label">Document Title</label>
+                    <input type="text" id="docTitle" name="title" class="form-control" required placeholder="e.g., Pre-bid Meeting Minutes">
+                </div>
+                <div class="form-group">
+                    <label for="docFile" class="form-label">File</label>
+                    <input type="file" id="docFile" name="file" class="form-control" required accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png">
+                    <small class="form-hint">Accepted formats: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Max 10MB)</small>
+                </div>
+                <div class="form-group">
+                    <label for="docNotes" class="form-label">Notes (Optional)</label>
+                    <textarea id="docNotes" name="notes" class="form-control" rows="3" placeholder="Add any relevant notes..."></textarea>
+                </div>
+            </form>
+        </div>
+        <footer class="modal__footer">
+            <button type="button" class="btn btn-secondary" onclick="closeUploadModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitUpload()">Upload</button>
+        </footer>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+/* Ensure table is horizontally scrollable */
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: var(--space-6);
+    max-width: 100%;
+}
+
+.tender-table {
+    width: 100%;
+    border-collapse: collapse;
+    white-space: nowrap;
+    min-width: 4500px; /* Ensure horizontal scroll with all columns */
+}
+
+.tender-table thead {
+    background: var(--neutral-50);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.tender-table th {
+    padding: var(--space-4);
+    text-align: left;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--neutral-700);
+    border-bottom: 2px solid var(--neutral-200);
+}
+
+.tender-table td {
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--neutral-200);
+    font-size: var(--text-sm);
+    color: var(--neutral-700);
+}
+
+.tender-row {
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.tender-row:hover {
+    background: var(--neutral-50);
+}
+
+.tender-title-cell {
+    font-weight: 500;
+    color: var(--primary-600);
+    white-space: normal;
+    max-width: 300px;
+}
+
+.documents-cell {
+    cursor: default;
+}
+
+.doc-count {
+    color: var(--primary-600);
+    font-weight: 500;
+}
+
+.reason-cell {
+    white-space: normal;
+    max-width: 300px;
+}
+
+/* Progress Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal__overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+.modal__dialog {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 600px;
+    max-height: 85vh;
+    overflow-y: auto;
+    position: relative;
+    z-index: 2001;
+}
+
+.modal__header {
+    padding: 1.5rem 1.5rem 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.modal__title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.modal__close {
+    background: none;
+    border: none;
+    font-size: 1.75rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.modal__close:hover {
+    background: var(--surface-muted);
+    color: var(--text-color);
+}
+
+.modal__body {
+    padding: 1.5rem;
+}
+
+.modal__footer {
+    padding: 1rem 1.5rem 1.5rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+/* Progress Steps */
+.progress-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.progress-step {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.progress-step:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.progress-step__label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-color);
+}
+
+.progress-step__select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 0.95rem;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.progress-step__select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.progress-step__select option.removal-option {
+    color: #dc2626;
+    font-weight: 500;
+}
+
+/* Form Controls */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.form-hint {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+/* Document Cards */
+.document-card {
+    background: var(--surface-muted);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.document-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.document-card__title {
+    font-weight: 600;
+    font-size: 1rem;
+    margin: 0;
+    color: var(--text-color);
+}
+
+.document-card__step {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+}
+
+.document-card__date {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.document-card__notes {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin: 0.5rem 0;
+}
+
+.document-card__actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+/* Employee Assignment Styles */
+.employee-assignment {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: var(--surface-muted);
+    border-radius: 12px;
+}
+
+.employee-assignment-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.employee-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    min-height: 32px;
+}
+
+.employee-badge {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    background: #2563eb;
+    color: white;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    cursor: default;
+}
+
+.employee-badge__letter {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffffff;
+    user-select: none;
+    line-height: 1;
+}
+
+.employee-badge__remove {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.employee-badge__remove:hover {
+    background: #c82333;
+    transform: scale(1.1);
+}
+
+.autocomplete-wrapper {
+    position: relative;
+}
+
+.employee-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+}
+
+.employee-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.autocomplete-dropdown.show {
+    display: block;
+}
+
+.autocomplete-item {
+    padding: 0.65rem 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.15s;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+    background: var(--surface-muted);
+}
+
+.autocomplete-item__initial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.autocomplete-item__name {
+    flex: 1;
+    font-size: 0.9rem;
+}
+
+.autocomplete-item__email {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.autocomplete-empty {
+    padding: 0.75rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.loading-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+}
+</style>
+<script>
+    let currentShortlistId = '';
+    let currentTenderId = '';
+
+    // Removal options that should trigger tender removal
+    const REMOVAL_OPTIONS = [
+        'Cancelled', 'Tender Cancelled', 'Opened & Not Qualified',
+        'Opened & Lost', 'Opened & Not Eligible', 'No'
+    ];
+
+    // Data extraction on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Extract and display all computed fields
+        extractAllComputedFields();
+
+        // Shortlisted rows open progress modal
+        document.querySelectorAll('.shortlisted-row').forEach(row => {
+            row.addEventListener('click', (event) => {
+                const shortlistId = row.dataset.shortlistId;
+                const tenderId = row.dataset.tenderId;
+                const tenderTitle = row.querySelector('.tender-title-cell').textContent;
+                openProgressModal(shortlistId, tenderId, tenderTitle);
+            });
+        });
+    });
+
+    // Extract all computed fields from JSON data
+    function extractAllComputedFields() {
+        // Extract EMD values
+        document.querySelectorAll('.emd-cell').forEach(cell => {
+            const emdData = JSON.parse(cell.dataset.emd || '{}');
+            const emdValue = extractEMDValue(emdData);
+            cell.querySelector('.emd-value').textContent = emdValue;
+        });
+
+        // Extract Fee values
+        document.querySelectorAll('.fee-cell').forEach(cell => {
+            const feeData = JSON.parse(cell.dataset.fee || '{}');
+            const feeValue = extractFeeValue(feeData);
+            cell.querySelector('.fee-value').textContent = feeValue;
+        });
+
+        // Extract Tenure
+        document.querySelectorAll('.tenure-cell').forEach(cell => {
+            const workDetails = JSON.parse(cell.dataset.workDetails || '{}');
+            const tenure = extractTenure(workDetails);
+            cell.querySelector('.tenure-value').textContent = tenure;
+        });
+
+        // Extract Pre-Bid Date and Opening Date from critical dates
+        document.querySelectorAll('.prebid-cell').forEach(cell => {
+            const dates = JSON.parse(cell.dataset.dates || '{}');
+            const preBidDate = extractPreBidDate(dates);
+            cell.querySelector('.prebid-value').textContent = preBidDate;
+        });
+
+        document.querySelectorAll('.opening-cell').forEach(cell => {
+            const row = cell.closest('.tender-row');
+            const datesCell = row.querySelector('.prebid-cell');
+            const dates = JSON.parse(datesCell.dataset.dates || '{}');
+            const openingDate = extractOpeningDate(dates);
+            cell.querySelector('.opening-value').textContent = openingDate;
+        });
+    }
+
+    // Helper functions to extract data from JSON fields
+    function extractEMDValue(emdData) {
+        if (!emdData || Object.keys(emdData).length === 0) return 'N/A';
+
+        if (typeof emdData === 'string') {
+            try {
+                const parsed = JSON.parse(emdData);
+                if (parsed && typeof parsed === 'object') {
+                    return extractEMDValue(parsed);
+                }
+            } catch (e) {
+                try {
+                    const normalized = emdData.replace(/'/g, '"');
+                    const parsed = JSON.parse(normalized);
+                    if (parsed && typeof parsed === 'object') {
+                        return extractEMDValue(parsed);
+                    }
+                } catch (err) {
+                    // fall through to formatting below
+                }
+            }
+            return formatCurrency(emdData);
+        }
+
+        // Try to find amount field
+        const amount = emdData['EMD Amount'] ||
+                       emdData['EMD Amount (INR)'] ||
+                       emdData['EMD Amount in ₹'] ||
+                       emdData['Amount'] ||
+                       emdData['EMD Fee'] ||
+                       emdData['emd_amount'];
+        if (amount) {
+            return formatCurrency(amount);
+        }
+
+        // If it's a single value
+        if (typeof emdData === 'string' || typeof emdData === 'number') {
+            return formatCurrency(emdData);
+        }
+
+        return 'N/A';
+    }
+
+    function extractFeeValue(feeData) {
+        if (!feeData || Object.keys(feeData).length === 0) return 'N/A';
+
+        if (typeof feeData === 'string') {
+            try {
+                const parsed = JSON.parse(feeData);
+                if (parsed && typeof parsed === 'object') {
+                    return extractFeeValue(parsed);
+                }
+            } catch (e) {
+                try {
+                    const normalized = feeData.replace(/'/g, '"');
+                    const parsed = JSON.parse(normalized);
+                    if (parsed && typeof parsed === 'object') {
+                        return extractFeeValue(parsed);
+                    }
+                } catch (err) {
+                    // fall through to formatting below
+                }
+            }
+            return formatCurrency(feeData);
+        }
+
+        // Try to find fee field
+        const fee = feeData['Tender Fee'] ||
+                    feeData['Tender Fee (INR)'] ||
+                    feeData['Tender Fee in ₹'] ||
+                    feeData['Fee'] ||
+                    feeData['Amount'] ||
+                    feeData['tender_fee'];
+        if (fee) {
+            return formatCurrency(fee);
+        }
+
+        // If it's a single value
+        if (typeof feeData === 'string' || typeof feeData === 'number') {
+            return formatCurrency(feeData);
+        }
+
+        return 'N/A';
+    }
+
+    function extractTenure(workDetails) {
+        if (!workDetails || Object.keys(workDetails).length === 0) return 'N/A';
+
+        // Try common field names for tenure/duration
+        const tenure = workDetails['Period of Work'] ||
+                      workDetails['Contract Period'] ||
+                      workDetails['Duration'] ||
+                      workDetails['Completion Period'] ||
+                      workDetails['period_of_work'];
+
+        if (tenure) {
+            // Try to extract number of days
+            const match = String(tenure).match(/(\d+)\s*(day|days|month|months|year|years)/i);
+            if (match) {
+                const num = parseInt(match[1]);
+                const unit = match[2].toLowerCase();
+
+                if (unit.includes('month')) {
+                    return (num * 30) + ' days';
+                } else if (unit.includes('year')) {
+                    return (num * 365) + ' days';
+                } else {
+                    return num + ' days';
+                }
+            }
+            return tenure;
+        }
+
+        return 'N/A';
+    }
+
+    function extractPreBidDate(dates) {
+        if (!dates || Object.keys(dates).length === 0) return 'N/A';
+
+        const preBid = dates['Pre Bid Meeting Date'] ||
+                      dates['Pre-Bid Meeting'] ||
+                      dates['Prebid Date'] ||
+                      dates['pre_bid_date'];
+
+        return formatDate(preBid);
+    }
+
+    function extractOpeningDate(dates) {
+        if (!dates || Object.keys(dates).length === 0) return 'N/A';
+
+        const opening = dates['Opening Date'] ||
+                       dates['Bid Opening Date'] ||
+                       dates['Technical Bid Opening Date'] ||
+                       dates['opening_date'];
+
+        return formatDate(opening);
+    }
+
+    function formatCurrency(value) {
+        if (!value || value === 'N/A' || value === '') return 'N/A';
+
+        // Remove currency symbols and clean
+        const cleaned = String(value).replace(/[₹$,]/g, '').trim();
+        const num = parseFloat(cleaned);
+
+        if (isNaN(num)) return value;
+
+        // Format as Indian currency
+        return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr || dateStr === 'N/A' || dateStr === '') return 'N/A';
+
+        try {
+            // Try to parse the date
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) {
+                // If parsing fails, return original
+                return dateStr;
+            }
+
+            // Format as DD MMM YYYY
+            const options = { day: '2-digit', month: 'short', year: 'numeric' };
+            return date.toLocaleDateString('en-GB', options);
+        } catch (e) {
+            return dateStr;
+        }
+    }
+
+    // Open Progress Modal
+    function openProgressModal(shortlistId, tenderId, tenderTitle) {
+        currentShortlistId = shortlistId;
+        currentTenderId = tenderId;
+
+        const modal = document.getElementById('progressModal');
+        document.getElementById('progressModalSubtitle').textContent = tenderTitle;
+
+        // Fetch current progress data
+        fetch(`/api/tenders/shortlist/${shortlistId}/progress-steps`)
+            .then(response => response.json())
+            .then(data => {
+                // Populate dropdowns with saved values
+                document.getElementById('step1').value = data.step1 || '';
+                document.getElementById('step2').value = data.step2 || '';
+                document.getElementById('step3').value = data.step3 || '';
+                document.getElementById('step4').value = data.step4 || '';
+                document.getElementById('step5').value = data.step5 || '';
+                document.getElementById('step6').value = data.step6 || '';
+
+                document.getElementById('lastUpdated').textContent = data.last_updated
+                    ? new Date(data.last_updated).toLocaleString()
+                    : '-';
+            })
+            .catch(error => {
+                console.error('Error fetching progress:', error);
+            });
+
+        // Load assigned employees
+        loadAssignedEmployees();
+
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Close Progress Modal
+    function closeProgressModal() {
+        const modal = document.getElementById('progressModal');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        currentShortlistId = '';
+        currentTenderId = '';
+
+        // Clear employee data for next open
+        stepEmployees = {1: [], 2: [], 3: [], 4: [], 5: [], 6: []};
+
+        // Clear employee badges visually
+        for (let i = 1; i <= 6; i++) {
+            const container = document.getElementById(`employeeBadges${i}`);
+            if (container) container.innerHTML = '';
+        }
+
+        // Reset to progress view
+        showProgressView();
+
+        document.body.style.overflow = '';
+    }
+
+    // Handle step change
+    function handleStepChange(stepNumber, value) {
+        if (!value) return;
+
+        // Check if this is "Yes" on step 6 (Tender Awarded)
+        if (stepNumber === 6 && value === 'Yes') {
+            if (confirm('Mark this tender as awarded? It will be moved to Awarded Tenders.')) {
+                awardTender();
+            } else {
+                // Reset selection if user cancels
+                document.getElementById('step6').value = '';
+            }
+            return;
+        }
+
+        // Check if this is a removal option
+        if (REMOVAL_OPTIONS.includes(value)) {
+            if (confirm(`This tender will be removed from Shortlisted Tenders. Continue?`)) {
+                removeTenderFromShortlist(value);
+            } else {
+                // Reset selection if user cancels
+                document.getElementById(`step${stepNumber}`).value = '';
+            }
+            return;
+        }
+
+        // Normal save - update the step
+        saveStepProgress(stepNumber, value);
+    }
+
+    // Save step progress
+    function saveStepProgress(stepNumber, value) {
+        const updateData = {};
+        updateData[`step${stepNumber}`] = value;
+
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/progress-steps`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message || data.success) {
+                document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+            } else {
+                alert('Error updating progress: ' + (data.detail || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error updating progress:', error);
+            alert('Error updating progress. Please try again.');
+        });
+    }
+
+    // Remove tender from shortlist
+    function removeTenderFromShortlist(reason) {
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/remove`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ removal_reason: reason })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message || data.success) {
+                alert('Tender removed from shortlist.');
+                closeProgressModal();
+                // Reload page to update the list
+                window.location.reload();
+            } else {
+                alert('Error removing tender: ' + (data.detail || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error removing tender:', error);
+            alert('Error removing tender. Please try again.');
+        });
+    }
+
+    // Award tender
+    function awardTender() {
+        fetch(`/api/tender/${currentTenderId}/award`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message || data.success) {
+                // Also remove from shortlist
+                fetch(`/api/tenders/shortlist/${currentShortlistId}/remove`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ removal_reason: 'Tender Awarded' })
+                })
+                .then(() => {
+                    // Build success message based on project creation status
+                    let message = 'Tender marked as awarded and moved to Awarded Tenders!';
+                    if (data.project_created && data.project_id) {
+                        message += `\n\nA new project "${data.project_name}" has been automatically created in your Past Projects.\nYou can edit it to complete any missing details.`;
+                    }
+                    alert(message);
+                    closeProgressModal();
+                    window.location.reload();
+                });
+            } else {
+                alert('Error awarding tender: ' + (data.detail || 'Unknown error'));
+                document.getElementById('step6').value = '';
+            }
+        })
+        .catch(error => {
+            console.error('Error awarding tender:', error);
+            alert('Error awarding tender. Please try again.');
+            document.getElementById('step6').value = '';
+        });
+    }
+
+    // Save All Progress
+    function saveAllProgress() {
+        const progressData = {
+            step1: document.getElementById('step1').value,
+            step2: document.getElementById('step2').value,
+            step3: document.getElementById('step3').value,
+            step4: document.getElementById('step4').value,
+            step5: document.getElementById('step5').value,
+            step6: document.getElementById('step6').value
+        };
+
+        // Check if step 6 is "Yes" (Tender Awarded)
+        if (progressData.step6 === 'Yes') {
+            if (confirm('Mark this tender as awarded? It will be moved to Awarded Tenders.')) {
+                awardTender();
+            } else {
+                document.getElementById('step6').value = '';
+            }
+            return;
+        }
+
+        // Check for removal options
+        const REMOVAL_OPTIONS = [
+            'Cancelled', 'Tender Cancelled', 'Opened & Not Qualified',
+            'Opened & Lost', 'Opened & Not Eligible', 'No'
+        ];
+
+        for (let i = 1; i <= 6; i++) {
+            const value = progressData[`step${i}`];
+            if (value && REMOVAL_OPTIONS.includes(value)) {
+                if (confirm(`Step ${i} has a removal option selected. This tender will be removed from Shortlisted Tenders. Continue?`)) {
+                    removeTenderFromShortlist(value);
+                } else {
+                    document.getElementById(`step${i}`).value = '';
+                }
+                return;
+            }
+        }
+
+        // Save all steps
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/progress-steps`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(progressData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message || data.success) {
+                alert('✓ Progress saved successfully! All dropdowns and employees are saved.');
+                document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+            } else {
+                alert('Error saving progress: ' + (data.detail || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error saving progress:', error);
+            alert('Error saving progress. Please try again.');
+        });
+    }
+
+    // Document Upload Functions
+    let currentUploadStep = null;
+    const stepNames = {
+        1: 'Step 1: Pre Bid Meeting',
+        2: 'Step 2: Proposal Submission',
+        3: 'Step 3: Technical Proposal Opening',
+        4: 'Step 4: Financial Proposal',
+        5: 'Step 5: Further Negotiations',
+        6: 'Step 6: Tender Awarded'
+    };
+
+    function openUploadModal(stepNumber) {
+        currentUploadStep = stepNumber;
+        document.getElementById('uploadStepName').textContent = stepNames[stepNumber];
+        document.getElementById('uploadForm').reset();
+        document.getElementById('uploadModal').style.display = 'flex';
+        document.getElementById('uploadModal').setAttribute('aria-hidden', 'false');
+    }
+
+    function closeUploadModal() {
+        document.getElementById('uploadModal').style.display = 'none';
+        document.getElementById('uploadModal').setAttribute('aria-hidden', 'true');
+        currentUploadStep = null;
+    }
+
+    function submitUpload() {
+        const form = document.getElementById('uploadForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const formData = new FormData(form);
+        formData.append('shortlist_id', currentShortlistId);
+        formData.append('step_number', currentUploadStep);
+
+        const submitBtn = event.target;
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Uploading...';
+
+        fetch('/api/tenders/shortlist/upload-document', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message || data.success) {
+                alert('Document uploaded successfully!');
+                closeUploadModal();
+            } else {
+                alert('Error uploading document: ' + (data.detail || 'Unknown error'));
+            }
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        })
+        .catch(error => {
+            console.error('Error uploading document:', error);
+            alert('Error uploading document. Please try again.');
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        });
+    }
+
+    // Switch between Progress and Documents views
+    function showDocumentsView() {
+        // Hide progress view
+        document.getElementById('progressView').style.display = 'none';
+        document.getElementById('progressFooter').style.display = 'none';
+        document.getElementById('showDocsBtn').style.display = 'none';
+
+        // Show documents view
+        document.getElementById('documentsView').style.display = 'block';
+        document.getElementById('documentsFooter').style.display = 'flex';
+        document.getElementById('backToProgressBtn').style.display = 'block';
+
+        // Update modal title
+        document.getElementById('progressModalTitle').textContent = 'All Uploaded Documents';
+
+        // Load documents
+        loadAllDocuments();
+    }
+
+    function showProgressView() {
+        // Hide documents view
+        document.getElementById('documentsView').style.display = 'none';
+        document.getElementById('documentsFooter').style.display = 'none';
+        document.getElementById('backToProgressBtn').style.display = 'none';
+
+        // Show progress view
+        document.getElementById('progressView').style.display = 'block';
+        document.getElementById('progressFooter').style.display = 'flex';
+        document.getElementById('showDocsBtn').style.display = 'block';
+
+        // Update modal title
+        document.getElementById('progressModalTitle').textContent = 'Tender Progress Tracking';
+    }
+
+    function loadAllDocuments() {
+        const container = document.getElementById('allDocsContainer');
+        container.innerHTML = '<div class="loading-state">Loading documents...</div>';
+
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/documents`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.documents && data.documents.length > 0) {
+                    container.innerHTML = data.documents.map(doc => `
+                        <div class="document-card">
+                            <div class="document-card__header">
+                                <div>
+                                    <h4 class="document-card__title">${doc.title}</h4>
+                                    <span class="document-card__step">${stepNames[doc.step_number] || 'General'}</span>
+                                </div>
+                                <span class="document-card__date">${new Date(doc.uploaded_at).toLocaleDateString()}</span>
+                            </div>
+                            ${doc.notes ? `<p class="document-card__notes">${doc.notes}</p>` : ''}
+                            <div class="document-card__actions">
+                                <a href="/api/tenders/shortlist/document/${doc.id}/download" class="btn btn-sm btn-outline" download>
+                                    Download
+                                </a>
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="deleteDocument(${doc.id})">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state"><p>No documents uploaded yet.</p></div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading documents:', error);
+                container.innerHTML = '<div class="empty-state"><p>Error loading documents.</p></div>';
+            });
+    }
+
+    function deleteDocument(docId) {
+        if (!confirm('Are you sure you want to delete this document?')) return;
+
+        fetch(`/api/tenders/shortlist/document/${docId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message || data.success) {
+                alert('Document deleted successfully!');
+                loadAllDocuments();
+            } else {
+                alert('Error deleting document: ' + (data.detail || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting document:', error);
+            alert('Error deleting document. Please try again.');
+        });
+    }
+
+    // Employee Assignment Variables
+    let allEmployees = [];
+    let stepEmployees = {1: [], 2: [], 3: [], 4: [], 5: [], 6: []};
+    let selectedAutocompleteIndex = -1;
+
+    // Fetch all employees on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchAllEmployees();
+    });
+
+    function fetchAllEmployees() {
+        fetch('/api/employees/list')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    allEmployees = data.employees || [];
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching employees:', error);
+            });
+    }
+
+    // Handle employee input with autocomplete
+    function handleEmployeeInput(stepNumber, value) {
+        const dropdown = document.getElementById(`autocomplete${stepNumber}`);
+
+        if (!value.trim()) {
+            dropdown.classList.remove('show');
+            selectedAutocompleteIndex = -1;
+            return;
+        }
+
+        // Filter employees based on input
+        const searchTerm = value.toLowerCase();
+        const filteredEmployees = allEmployees.filter(emp => {
+            const alreadyAssigned = stepEmployees[stepNumber].some(e => e.id === emp.id);
+            if (alreadyAssigned) return false;
+
+            return emp.name.toLowerCase().includes(searchTerm) ||
+                   emp.email.toLowerCase().includes(searchTerm);
+        });
+
+        // Display autocomplete results
+        if (filteredEmployees.length > 0) {
+            dropdown.innerHTML = filteredEmployees.map((emp, index) => `
+                <div class="autocomplete-item" data-index="${index}" data-employee='${JSON.stringify(emp)}' onclick="selectEmployee(${stepNumber}, ${index})">
+                    <span class="autocomplete-item__initial">${emp.name.charAt(0).toUpperCase()}</span>
+                    <div style="flex: 1;">
+                        <div class="autocomplete-item__name">${emp.name}</div>
+                        <div class="autocomplete-item__email">${emp.email}${emp.role ? ' • ' + emp.role : ''}</div>
+                    </div>
+                </div>
+            `).join('');
+            dropdown.classList.add('show');
+            selectedAutocompleteIndex = -1;
+        } else {
+            dropdown.innerHTML = '<div class="autocomplete-empty">No employees found</div>';
+            dropdown.classList.add('show');
+        }
+    }
+
+    // Handle keyboard navigation in autocomplete
+    function handleEmployeeKeydown(stepNumber, event) {
+        const dropdown = document.getElementById(`autocomplete${stepNumber}`);
+        const items = dropdown.querySelectorAll('.autocomplete-item');
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            selectedAutocompleteIndex = Math.min(selectedAutocompleteIndex + 1, items.length - 1);
+            updateAutocompleteSelection(stepNumber);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            selectedAutocompleteIndex = Math.max(selectedAutocompleteIndex - 1, -1);
+            updateAutocompleteSelection(stepNumber);
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            if (selectedAutocompleteIndex >= 0 && items[selectedAutocompleteIndex]) {
+                selectEmployee(stepNumber, selectedAutocompleteIndex);
+            }
+        } else if (event.key === 'Escape') {
+            dropdown.classList.remove('show');
+            selectedAutocompleteIndex = -1;
+        }
+    }
+
+    function updateAutocompleteSelection(stepNumber) {
+        const dropdown = document.getElementById(`autocomplete${stepNumber}`);
+        const items = dropdown.querySelectorAll('.autocomplete-item');
+
+        items.forEach((item, index) => {
+            if (index === selectedAutocompleteIndex) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    // Select employee from autocomplete
+    function selectEmployee(stepNumber, index) {
+        const dropdown = document.getElementById(`autocomplete${stepNumber}`);
+        const item = dropdown.querySelectorAll('.autocomplete-item')[index];
+
+        if (!item) return;
+
+        const employee = JSON.parse(item.dataset.employee);
+
+        // Assign employee to step
+        assignEmployeeToStep(stepNumber, employee);
+
+        // Clear input and hide dropdown
+        document.getElementById(`employeeInput${stepNumber}`).value = '';
+        dropdown.classList.remove('show');
+        selectedAutocompleteIndex = -1;
+    }
+
+    // Assign employee to step
+    function assignEmployeeToStep(stepNumber, employee) {
+        // Add to local array
+        stepEmployees[stepNumber].push(employee);
+
+        // Update UI
+        renderEmployeeBadges(stepNumber);
+
+        // Save to backend
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/assign-employee`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                step_number: stepNumber,
+                employee_id: employee.id
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Error assigning employee:', data.detail);
+                // Remove from local array on error
+                stepEmployees[stepNumber] = stepEmployees[stepNumber].filter(e => e.id !== employee.id);
+                renderEmployeeBadges(stepNumber);
+            }
+        })
+        .catch(error => {
+            console.error('Error assigning employee:', error);
+            stepEmployees[stepNumber] = stepEmployees[stepNumber].filter(e => e.id !== employee.id);
+            renderEmployeeBadges(stepNumber);
+        });
+    }
+
+    // Remove employee from step
+    function removeEmployeeFromStep(stepNumber, employeeId) {
+        // Remove from local array
+        stepEmployees[stepNumber] = stepEmployees[stepNumber].filter(e => e.id !== employeeId);
+
+        // Update UI
+        renderEmployeeBadges(stepNumber);
+
+        // Remove from backend
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/unassign-employee`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                step_number: stepNumber,
+                employee_id: employeeId
+            })
+        })
+        .then(response => response.json())
+        .catch(error => {
+            console.error('Error unassigning employee:', error);
+        });
+    }
+
+    // Generate consistent color for employee based on their ID
+    function getEmployeeColor(employeeId) {
+        const colors = [
+            '#2563eb', // blue
+            '#7c3aed', // purple
+            '#db2777', // pink
+            '#dc2626', // red
+            '#ea580c', // orange
+            '#ca8a04', // yellow
+            '#16a34a', // green
+            '#0891b2', // cyan
+            '#4f46e5', // indigo
+            '#be123c'  // rose
+        ];
+
+        // Use employee ID to consistently assign same color
+        const hash = employeeId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        return colors[hash % colors.length];
+    }
+
+    // Render employee badges
+    function renderEmployeeBadges(stepNumber) {
+        const container = document.getElementById(`employeeBadges${stepNumber}`);
+
+        if (stepEmployees[stepNumber].length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        container.innerHTML = stepEmployees[stepNumber].map(emp => `
+            <div class="employee-badge" style="background: ${getEmployeeColor(emp.id)};" title="${emp.name}${emp.role ? ' (' + emp.role + ')' : ''}">
+                <span class="employee-badge__letter">${emp.name.charAt(0).toUpperCase()}</span>
+                <span class="employee-badge__remove" onclick="event.stopPropagation(); removeEmployeeFromStep(${stepNumber}, '${emp.id}')" title="Remove ${emp.name}">×</span>
+            </div>
+        `).join('');
+    }
+
+    // Load assigned employees when opening progress modal
+    function loadAssignedEmployees() {
+        console.log('Loading assigned employees for shortlist:', currentShortlistId);
+
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/assigned-employees`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Received employee assignments:', data);
+
+                if (data.success && data.assignments) {
+                    // Clear existing assignments
+                    stepEmployees = {1: [], 2: [], 3: [], 4: [], 5: [], 6: []};
+
+                    // Populate step employees
+                    for (let step = 1; step <= 6; step++) {
+                        stepEmployees[step] = data.assignments[`step${step}`] || [];
+                        console.log(`Step ${step} employees:`, stepEmployees[step]);
+                        renderEmployeeBadges(step);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading assigned employees:', error);
+            });
+    }
+
+    // Close autocomplete when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.autocomplete-wrapper')) {
+            document.querySelectorAll('.autocomplete-dropdown').forEach(dropdown => {
+                dropdown.classList.remove('show');
+            });
+            selectedAutocompleteIndex = -1;
+        }
+    });
+</script>
+{% endblock %}

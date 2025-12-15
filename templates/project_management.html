@@ -1,0 +1,1466 @@
+{% extends "base.html" %}
+
+{% block title %}Project Management - TenderHub{% endblock %}
+
+{% block extra_head %}
+<style>
+    .projects-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+    }
+
+    .header-title-row {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        flex: 1;
+    }
+
+    .header-action-btn {
+        padding: 0.75rem 1.25rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .header-action-btn:hover {
+        background: linear-gradient(135deg, #5568d3 0%, #63408a 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .page-subtitle {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+
+    /* Summary Stats */
+    .summary-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: var(--card-bg, #ffffff);
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .stat-icon.primary {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
+
+    .stat-icon.success {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .stat-icon.warning {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+
+    .stat-content {
+        flex: 1;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    /* Projects Grid */
+    .projects-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+        max-width: 1200px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .project-card {
+        background: var(--card-bg, #ffffff);
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 1.75rem 2rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .project-card:hover {
+        border-color: var(--primary-600);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .project-header {
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1.5rem;
+    }
+
+    .project-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        flex: 1;
+        line-height: 1.4;
+    }
+
+    .project-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+    }
+
+    .project-id {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-family: monospace;
+    }
+
+    .project-status {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .project-status.primary {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
+
+    .project-status.success {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .project-status.warning {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+
+    .project-status.neutral {
+        background: rgba(107, 114, 128, 0.1);
+        color: #6b7280;
+    }
+
+    .project-client {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Team and Progress Container */
+    .project-middle-section {
+        display: grid;
+        grid-template-columns: 1fr 1.5fr;
+        gap: 2rem;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    /* Team Section */
+    .project-team {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .team-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .team-avatars {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .avatar-group {
+        display: flex;
+        margin-right: 0.5rem;
+    }
+
+    .avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border: 2px solid var(--card-bg, #ffffff);
+        margin-left: -8px;
+        position: relative;
+    }
+
+    .avatar:first-child {
+        margin-left: 0;
+    }
+
+    .avatar:nth-child(2) {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .avatar:nth-child(3) {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .avatar:nth-child(4) {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+
+    .team-count {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+
+    .no-team {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        font-style: italic;
+    }
+
+    /* Progress Section */
+    .project-progress {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .progress-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .progress-percent {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .progress-bar-container {
+        height: 8px;
+        background: var(--background, #f9fafb);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 0.75rem;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+        border-radius: 12px;
+        transition: width 0.3s ease;
+    }
+
+    .progress-bar-fill.completed {
+        background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+    }
+
+    /* Task Breakdown */
+    .task-breakdown {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+        padding-bottom: 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .task-stat {
+        text-align: center;
+        padding: 0.75rem;
+        background: var(--background, #f9fafb);
+        border-radius: 12px;
+        transition: all 0.2s ease;
+    }
+
+    .task-stat:hover {
+        background: rgba(59, 130, 246, 0.05);
+        transform: translateY(-1px);
+    }
+
+    .task-stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .task-stat-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Quick Actions */
+    .project-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-project {
+        flex: 1;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 12px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        max-width: 200px;
+    }
+
+    .btn-project-primary {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-project-primary:hover {
+        background: #2563eb;
+    }
+
+    .btn-project-secondary {
+        background: var(--background, #f9fafb);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+    }
+
+    .btn-project-secondary:hover {
+        background: var(--card-bg);
+        border-color: var(--primary-600);
+    }
+
+    .btn-project-info {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-project-info:hover {
+        background: linear-gradient(135deg, #5568d3 0%, #63408a 100%);
+        transform: translateY(-1px);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--card-bg, #ffffff);
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+    }
+
+    .empty-state-icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 1.5rem;
+        opacity: 0.3;
+    }
+
+    .empty-state-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state-description {
+        font-size: 0.95rem;
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+
+    .btn-empty-state {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        background: #3b82f6;
+        color: white;
+        text-decoration: none;
+        border-radius: 12px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .btn-empty-state:hover {
+        background: #2563eb;
+        transform: translateY(-2px);
+    }
+
+    /* Deliverables Modal */
+    .deliverables-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+        position: relative;
+        background: var(--card-bg, #ffffff);
+        border-radius: 12px;
+        width: 100%;
+        max-width: 800px;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: modalSlideIn 0.3s ease;
+    }
+
+    @keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modal-header {
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--border-color, #e5e7eb);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .modal-title-section {
+        flex: 1;
+    }
+
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 0.25rem 0;
+    }
+
+    .modal-subtitle {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    .modal-close {
+        background: var(--background, #f9fafb);
+        border: none;
+        border-radius: 12px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+    }
+
+    .modal-close:hover {
+        background: var(--border-color, #e5e7eb);
+        transform: rotate(90deg);
+    }
+
+    .modal-body {
+        padding: 1.5rem 2rem;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .deliverables-search {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 20px;
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+
+    .deliverables-search input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 3rem;
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+    }
+
+    .deliverables-search input:focus {
+        outline: none;
+        border-color: var(--primary-600, #3b82f6);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .deliverables-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .deliverable-item {
+        background: var(--background, #f9fafb);
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .deliverable-item:hover {
+        border-color: var(--primary-600, #3b82f6);
+        background: var(--card-bg, #ffffff);
+        transform: translateX(4px);
+    }
+
+    .deliverable-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .deliverable-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .deliverable-name {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .deliverable-meta {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .deliverable-uploader {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+    }
+
+    .uploader-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.625rem;
+        font-weight: 600;
+    }
+
+    .deliverable-time {
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+    }
+
+    .deliverable-task {
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+        font-style: italic;
+    }
+
+    .deliverable-download {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 0.5rem 1rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+    }
+
+    .deliverable-download:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+    }
+
+    .loading-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-secondary);
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--border-color, #e5e7eb);
+        border-top-color: var(--primary-600, #3b82f6);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .modal-empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-secondary);
+    }
+
+    .modal-empty-state p {
+        margin-top: 1rem;
+        font-size: 0.9375rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .projects-grid {
+            grid-template-columns: 1fr;
+            max-width: 100%;
+        }
+
+        .summary-stats {
+            grid-template-columns: 1fr;
+        }
+
+        .header-title-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .header-action-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+        }
+
+        .project-header {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .project-middle-section {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .project-card {
+            padding: 1.25rem;
+        }
+
+        .project-title {
+            font-size: 1.125rem;
+        }
+
+        .btn-project {
+            max-width: none;
+        }
+
+        .task-breakdown {
+            gap: 0.5rem;
+        }
+
+        .task-stat-value {
+            font-size: 1.5rem;
+        }
+
+        .modal-content {
+            max-height: 95vh;
+            margin: 0;
+        }
+
+        .modal-header,
+        .modal-body {
+            padding: 1rem 1.25rem;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+        }
+
+        .deliverable-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .deliverable-meta {
+            width: 100%;
+        }
+
+        .deliverable-download {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="projects-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-title-row">
+            <h1 class="page-title">Project Management</h1>
+            <div style="display: flex; gap: 1rem;">
+                <a href="/employee-performance" class="header-action-btn">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    Employee Performance
+                </a>
+                <a href="/manage-experts" class="header-action-btn">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    </svg>
+                    Manage Experts
+                </a>
+            </div>
+        </div>
+        <p class="page-subtitle">Monitor your awarded tenders, track team progress, and manage deliverables</p>
+    </div>
+
+    <!-- Summary Statistics -->
+    {% if projects %}
+    <div class="summary-stats">
+        <div class="stat-card">
+            <div class="stat-icon primary">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-label">Total Projects</div>
+                <div class="stat-value">{{ total_projects }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon warning">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-label">Active Projects</div>
+                <div class="stat-value">{{ active_projects }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon success">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-label">Completed Projects</div>
+                <div class="stat-value">{{ completed_projects }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Projects Grid -->
+    {% if projects %}
+    <div class="projects-grid">
+        {% for project in projects %}
+        <div class="project-card" onclick="window.location.href='/tender/{{ project.tender.id }}/tasks'">
+            <div class="project-header">
+                <h3 class="project-title">{{ project.tender.title }}</h3>
+                <div class="project-meta">
+                    <span class="project-id">ID: {{ project.tender.tender_id }}</span>
+                    <span class="project-status {{ project.status_color }}">{{ project.status }}</span>
+                </div>
+                {% if project.tender.client_name %}
+                <div class="project-client">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    <span>{{ project.tender.client_name }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Team and Progress Section -->
+            <div class="project-middle-section">
+                <!-- Team Section -->
+                <div class="project-team">
+                    <div class="team-label">Team Members</div>
+                    {% if project.team_count > 0 %}
+                    <div class="team-avatars">
+                        <div class="avatar-group">
+                            {% for member in project.team_members[:4] %}
+                            <div class="avatar" title="{{ member.name }}">
+                                {{ member.name[0]|upper }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <span class="team-count">
+                            {% if project.team_count > 4 %}
+                            +{{ project.team_count - 4 }} more
+                            {% elif project.team_count == 1 %}
+                            1 member
+                            {% else %}
+                            {{ project.team_count }} members
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% else %}
+                    <div class="no-team">No team assigned yet</div>
+                    {% endif %}
+                </div>
+
+                <!-- Progress Section -->
+                <div class="project-progress">
+                    <div class="progress-header">
+                        <span class="progress-label">Overall Progress</span>
+                        <span class="progress-percent">{{ project.progress }}%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill {% if project.progress == 100 %}completed{% endif %}"
+                             style="width: {{ project.progress }}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task Breakdown -->
+            <div class="task-breakdown">
+                <div class="task-stat">
+                    <span class="task-stat-value">{{ project.total_tasks }}</span>
+                    <span class="task-stat-label">Total</span>
+                </div>
+                <div class="task-stat">
+                    <span class="task-stat-value" style="color: #f59e0b;">{{ project.in_progress_tasks }}</span>
+                    <span class="task-stat-label">In Progress</span>
+                </div>
+                <div class="task-stat">
+                    <span class="task-stat-value" style="color: #10b981;">{{ project.completed_tasks }}</span>
+                    <span class="task-stat-label">Completed</span>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="project-actions">
+                <a href="/tender/{{ project.tender.id }}/tasks" class="btn-project btn-project-primary" onclick="event.stopPropagation()">
+                    Manage Tasks
+                </a>
+                {% if project.id %}
+                <button class="btn-project btn-project-info" 
+                        data-project-id="{{ project.id }}" 
+                        data-project-name="{{ project.project_name }}"
+                        onclick="event.stopPropagation(); openDeliverablesModal(this.dataset.projectId, this.dataset.projectName)">
+                    View Deliverables
+                </button>
+                <button class="btn-project btn-project-success" 
+                        data-project-id="{{ project.id }}"
+                        data-tender-id="{{ project.tender.id }}"
+                        data-tender-title="{{ project.tender.title }}"
+                        data-tender-category="{{ project.tender.category }}"
+                        data-tender-state="{{ project.tender.state }}"
+                        onclick="event.stopPropagation(); openHireExpertModal(this.dataset)">
+                    Hire Expert
+                </button>
+                {% endif %}
+                <a href="/tender/{{ project.tender.id }}" class="btn-project btn-project-secondary" onclick="event.stopPropagation()">
+                    View Details
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+        </svg>
+        <h2 class="empty-state-title">No Projects Yet</h2>
+        <p class="empty-state-description">
+            Your awarded tenders will appear here as project cards.<br>
+            Start by searching for tenders and marking them as awarded.
+        </p>
+        <a href="/search" class="btn-empty-state">Browse Tenders</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Deliverables Modal -->
+<div id="deliverablesModal" class="deliverables-modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeDeliverablesModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-title-section">
+                <h2 class="modal-title">Project Deliverables</h2>
+                <p class="modal-subtitle" id="modalProjectName"></p>
+            </div>
+            <button class="modal-close" onclick="closeDeliverablesModal()" aria-label="Close">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <!-- Search Bar -->
+            <div class="deliverables-search">
+                <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input type="text" id="deliverableSearch" placeholder="Search deliverables by file name, uploader, or task..." onkeyup="filterDeliverables()">
+            </div>
+
+            <!-- Loading State -->
+            <div id="deliverablesLoading" class="loading-state" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading deliverables...</p>
+            </div>
+
+            <!-- Deliverables List -->
+            <div id="deliverablesList" class="deliverables-list"></div>
+
+            <!-- Empty State -->
+            <div id="deliverablesEmpty" class="modal-empty-state" style="display: none;">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 64px; height: 64px; opacity: 0.3;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <p>No deliverables uploaded yet</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hire Expert Modal -->
+<div id="hireExpertModal" class="deliverables-modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeHireExpertModal()"></div>
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <div class="modal-title-section">
+                <h2 class="modal-title">Hire Expert</h2>
+                <p class="modal-subtitle">Create a request to hire an expert for this project</p>
+            </div>
+            <button class="modal-close" onclick="closeHireExpertModal()" aria-label="Close">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <form id="hireExpertForm" onsubmit="submitHireExpertRequest(event)">
+                <!-- Auto-populated Project/Tender Info (Read-only) -->
+                <div style="background: #f3f4f6; padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.75rem;">Project & Tender Details</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.875rem;">
+                        <div>
+                            <span style="color: #6b7280;">Tender:</span>
+                            <span id="modalTenderTitle" style="color: #111827; font-weight: 500; display: block; margin-top: 0.25rem;"></span>
+                        </div>
+                        <div>
+                            <span style="color: #6b7280;">Sector:</span>
+                            <span id="modalTenderSector" style="color: #111827; font-weight: 500; display: block; margin-top: 0.25rem;"></span>
+                        </div>
+                        <div>
+                            <span style="color: #6b7280;">Location:</span>
+                            <span id="modalTenderLocation" style="color: #111827; font-weight: 500; display: block; margin-top: 0.25rem;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Request Name -->
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="requestName" class="form-label" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                        Request Name <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="text" id="requestName" name="request_name" required
+                           placeholder="e.g., DPR Preparation Expert for Water Supply Project"
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px; font-size: 0.875rem;">
+                </div>
+
+                <!-- Description -->
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="requestDescription" class="form-label" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                        Description <span style="color: #ef4444;">*</span>
+                    </label>
+                    <textarea id="requestDescription" name="description" required rows="5"
+                              placeholder="Describe the expert services you need, required skills, timeline, and any specific requirements..."
+                              style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px; font-size: 0.875rem; resize: vertical;"></textarea>
+                </div>
+
+                <!-- Budget Type -->
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label class="form-label" style="display: block; margin-bottom: 0.75rem; font-weight: 600; color: #374151;">
+                        Budget Type <span style="color: #ef4444;">*</span>
+                    </label>
+                    <div style="display: flex; gap: 1rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="radio" name="budget_type" value="fixed" checked onchange="toggleBudgetInputs()" style="cursor: pointer;">
+                            <span>Fixed Amount</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="radio" name="budget_type" value="negotiable" onchange="toggleBudgetInputs()" style="cursor: pointer;">
+                            <span>Negotiable</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Fixed Budget -->
+                <div class="form-group" id="fixedBudgetGroup" style="margin-bottom: 1.5rem;">
+                    <label for="budgetAmount" class="form-label" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                        Budget Amount (₹) <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="number" id="budgetAmount" name="budget_amount" min="0" step="0.01"
+                           placeholder="Enter fixed budget amount"
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px; font-size: 0.875rem;">
+                </div>
+
+                <!-- Negotiable Budget -->
+                <div class="form-group" id="negotiableBudgetGroup" style="margin-bottom: 1.5rem; display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <label for="budgetMin" class="form-label" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                                Minimum (₹) <span style="color: #ef4444;">*</span>
+                            </label>
+                            <input type="number" id="budgetMin" name="budget_min" min="0" step="0.01"
+                                   placeholder="Min budget"
+                                   style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px; font-size: 0.875rem;">
+                        </div>
+                        <div>
+                            <label for="budgetMax" class="form-label" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                                Maximum (₹)
+                            </label>
+                            <input type="number" id="budgetMax" name="budget_max" min="0" step="0.01"
+                                   placeholder="Max budget (optional)"
+                                   style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px; font-size: 0.875rem;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end; padding-top: 1.5rem; margin-top: 1rem; border-top: 1px solid #e5e7eb;">
+                    <button type="button" onclick="closeHireExpertModal()" 
+                            style="padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 600; cursor: pointer; border: none; background: #f3f4f6; color: #374151;">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            style="padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 600; cursor: pointer; border: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        Create Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let currentDeliverables = [];
+
+    // Open modal and fetch deliverables
+    async function openDeliverablesModal(projectId, projectName) {
+        console.log('Opening deliverables modal for project:', projectId, projectName);
+        
+        const modal = document.getElementById('deliverablesModal');
+        const projectNameEl = document.getElementById('modalProjectName');
+        const loadingEl = document.getElementById('deliverablesLoading');
+        const listEl = document.getElementById('deliverablesList');
+        const emptyEl = document.getElementById('deliverablesEmpty');
+        const searchEl = document.getElementById('deliverableSearch');
+
+        console.log('Modal element:', modal);
+
+        if (!modal) {
+            console.error('Modal element not found!');
+            return;
+        }
+
+        // Show modal
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        // Set project name
+        projectNameEl.textContent = projectName;
+
+        // Clear previous state
+        searchEl.value = '';
+        listEl.innerHTML = '';
+        loadingEl.style.display = 'block';
+        emptyEl.style.display = 'none';
+
+        try {
+            const response = await fetch(`/api/project/${projectId}/deliverables`);
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch deliverables');
+            }
+
+            const data = await response.json();
+            currentDeliverables = data.deliverables || [];
+
+            loadingEl.style.display = 'none';
+
+            if (currentDeliverables.length === 0) {
+                emptyEl.style.display = 'block';
+            } else {
+                renderDeliverables(currentDeliverables);
+            }
+        } catch (error) {
+            console.error('Error fetching deliverables:', error);
+            loadingEl.style.display = 'none';
+            listEl.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ef4444;">Error loading deliverables. Please try again.</div>';
+        }
+    }
+
+    // Close modal
+    function closeDeliverablesModal() {
+        const modal = document.getElementById('deliverablesModal');
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        currentDeliverables = [];
+    }
+
+    // Render deliverables list
+    function renderDeliverables(deliverables) {
+        const listEl = document.getElementById('deliverablesList');
+        
+        if (deliverables.length === 0) {
+            listEl.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">No deliverables match your search.</div>';
+            return;
+        }
+
+        listEl.innerHTML = deliverables.map(item => `
+            <div class="deliverable-item" data-searchable="${item.filename.toLowerCase()} ${item.uploader.toLowerCase()} ${item.task.toLowerCase()}">
+                <div class="deliverable-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <div class="deliverable-info">
+                    <div class="deliverable-name" title="${item.filename}">${item.filename}</div>
+                    <div class="deliverable-meta">
+                        <div class="deliverable-uploader">
+                            <div class="uploader-avatar">${item.uploader[0].toUpperCase()}</div>
+                            <span>${item.uploader}</span>
+                        </div>
+                        <div class="deliverable-time">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 14px; height: 14px; display: inline; vertical-align: middle; margin-right: 4px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            ${formatDateTime(item.uploaded_at)}
+                        </div>
+                        ${item.task ? `<div class="deliverable-task">Task: ${item.task}</div>` : ''}
+                    </div>
+                </div>
+                <button class="deliverable-download" onclick="downloadDeliverable('${item.download_url}', '${item.filename}')">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline; vertical-align: middle; margin-right: 4px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Download
+                </button>
+            </div>
+        `).join('');
+    }
+
+    // Filter deliverables based on search
+    function filterDeliverables() {
+        const searchTerm = document.getElementById('deliverableSearch').value.toLowerCase();
+        
+        if (!searchTerm) {
+            renderDeliverables(currentDeliverables);
+            return;
+        }
+
+        const filtered = currentDeliverables.filter(item => {
+            const searchText = `${item.filename} ${item.uploader} ${item.task}`.toLowerCase();
+            return searchText.includes(searchTerm);
+        });
+
+        renderDeliverables(filtered);
+    }
+
+    // Download deliverable
+    function downloadDeliverable(url, filename) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    // Format date and time
+    function formatDateTime(dateString) {
+        if (!dateString) return 'Unknown';
+        
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+        if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+
+        return date.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeDeliverablesModal();
+        }
+    });
+
+    // Hire Expert Modal Functions
+    let currentProjectData = null;
+
+    function openHireExpertModal(projectData) {
+        currentProjectData = projectData;
+        const modal = document.getElementById('hireExpertModal');
+        const form = document.getElementById('hireExpertForm');
+        
+        // Populate tender details
+        document.getElementById('modalTenderTitle').textContent = projectData.tenderTitle || 'N/A';
+        document.getElementById('modalTenderSector').textContent = projectData.tenderCategory || 'N/A';
+        // Try to get location from tender, but we'll need to fetch it from the API
+        // For now, show state as fallback
+        document.getElementById('modalTenderLocation').textContent = projectData.tenderState || 'N/A';
+        
+        // Reset form
+        form.reset();
+        toggleBudgetInputs(); // Set initial budget input visibility
+        
+        // Show modal
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeHireExpertModal() {
+        const modal = document.getElementById('hireExpertModal');
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        currentProjectData = null;
+    }
+
+    function toggleBudgetInputs() {
+        const budgetType = document.querySelector('input[name="budget_type"]:checked').value;
+        const fixedGroup = document.getElementById('fixedBudgetGroup');
+        const negotiableGroup = document.getElementById('negotiableBudgetGroup');
+        const budgetAmount = document.getElementById('budgetAmount');
+        const budgetMin = document.getElementById('budgetMin');
+        const budgetMax = document.getElementById('budgetMax');
+        
+        if (budgetType === 'fixed') {
+            fixedGroup.style.display = 'block';
+            negotiableGroup.style.display = 'none';
+            budgetAmount.required = true;
+            budgetMin.required = false;
+            budgetMax.required = false;
+            budgetMin.value = '';
+            budgetMax.value = '';
+        } else {
+            fixedGroup.style.display = 'none';
+            negotiableGroup.style.display = 'block';
+            budgetAmount.required = false;
+            budgetMin.required = true;
+            budgetMax.required = false;
+            budgetAmount.value = '';
+        }
+    }
+
+    async function submitHireExpertRequest(event) {
+        event.preventDefault();
+        
+        if (!currentProjectData) {
+            alert('Error: Project data not found');
+            return;
+        }
+        
+        const form = event.target;
+        const formData = new FormData(form);
+        const data = {
+            request_name: formData.get('request_name'),
+            description: formData.get('description'),
+            budget_type: formData.get('budget_type'),
+            budget_amount: formData.get('budget_amount') ? parseFloat(formData.get('budget_amount')) : null,
+            budget_min: formData.get('budget_min') ? parseFloat(formData.get('budget_min')) : null,
+            budget_max: formData.get('budget_max') ? parseFloat(formData.get('budget_max')) : null
+        };
+        
+        // Validation
+        if (data.budget_type === 'fixed' && !data.budget_amount) {
+            alert('Please enter a budget amount for fixed budget');
+            return;
+        }
+        if (data.budget_type === 'negotiable' && !data.budget_min) {
+            alert('Please enter a minimum budget for negotiable budget');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/project/${currentProjectData.projectId}/expert-request`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.detail || 'Failed to create expert request');
+            }
+            
+            alert('Expert hiring request created successfully! It will now appear in experts\' Opportunities page.');
+            closeHireExpertModal();
+            
+            // Optionally refresh the page or show success message
+        } catch (error) {
+            console.error('Error creating expert request:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+</script>
+{% endblock %}

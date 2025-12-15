@@ -1,0 +1,902 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - TenderHub{% endblock %}
+
+{% block content %}
+<style>
+/* Profile Page Styles */
+.profile-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+/* Hero Section */
+.profile-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    padding: 48px 32px;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(30%, -30%);
+}
+
+.profile-hero-content {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    position: relative;
+    z-index: 1;
+}
+
+.profile-image-container {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.profile-avatar {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+}
+
+.profile-avatar-placeholder {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+}
+
+.profile-image-upload-btn {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: white;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.3s ease;
+}
+
+.profile-image-upload-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.profile-hero-info {
+    flex-grow: 1;
+    color: white;
+}
+
+.profile-hero-name {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.profile-hero-meta {
+    display: flex;
+    gap: 24px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.profile-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 14px;
+}
+
+.profile-meta-label {
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+/* Tabs */
+.profile-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid #e5e7eb;
+    overflow-x: auto;
+}
+
+.profile-tab {
+    padding: 12px 24px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    color: #6b7280;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.profile-tab:hover {
+    color: #667eea;
+}
+
+.profile-tab.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+}
+
+/* Tab Content */
+.profile-tab-content {
+    display: none;
+}
+
+.profile-tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Cards */
+.profile-card {
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 24px;
+}
+
+.profile-card-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 24px 0;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.profile-card-subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin: -16px 0 24px 0;
+}
+
+/* Form Groups */
+.profile-form-group {
+    margin-bottom: 24px;
+}
+
+.profile-form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+}
+
+.profile-form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
+
+.profile-form-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.profile-form-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 15px;
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+    transition: all 0.3s ease;
+}
+
+.profile-form-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.profile-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 24px;
+}
+
+/* Buttons */
+.profile-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.profile-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.profile-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.profile-btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.profile-btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.profile-btn-danger {
+    background: #ef4444;
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.profile-btn-danger:hover {
+    background: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+.profile-form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+    justify-content: flex-end;
+}
+
+/* Info Display */
+.profile-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 24px;
+}
+
+.profile-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.profile-info-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.profile-info-value {
+    font-size: 16px;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+/* Preferences */
+.preference-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: #f9fafb;
+    border-radius: 12px;
+    margin-bottom: 12px;
+}
+
+.preference-info {
+    flex-grow: 1;
+}
+
+.preference-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.preference-desc {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.preference-toggle {
+    position: relative;
+    width: 52px;
+    height: 28px;
+    background: #d1d5db;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.preference-toggle.active {
+    background: #667eea;
+}
+
+.preference-toggle-slider {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 24px;
+    height: 24px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.preference-toggle.active .preference-toggle-slider {
+    transform: translateX(24px);
+}
+
+/* Toast Notifications */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 300px;
+    max-width: 500px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.toast.success {
+    border-left: 4px solid #10b981;
+}
+
+.toast.error {
+    border-left: 4px solid #ef4444;
+}
+
+.toast.warning {
+    border-left: 4px solid #f59e0b;
+}
+
+.toast-message {
+    flex-grow: 1;
+    font-size: 14px;
+    color: #374151;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #9ca3af;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .profile-hero-content {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .profile-hero-meta {
+        justify-content: center;
+    }
+
+    .profile-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-tabs {
+        gap: 4px;
+    }
+
+    .profile-tab {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+}
+</style>
+
+<div class="profile-container">
+    <!-- Hero Section -->
+    <div class="profile-hero">
+        <div class="profile-hero-content">
+            <div class="profile-image-container">
+                {% if current_user.profile_image %}
+                    <img src="{{ current_user.profile_image }}" alt="Profile" class="profile-avatar" id="profileAvatar">
+                {% else %}
+                    <div class="profile-avatar-placeholder" id="profileAvatar">
+                        {{ current_user.name[0] if current_user.name else 'U' }}
+                    </div>
+                {% endif %}
+                <button class="profile-image-upload-btn" onclick="document.getElementById('profileImageInput').click()">
+                    📷
+                </button>
+                <input type="file" id="profileImageInput" accept="image/*" style="display: none;">
+            </div>
+
+            <div class="profile-hero-info">
+                <h1 class="profile-hero-name">{{ current_user.name }}</h1>
+                <div class="profile-hero-meta">
+                    <div class="profile-meta-item">
+                        <span class="profile-meta-label">Email:</span>
+                        <span>{{ current_user.email }}</span>
+                    </div>
+                    {% if company_details %}
+                    <div class="profile-meta-item">
+                        <span class="profile-meta-label">Company:</span>
+                        <span>{{ company_details.company_name }}</span>
+                    </div>
+                    {% endif %}
+                    {% if current_user.job_title %}
+                    <div class="profile-meta-item">
+                        <span class="profile-meta-label">Role:</span>
+                        <span>{{ current_user.job_title }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="profile-tabs">
+        <button class="profile-tab active" data-tab="personal">Personal Information</button>
+        <button class="profile-tab" data-tab="security">Security</button>
+        <button class="profile-tab" data-tab="preferences">Preferences</button>
+        <button class="profile-tab" data-tab="account">Account Info</button>
+    </div>
+
+    <!-- Personal Information Tab -->
+    <div class="profile-tab-content active" id="personal-tab">
+        <div class="profile-card">
+            <h2 class="profile-card-title">✏️ Edit Profile</h2>
+            <p class="profile-card-subtitle">Update your personal information and professional details</p>
+
+            <form id="personalInfoForm">
+                <div class="profile-form-grid">
+                    <div class="profile-form-group">
+                        <label class="profile-form-label">Full Name *</label>
+                        <input type="text" class="profile-form-input" name="name" value="{{ current_user.name }}" required>
+                    </div>
+
+                    <div class="profile-form-group">
+                        <label class="profile-form-label">Phone Number</label>
+                        <input type="tel" class="profile-form-input" name="phone_number" value="{{ current_user.phone_number or '' }}" placeholder="+91 98765 43210">
+                    </div>
+
+                    <div class="profile-form-group">
+                        <label class="profile-form-label">Job Title</label>
+                        <input type="text" class="profile-form-input" name="job_title" value="{{ current_user.job_title or '' }}" placeholder="e.g., Senior Consultant">
+                    </div>
+
+                    <div class="profile-form-group">
+                        <label class="profile-form-label">Department</label>
+                        <input type="text" class="profile-form-input" name="department" value="{{ current_user.department or '' }}" placeholder="e.g., Business Development">
+                    </div>
+                </div>
+
+                <div class="profile-form-group">
+                    <label class="profile-form-label">Bio / About</label>
+                    <textarea class="profile-form-textarea" name="bio" placeholder="Tell us about yourself, your expertise, and experience...">{{ current_user.bio or '' }}</textarea>
+                </div>
+
+                <div class="profile-form-actions">
+                    <button type="button" class="profile-btn profile-btn-secondary" onclick="resetPersonalForm()">Reset</button>
+                    <button type="submit" class="profile-btn profile-btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Security Tab -->
+    <div class="profile-tab-content" id="security-tab">
+        <div class="profile-card">
+            <h2 class="profile-card-title">🔒 Change Password</h2>
+            <p class="profile-card-subtitle">Update your password to keep your account secure</p>
+
+            <form id="changePasswordForm">
+                <div class="profile-form-grid">
+                    <div class="profile-form-group">
+                        <label class="profile-form-label">Current Password *</label>
+                        <input type="password" class="profile-form-input" name="current_password" required>
+                    </div>
+                </div>
+
+                <div class="profile-form-grid">
+                    <div class="profile-form-group">
+                        <label class="profile-form-label">New Password *</label>
+                        <input type="password" class="profile-form-input" name="new_password" required minlength="8" placeholder="Minimum 8 characters">
+                    </div>
+
+                    <div class="profile-form-group">
+                        <label class="profile-form-label">Confirm New Password *</label>
+                        <input type="password" class="profile-form-input" name="confirm_password" required minlength="8">
+                    </div>
+                </div>
+
+                <div class="profile-form-actions">
+                    <button type="button" class="profile-btn profile-btn-secondary" onclick="resetPasswordForm()">Clear</button>
+                    <button type="submit" class="profile-btn profile-btn-danger">Change Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Preferences Tab -->
+    <div class="profile-tab-content" id="preferences-tab">
+        <div class="profile-card">
+            <h2 class="profile-card-title">🔔 Notification Preferences</h2>
+            <p class="profile-card-subtitle">Manage how you receive notifications from TenderHub</p>
+
+            <div class="preference-item">
+                <div class="preference-info">
+                    <div class="preference-title">Email Notifications</div>
+                    <div class="preference-desc">Receive email updates about new tenders matching your criteria</div>
+                </div>
+                <div class="preference-toggle" data-pref="email_notifications" onclick="togglePreference(this)">
+                    <div class="preference-toggle-slider"></div>
+                </div>
+            </div>
+
+            <div class="preference-item">
+                <div class="preference-info">
+                    <div class="preference-title">Tender Alerts</div>
+                    <div class="preference-desc">Get alerts when tenders are about to expire</div>
+                </div>
+                <div class="preference-toggle" data-pref="tender_alerts" onclick="togglePreference(this)">
+                    <div class="preference-toggle-slider"></div>
+                </div>
+            </div>
+
+            <div class="preference-item">
+                <div class="preference-info">
+                    <div class="preference-title">Weekly Summary</div>
+                    <div class="preference-desc">Receive a weekly summary of new opportunities</div>
+                </div>
+                <div class="preference-toggle" data-pref="weekly_summary" onclick="togglePreference(this)">
+                    <div class="preference-toggle-slider"></div>
+                </div>
+            </div>
+
+            <div class="preference-item">
+                <div class="preference-info">
+                    <div class="preference-title">Product Updates</div>
+                    <div class="preference-desc">Stay informed about new features and improvements</div>
+                </div>
+                <div class="preference-toggle" data-pref="product_updates" onclick="togglePreference(this)">
+                    <div class="preference-toggle-slider"></div>
+                </div>
+            </div>
+
+            <div class="profile-form-actions">
+                <button type="button" class="profile-btn profile-btn-primary" onclick="savePreferences()">Save Preferences</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Info Tab -->
+    <div class="profile-tab-content" id="account-tab">
+        <div class="profile-card">
+            <h2 class="profile-card-title">ℹ️ Account Information</h2>
+            <p class="profile-card-subtitle">View your account details and activity</p>
+
+            <div class="profile-info-grid">
+                <div class="profile-info-item">
+                    <div class="profile-info-label">User ID</div>
+                    <div class="profile-info-value">{{ current_user.id }}</div>
+                </div>
+
+                <div class="profile-info-item">
+                    <div class="profile-info-label">Email Address</div>
+                    <div class="profile-info-value">{{ current_user.email }}</div>
+                </div>
+
+                <div class="profile-info-item">
+                    <div class="profile-info-label">Account Created</div>
+                    <div class="profile-info-value">{{ current_user.created_at.strftime('%B %d, %Y') if current_user.created_at else 'N/A' }}</div>
+                </div>
+
+                <div class="profile-info-item">
+                    <div class="profile-info-label">Last Login</div>
+                    <div class="profile-info-value">{{ current_user.last_login.strftime('%B %d, %Y at %I:%M %p') if current_user.last_login else 'N/A' }}</div>
+                </div>
+
+                {% if company_details %}
+                <div class="profile-info-item">
+                    <div class="profile-info-label">Company Name</div>
+                    <div class="profile-info-value">{{ company_details.company_name }}</div>
+                </div>
+
+                <div class="profile-info-item">
+                    <div class="profile-info-label">GST Number</div>
+                    <div class="profile-info-value">{{ company_details.gst_number }}</div>
+                </div>
+
+                <div class="profile-info-item">
+                    <div class="profile-info-label">Registration Number</div>
+                    <div class="profile-info-value">{{ company_details.registration_number }}</div>
+                </div>
+
+                <div class="profile-info-item">
+                    <div class="profile-info-label">Company Email</div>
+                    <div class="profile-info-value">{{ company_details.email_address }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Tab Switching
+document.querySelectorAll('.profile-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+
+        // Update active tab
+        document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        // Update active content
+        document.querySelectorAll('.profile-tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(`${tabName}-tab`).classList.add('active');
+    });
+});
+
+// Profile Image Upload
+document.getElementById('profileImageInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Image size must be less than 5MB', 'error');
+        return;
+    }
+
+    // Validate file type
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+        showToast('Please select a valid image file (JPG, PNG, GIF, or WebP)', 'error');
+        return;
+    }
+
+    // Upload image
+    const formData = new FormData();
+    formData.append('profile_image', file);
+
+    try {
+        const response = await fetch('/api/profile/upload-image', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Update avatar image
+            const avatar = document.getElementById('profileAvatar');
+            if (avatar.tagName === 'IMG') {
+                avatar.src = result.image_url + '?t=' + Date.now();
+            } else {
+                // Replace placeholder with image
+                avatar.outerHTML = `<img src="${result.image_url}?t=${Date.now()}" alt="Profile" class="profile-avatar" id="profileAvatar">`;
+            }
+            showToast('Profile image updated successfully!', 'success');
+        } else {
+            showToast(result.error || 'Failed to upload image', 'error');
+        }
+    } catch (error) {
+        showToast('Error uploading image: ' + error.message, 'error');
+    }
+});
+
+// Personal Info Form
+document.getElementById('personalInfoForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+        const response = await fetch('/api/profile/update-basic', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Update hero section with new data
+            document.querySelector('.profile-hero-name').textContent = result.user.name;
+
+            // Update job title in meta if exists
+            const metaItems = document.querySelectorAll('.profile-meta-item');
+            metaItems.forEach(item => {
+                if (item.querySelector('.profile-meta-label').textContent === 'Role:') {
+                    item.querySelector('span:last-child').textContent = result.user.job_title || 'Not set';
+                }
+            });
+
+            showToast(result.message, 'success');
+        } else {
+            showToast(result.error || 'Failed to update profile', 'error');
+        }
+    } catch (error) {
+        showToast('Error updating profile: ' + error.message, 'error');
+    }
+});
+
+// Change Password Form
+document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+        const response = await fetch('/api/profile/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast(result.message, 'success');
+            e.target.reset();
+        } else {
+            showToast(result.error || 'Failed to change password', 'error');
+        }
+    } catch (error) {
+        showToast('Error changing password: ' + error.message, 'error');
+    }
+});
+
+// Preferences
+let preferences = {{ current_user.notification_preferences|tojson if current_user.notification_preferences else '{}' }};
+
+// Initialize preference toggles
+document.querySelectorAll('.preference-toggle').forEach(toggle => {
+    const pref = toggle.dataset.pref;
+    if (preferences[pref]) {
+        toggle.classList.add('active');
+    }
+});
+
+function togglePreference(element) {
+    element.classList.toggle('active');
+    const pref = element.dataset.pref;
+    preferences[pref] = element.classList.contains('active');
+}
+
+async function savePreferences() {
+    try {
+        const response = await fetch('/api/profile/update-preferences', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ preferences })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast(result.message, 'success');
+        } else {
+            showToast(result.error || 'Failed to save preferences', 'error');
+        }
+    } catch (error) {
+        showToast('Error saving preferences: ' + error.message, 'error');
+    }
+}
+
+// Reset Functions
+function resetPersonalForm() {
+    document.getElementById('personalInfoForm').reset();
+}
+
+function resetPasswordForm() {
+    document.getElementById('changePasswordForm').reset();
+}
+
+// Toast Notifications
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-message">${message}</div>
+        <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
+    `;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

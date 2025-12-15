@@ -1,0 +1,1090 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tender.title }} - My Tasks - TenderHub{% endblock %}
+
+{% block extra_head %}
+<style>
+    .employee-task-workspace {
+        display: grid;
+        grid-template-columns: 300px 1fr 350px;
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+        min-height: calc(100vh - 200px);
+    }
+
+    .workspace-sidebar,
+    .workspace-main,
+    .workspace-chat {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Sticky Chat Box */
+    .workspace-chat {
+        position: sticky;
+        top: 1.5rem;
+        align-self: start;
+        max-height: calc(100vh - 3rem);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .workspace-sidebar h3,
+    .workspace-main h3,
+    .workspace-chat h3 {
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+    }
+
+    .workspace-chat h3 {
+        flex-shrink: 0; /* Prevent shrinking in sticky flex container */
+    }
+
+    /* Sidebar */
+    .tender-info {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .tender-info h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+        color: var(--primary-color);
+    }
+
+    .tender-meta {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card-mini {
+        background: var(--background);
+        padding: 0.75rem;
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    .stat-card-mini .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+
+    .stat-card-mini .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    .team-members {
+        margin-bottom: 1.5rem;
+    }
+
+    .team-member {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: var(--background);
+        border-radius: 12px;
+        margin-bottom: 0.5rem;
+    }
+
+    .team-member-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+
+    .team-member-info h4 {
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .team-member-info p {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+
+    /* Main Content */
+    .task-list {
+        margin-bottom: 2rem;
+    }
+
+    .task-card {
+        background: var(--background);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .task-card.priority-high {
+        border-left: 4px solid #ef4444;
+    }
+
+    .task-card.priority-medium {
+        border-left: 4px solid #f59e0b;
+    }
+
+    .task-card.priority-low {
+        border-left: 4px solid #10b981;
+    }
+
+    .task-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 0.75rem;
+    }
+
+    .task-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0;
+        color: var(--text-primary);
+    }
+
+    .task-badges {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .task-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-weight: 500;
+    }
+
+    .task-badge.status-pending {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    .task-badge.status-in_progress {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .task-badge.status-completed {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .task-meta {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-bottom: 0.75rem;
+    }
+
+    .task-description {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.75rem;
+        line-height: 1.5;
+    }
+
+    .task-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.75rem;
+    }
+
+    .btn-sm {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        background: var(--primary-color);
+        color: white;
+        transition: all 0.2s;
+    }
+
+    .btn-sm:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+
+    .btn-sm.btn-secondary {
+        background: #6b7280;
+    }
+
+    .btn-sm.btn-success {
+        background: #10b981;
+    }
+
+    .subtask-list {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .subtask-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: var(--card-bg);
+        border-radius: 12px;
+        margin-bottom: 0.5rem;
+    }
+
+    .subtask-info {
+        flex: 1;
+    }
+
+    .subtask-title {
+        font-size: 0.9rem;
+        margin: 0 0 0.25rem 0;
+    }
+
+    .subtask-meta {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* File Upload Section */
+    .files-section {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .files-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem;
+        background: var(--card-bg);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex: 1;
+    }
+
+    .file-icon {
+        font-size: 1.5rem;
+    }
+
+    .file-details h6 {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+    }
+
+    .file-details p {
+        margin: 0.25rem 0 0 0;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .file-upload-area {
+        border: 2px dashed var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+        margin-top: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .file-upload-area:hover {
+        border-color: var(--primary-color);
+        background: rgba(59, 130, 246, 0.05);
+    }
+
+    .file-upload-area input[type="file"] {
+        display: none;
+    }
+
+    /* Chat */
+    .chat-messages {
+        flex: 1;
+        min-height: 0; /* Important for flexbox scrolling */
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: var(--background);
+    }
+
+    .chat-message {
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        border-radius: 12px;
+        background: var(--card-bg);
+    }
+
+    .chat-message.manager {
+        background: #dbeafe;
+        margin-left: 2rem;
+    }
+
+    .chat-message.employee {
+        background: var(--background);
+        margin-right: 2rem;
+    }
+
+    .chat-sender {
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        color: var(--text-primary);
+    }
+
+    .chat-text {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
+    }
+
+    .chat-time {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .chat-input-form {
+        display: flex;
+        gap: 0.5rem;
+        flex-shrink: 0; /* Prevent shrinking in sticky flex container */
+    }
+
+    .chat-input {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 0.9rem;
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+
+    .btn-send {
+        padding: 0.75rem 1.5rem;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    /* Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 2rem;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-header h2 {
+        font-size: 1.3rem;
+        margin: 0;
+    }
+
+    .modal-close {
+        font-size: 1.5rem;
+        cursor: pointer;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        padding: 0;
+        width: 30px;
+        height: 30px;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 0.9rem;
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    .btn-group {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-muted);
+    }
+
+    .empty-state svg {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+        .employee-task-workspace {
+            grid-template-columns: 250px 1fr 300px;
+        }
+    }
+
+    /* Progress Tracking Section */
+    .progress-section {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: var(--background);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+
+    .progress-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+        margin-bottom: 1rem;
+    }
+
+    .progress-header h5 {
+        font-size: 0.9rem;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .progress-toggle {
+        font-size: 1.2rem;
+        transition: transform 0.3s;
+    }
+
+    .progress-toggle.expanded {
+        transform: rotate(180deg);
+    }
+
+    .progress-content {
+        display: none;
+    }
+
+    .progress-content.show {
+        display: block;
+    }
+
+    .progress-form {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+
+    .progress-form textarea {
+        width: 100%;
+        min-height: 80px;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-family: inherit;
+        resize: vertical;
+        margin-bottom: 0.5rem;
+    }
+
+    .progress-form textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+
+    .progress-form-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .char-counter {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .char-counter.warning {
+        color: #e67e22;
+    }
+
+    .char-counter.error {
+        color: var(--error-color);
+    }
+
+    .progress-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .progress-item {
+        padding: 1rem;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 0.75rem;
+    }
+
+    .progress-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .progress-item-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .progress-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .progress-author-info {
+        flex: 1;
+    }
+
+    .progress-author-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+    }
+
+    .progress-date {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .progress-text {
+        margin-left: 2.5rem;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    .progress-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .progress-delete-btn {
+        background: none;
+        border: none;
+        color: var(--error-color);
+        font-size: 0.8rem;
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .progress-delete-btn:hover {
+        text-decoration: underline;
+    }
+
+    .progress-empty {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: var(--text-muted);
+    }
+
+    .progress-empty svg {
+        width: 48px;
+        height: 48px;
+        margin-bottom: 0.5rem;
+        opacity: 0.5;
+    }
+
+    @media (max-width: 992px) {
+        .employee-task-workspace {
+            grid-template-columns: 1fr;
+        }
+
+        .workspace-chat {
+            order: 3;
+            position: static; /* Disable sticky on mobile */
+            max-height: none;
+        }
+
+        .chat-messages {
+            height: 400px; /* Fixed height on mobile */
+            flex: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1600px;">
+    <!-- Page Header -->
+    <div style="margin-bottom: 1.5rem;">
+        <a href="/employee/dashboard" class="btn-sm btn-secondary" style="display: inline-block; text-decoration: none; margin-bottom: 1rem;">
+            ← Back to Dashboard
+        </a>
+        <h1 style="font-size: 1.8rem; margin: 0 0 0.5rem 0;">My Tasks - {{ tender.title }}</h1>
+        <p style="color: var(--text-muted); margin: 0;">Manage your tasks, upload deliverables, and communicate with your manager</p>
+    </div>
+
+    <!-- Task Workspace Grid -->
+    <div class="employee-task-workspace">
+        <!-- Left Sidebar -->
+        <div class="workspace-sidebar">
+            <!-- Tender Info -->
+            <div class="tender-info">
+                <h2>{{ tender.title }}</h2>
+                <div class="tender-meta">
+                    <div>📋 {{ tender.tender_reference_number or 'N/A' }}</div>
+                    <div>🏛️ {{ tender.organization_name or 'N/A' }}</div>
+                    {% if tender.deadline %}
+                    <div>⏰ Due: {{ tender.deadline.strftime('%d %b %Y') }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <h3>My Progress</h3>
+            <div class="stats-grid">
+                <div class="stat-card-mini">
+                    <div class="stat-value">{{ stats.total_tasks }}</div>
+                    <div class="stat-label">Total Tasks</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div class="stat-value">{{ stats.completed_tasks }}</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div class="stat-value">{{ stats.pending_tasks }}</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                {% if stats.overdue_tasks > 0 %}
+                <div class="stat-card-mini" style="color: #ef4444;">
+                    <div class="stat-value" style="color: #ef4444;">{{ stats.overdue_tasks }}</div>
+                    <div class="stat-label">Overdue</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Team Members -->
+            <h3>Team</h3>
+            <div class="team-members">
+                {% if manager %}
+                <div class="team-member">
+                    <div class="team-member-avatar">
+                        {{ manager.name[0].upper() }}
+                    </div>
+                    <div class="team-member-info">
+                        <h4>{{ manager.name }}</h4>
+                        <p>Manager</p>
+                    </div>
+                </div>
+                {% endif %}
+                {% if team_members %}
+                    {% for member in team_members %}
+                    <div class="team-member">
+                        <div class="team-member-avatar">
+                            {{ member.name[0].upper() }}
+                        </div>
+                        <div class="team-member-info">
+                            <h4>{{ member.name }}</h4>
+                            <p>Team Member</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="workspace-main">
+            <!-- Task List -->
+            <div class="task-list">
+                <h3>My Tasks ({{ tasks|length }})</h3>
+                {% if tasks %}
+                    {% for task in tasks %}
+                    <div class="task-card priority-{{ task.priority }}" id="task-{{ task.id }}">
+                        <div class="task-header">
+                            <div>
+                                <h4 class="task-title">{{ task.title }}</h4>
+                            </div>
+                            <div class="task-badges">
+                                <span class="task-badge status-{{ task.status }}">{{ task.status|replace('_', ' ')|title }}</span>
+                                <span class="task-badge">{{ task.priority|title }}</span>
+                            </div>
+                        </div>
+
+                        <div class="task-meta">
+                            {% if task.deadline %}
+                            <span>⏰ {{ task.deadline.strftime('%d %b %Y, %I:%M %p') }}</span>
+                            {% endif %}
+                            {% if task.estimated_hours %}
+                            <span>⏱️ {{ task.estimated_hours }}h</span>
+                            {% endif %}
+                        </div>
+
+                        {% if task.description %}
+                        <div class="task-description">{{ task.description }}</div>
+                        {% endif %}
+
+                        <div class="task-actions">
+                            {% if task.status != 'completed' %}
+                            <button class="btn-sm btn-success" onclick="completeTask({{ task.id }})">✓ Mark Complete</button>
+                            {% endif %}
+                            <button class="btn-sm btn-secondary" onclick="uploadFile({{ task.id }})">📎 Upload Deliverable</button>
+                            <button class="btn-sm btn-secondary" onclick="raiseConcern({{ task.id }})">❓ Raise Query</button>
+                        </div>
+
+                        <!-- Progress Tracking Section (Only for incomplete tasks) -->
+                        {% if task.status != 'completed' %}
+                        <div class="progress-section">
+                            <div class="progress-header" onclick="toggleProgress({{ task.id }})">
+                                <h5>
+                                    <span>📝</span>
+                                    <span>Work Progress Log</span>
+                                    {% set progress_count = task_progress_map.get(task.id)|length if task_progress_map.get(task.id) else 0 %}
+                                    <span style="color: var(--text-muted); font-weight: normal;">({{ progress_count }})</span>
+                                </h5>
+                                <span class="progress-toggle" id="progress-toggle-{{ task.id }}">▼</span>
+                            </div>
+
+                            <div class="progress-content" id="progress-content-{{ task.id }}">
+                                <!-- Progress Form -->
+                                <div class="progress-form">
+                                    <textarea
+                                        id="progress-input-{{ task.id }}"
+                                        placeholder="Describe what you're working on or what you've accomplished..."
+                                        maxlength="2000"
+                                        oninput="updateCharCounter({{ task.id }})"
+                                    ></textarea>
+                                    <div class="progress-form-footer">
+                                        <span class="char-counter" id="char-counter-{{ task.id }}">0 / 2000</span>
+                                        <button class="btn-sm btn-primary" onclick="addProgressUpdate({{ task.id }})">
+                                            Add Update
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Progress List -->
+                                <div class="progress-list" id="progress-list-{{ task.id }}">
+                                    {% if task_progress_map.get(task.id) %}
+                                        {% for progress in task_progress_map[task.id] %}
+                                        <div class="progress-item" id="progress-{{ progress.id }}">
+                                            <div class="progress-item-header">
+                                                <div class="progress-avatar">{{ progress.employee_avatar }}</div>
+                                                <div class="progress-author-info">
+                                                    <div class="progress-author-name">{{ progress.employee_name }}</div>
+                                                    <div class="progress-date">{{ progress.formatted_date }}</div>
+                                                </div>
+                                            </div>
+                                            <div class="progress-text">{{ progress.update_text }}</div>
+                                            {% if progress.is_current_user %}
+                                            <div class="progress-actions">
+                                                <button class="progress-delete-btn" onclick="deleteProgressUpdate({{ task.id }}, {{ progress.id }})">
+                                                    Delete
+                                                </button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                    <div class="progress-empty" id="progress-empty-{{ task.id }}">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        <p>No progress updates yet. Start logging your work!</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Files Section -->
+                        {% if task_files_map.get(task.id) %}
+                        <div class="files-section">
+                            <h5 style="font-size: 0.9rem; margin-bottom: 0.75rem;">Uploaded Deliverables</h5>
+                            <div class="files-list">
+                                {% for file in task_files_map[task.id] %}
+                                <div class="file-item">
+                                    <div class="file-info">
+                                        <div class="file-icon">📄</div>
+                                        <div class="file-details">
+                                            <h6>{{ file.filename }}</h6>
+                                            <p>{{ (file.file_size / 1024)|round|int }} KB • {{ file.created_at[:10] }}</p>
+                                        </div>
+                                    </div>
+                                    <a href="/api/tasks/{{ task.id }}/files/{{ file.id }}/download" class="btn-sm btn-secondary" style="text-decoration: none;">Download</a>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Subtasks -->
+                        {% if task.subtasks_list %}
+                        <div class="subtask-list">
+                            <h5 style="font-size: 0.9rem; margin-bottom: 0.75rem;">Subtasks ({{ task.subtasks_list|length }})</h5>
+                            {% for subtask in task.subtasks_list %}
+                            <div class="subtask-item">
+                                <div class="subtask-info">
+                                    <h6 class="subtask-title">
+                                        {% if subtask.status == 'completed' %}✓{% else %}○{% endif %}
+                                        {{ subtask.title }}
+                                    </h6>
+                                    <div class="subtask-meta">
+                                        <span class="task-badge status-{{ subtask.status }}" style="display: inline;">{{ subtask.status|replace('_', ' ')|title }}</span>
+                                        {% if subtask.deadline %}
+                                        • Due: {{ subtask.deadline.strftime('%d %b %Y') }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div>
+                                    {% if subtask.status != 'completed' %}
+                                    <button class="btn-sm btn-success" onclick="completeTask({{ subtask.id }})" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">Complete</button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <h4>No tasks assigned yet</h4>
+                        <p>Your manager will assign tasks to you soon</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Chat -->
+        <div class="workspace-chat">
+            <h3>Chat with Manager</h3>
+            <div class="chat-messages" id="chatMessages">
+                {% if messages %}
+                    {% for message in messages %}
+                    <div class="chat-message {% if message.employee_id == current_employee.id %}employee{% else %}manager{% endif %}">
+                        <div class="chat-sender">
+                            {% if message.employee_id == current_employee.id %}
+                                {{ current_employee.name }} (You)
+                            {% else %}
+                                {{ manager.name if manager else 'Manager' }}
+                            {% endif %}
+                        </div>
+                        <div class="chat-text">{{ message.message }}</div>
+                        <div class="chat-time">{{ message.created_at.strftime('%d %b, %I:%M %p') }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <p>No messages yet. Start the conversation!</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <form class="chat-input-form" onsubmit="sendMessage(event)">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." required>
+                <button type="submit" class="btn-send">Send</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- File Upload Modal -->
+<div id="fileUploadModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Upload Deliverable</h2>
+            <button class="modal-close" onclick="closeFileUploadModal()">&times;</button>
+        </div>
+
+        <form id="fileUploadForm" onsubmit="uploadTaskFile(event)">
+            <input type="hidden" id="uploadTaskId" name="task_id">
+
+            <div class="form-group">
+                <label for="fileInput">Select File *</label>
+                <div class="file-upload-area" onclick="document.getElementById('fileInput').click()">
+                    <p>Click to select file or drag and drop</p>
+                    <input type="file" id="fileInput" name="file" required accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.jpg,.jpeg,.png">
+                </div>
+                <p id="fileName" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);"></p>
+            </div>
+
+            <div class="form-group">
+                <label for="fileDescription">Description (Optional)</label>
+                <textarea id="fileDescription" name="description" placeholder="Brief description of the deliverable..."></textarea>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn-sm">Upload</button>
+                <button type="button" class="btn-sm btn-secondary" onclick="closeFileUploadModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Raise Concern Modal -->
+<div id="concernModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Raise Query/Concern</h2>
+            <button class="modal-close" onclick="closeConcernModal()">&times;</button>
+        </div>
+
+        <form id="concernForm" onsubmit="submitConcern(event)">
+            <input type="hidden" id="concernTaskId" name="task_id">
+
+            <div class="form-group">
+                <label for="concernType">Type *</label>
+                <select id="concernType" name="concern_type" required>
+                    <option value="clarification">Clarification</option>
+                    <option value="timeline">Timeline Issue</option>
+                    <option value="resources">Resource Request</option>
+                    <option value="blocker">Blocker</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="concernTitle">Title *</label>
+                <input type="text" id="concernTitle" name="title" required placeholder="Brief title for your query...">
+            </div>
+
+            <div class="form-group">
+                <label for="concernDescription">Description *</label>
+                <textarea id="concernDescription" name="description" required placeholder="Provide details about your query or concern..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="concernPriority">Priority</label>
+                <select id="concernPriority" name="priority">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                </select>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn-sm">Submit Query</button>
+                <button type="button" class="btn-sm btn-secondary" onclick="closeConcernModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const tenderId = "{{ tender.id }}";
+    const assignmentId = {{ assignment.id }};
+    const currentEmployeeId = "{{ current_employee.id }}";
+    const currentEmployeeName = "{{ current_employee.name }}";
+</script>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', path='js/employee_task_detail.js') }}"></script>
+{% endblock %}
+

@@ -1,0 +1,2025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Certificates - TenderHub</title>
+
+    <style>
+        /* Complete CSS Reset and Isolation */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Light Mode Variables */
+        :root {
+            --bg-gradient-start: #f9fafb;
+            --bg-gradient-end: #e5e7eb;
+            --header-bg: rgba(255, 255, 255, 0.96);
+            --header-border: rgba(0, 0, 0, 0.05);
+            --header-shadow: rgba(0, 0, 0, 0.03);
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9ca3af;
+            --text-muted: #374151;
+            --card-bg: white;
+            --card-border: #e5e7eb;
+            --card-shadow: rgba(99, 102, 241, 0.1);
+            --input-bg: transparent;
+            --surface-bg: rgba(248, 250, 252, 0.8);
+            --surface-border: rgba(148, 163, 184, 0.15);
+            --divider: rgba(148, 163, 184, 0.1);
+            --icon-bg: rgba(99, 102, 241, 0.1);
+            --stats-bg-start: rgba(99, 102, 241, 0.1);
+            --stats-bg-end: rgba(14, 165, 233, 0.08);
+            --stats-border: rgba(99, 102, 241, 0.2);
+            --no-results-border: rgba(148, 163, 184, 0.3);
+        }
+
+        /* Dark Mode Variables */
+        body.dark-mode {
+            --bg-gradient-start: #0f1419;
+            --bg-gradient-end: #1a1f2e;
+            --header-bg: rgba(26, 31, 46, 0.96);
+            --header-border: rgba(255, 255, 255, 0.1);
+            --header-shadow: rgba(0, 0, 0, 0.5);
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --text-tertiary: #9ca3af;
+            --text-muted: #e5e7eb;
+            --card-bg: #1a1f2e;
+            --card-border: #2d3345;
+            --card-shadow: rgba(0, 0, 0, 0.3);
+            --input-bg: transparent;
+            --surface-bg: rgba(45, 51, 69, 0.5);
+            --surface-border: rgba(99, 102, 241, 0.2);
+            --divider: rgba(255, 255, 255, 0.1);
+            --icon-bg: rgba(99, 102, 241, 0.2);
+            --stats-bg-start: rgba(99, 102, 241, 0.15);
+            --stats-bg-end: rgba(14, 165, 233, 0.12);
+            --stats-border: rgba(99, 102, 241, 0.3);
+            --no-results-border: rgba(99, 102, 241, 0.2);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(180deg, var(--bg-gradient-start), var(--bg-gradient-end));
+            min-height: 100vh;
+            transition: background 0.3s ease;
+        }
+
+        /* Header */
+        .page-header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: var(--header-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--header-border);
+            box-shadow: 0 4px 12px var(--header-shadow);
+            transition: all 0.3s ease;
+        }
+
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .logo span {
+            background: linear-gradient(120deg, #6366f1, #4338ca);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav a {
+            padding: 8px 16px;
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .nav a:hover {
+            color: #6366f1;
+            background: var(--icon-bg);
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle-btn {
+            padding: 8px 12px;
+            border: none;
+            background: var(--icon-bg);
+            color: var(--text-secondary);
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-toggle-btn:hover {
+            background: var(--surface-bg);
+            transform: scale(1.05);
+        }
+
+        /* Main Container */
+        .cert-search-page {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px 20px;
+        }
+
+        /* Hero Section */
+        .cert-hero {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .cert-hero h1 {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+            transition: color 0.3s ease;
+        }
+
+        .cert-hero p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            max-width: 680px;
+            margin: 0 auto;
+            line-height: 1.5;
+            transition: color 0.3s ease;
+        }
+
+        /* Search Box */
+        .search-wrapper {
+            max-width: 800px;
+            margin: 0 auto 40px;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: stretch;
+            gap: 10px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 2px solid var(--card-border);
+            box-shadow: 0 8px 30px var(--card-shadow);
+            padding: 6px;
+            transition: all 0.3s;
+        }
+
+        .search-box:focus-within {
+            border-color: #6366f1;
+            box-shadow: 0 10px 40px rgba(99, 102, 241, 0.18);
+        }
+
+        .search-input {
+            flex: 1;
+            border: none;
+            background: var(--input-bg);
+            font-size: 16px;
+            padding: 14px 20px;
+            color: var(--text-primary);
+            outline: none;
+            font-family: inherit;
+            transition: color 0.3s ease;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .search-button {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #6366f1, #4338ca);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.25);
+        }
+
+        .search-button:hover {
+            background: linear-gradient(135deg, #4f46e5, #3730a3);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(79, 70, 229, 0.35);
+        }
+
+        body.dark-mode .search-button {
+            background: linear-gradient(135deg, #4338ca, #312e81);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+        }
+
+        body.dark-mode .search-button:hover {
+            background: linear-gradient(135deg, #4c3ad5, #3d2a99);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
+        }
+
+        .search-button.show-all {
+            background: transparent;
+            color: #6366f1;
+            border: 1px solid rgba(99, 102, 241, 0.35);
+            box-shadow: none;
+        }
+
+        .search-button.show-all:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        body.dark-mode .search-button.show-all {
+            color: var(--neutral-800);
+            border-color: rgba(129, 140, 248, 0.5);
+        }
+
+        body.dark-mode .search-button.show-all:hover {
+            background: rgba(99, 102, 241, 0.2);
+        }
+
+        /* Search Stats */
+        .search-stats {
+            text-align: center;
+            margin-bottom: 28px;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, var(--stats-bg-start), var(--stats-bg-end));
+            border-radius: 12px;
+            border: 1px solid var(--stats-border);
+            transition: all 0.3s ease;
+        }
+
+        .search-stats p {
+            font-size: 15px;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin: 0;
+            transition: color 0.3s ease;
+        }
+
+        .search-stats strong {
+            color: #6366f1;
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 64px 20px;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 20px;
+            border: 4px solid var(--icon-bg);
+            border-top-color: #6366f1;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 16px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        /* No Results */
+        .no-results {
+            text-align: center;
+            padding: 64px 28px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 2px dashed var(--no-results-border);
+            box-shadow: 0 4px 12px var(--header-shadow);
+            transition: all 0.3s ease;
+        }
+
+        .no-results-icon {
+            font-size: 64px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .no-results h3 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            transition: color 0.3s ease;
+        }
+
+        .no-results p {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            transition: color 0.3s ease;
+        }
+
+        .btn-primary {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #6366f1, #4338ca);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+        }
+
+        /* MATERIAL DESIGN CARDS GRID */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        /* MATERIAL DESIGN CARD */
+        .material-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px var(--card-shadow);
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--card-border);
+        }
+
+        .material-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #6366f1, #0ea5e9);
+        }
+
+        .material-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 24px var(--card-shadow);
+        }
+
+        /* Card Header */
+        .card-header {
+            padding: 20px 18px 16px;
+            background: linear-gradient(135deg, var(--icon-bg), rgba(14, 165, 233, 0.04));
+            transition: background 0.3s ease;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            line-height: 1.3;
+            transition: color 0.3s ease;
+        }
+
+        .card-client {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        /* Card Body */
+        .card-body {
+            padding: 18px;
+            flex: 1;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--divider);
+            transition: border-color 0.3s ease;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-icon {
+            font-size: 20px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--icon-bg);
+            border-radius: 12px;
+            flex-shrink: 0;
+            transition: background 0.3s ease;
+        }
+
+        .info-content {
+            flex: 1;
+        }
+
+        .info-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            font-weight: 700;
+            margin-bottom: 3px;
+            transition: color 0.3s ease;
+        }
+
+        .info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            word-break: break-word;
+            transition: color 0.3s ease;
+        }
+
+        /* Services Section */
+        .services {
+            margin-top: 16px;
+            padding: 14px;
+            background: var(--surface-bg);
+            border-radius: 12px;
+            border: 1px solid var(--surface-border);
+            transition: all 0.3s ease;
+        }
+
+        .services-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            font-weight: 700;
+            margin-bottom: 10px;
+            transition: color 0.3s ease;
+        }
+
+        .services-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .service-tag {
+            padding: 6px 12px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(14, 165, 233, 0.08));
+            color: #4338ca;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            transition: all 0.2s;
+        }
+
+        .service-tag:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(14, 165, 233, 0.15));
+            transform: translateY(-1px);
+        }
+
+        /* Card Actions */
+        .card-actions {
+            padding: 16px 18px;
+            background: var(--surface-bg);
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            transition: background 0.3s ease;
+        }
+
+        .action-btn {
+            padding: 11px 16px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 13px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, #6366f1, #4338ca);
+            color: white;
+            box-shadow: 0 3px 10px rgba(79, 70, 229, 0.3);
+        }
+
+        .action-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+        }
+
+        .action-btn.secondary {
+            background: var(--card-bg);
+            color: #4f46e5;
+            border: 2px solid var(--card-border);
+            transition: all 0.3s ease;
+        }
+
+        .action-btn.secondary:hover {
+            background: var(--icon-bg);
+            border-color: #6366f1;
+            transform: translateY(-2px);
+        }
+
+        /* Highlight */
+        .highlight {
+            background: linear-gradient(120deg, rgba(251, 191, 36, 0.4), rgba(251, 191, 36, 0.2));
+            color: var(--text-primary);
+            padding: 0.1em 0.3em;
+            border-radius: 12px;
+            font-weight: 700;
+        }
+
+        /* Filters Panel */
+        .filters-panel {
+            background: var(--card-bg);
+            border: 2px solid var(--card-border);
+            border-radius: 12px;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 30px var(--card-shadow);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .filters-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 28px;
+            background: linear-gradient(135deg, var(--stats-bg-start), var(--stats-bg-end));
+            border-bottom: 1px solid var(--stats-border);
+        }
+
+        .filters-header h3 {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .filters-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .filter-action-btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: none;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-action-btn.clear-btn {
+            background: transparent;
+            color: #6366f1;
+            border: 1px solid rgba(99, 102, 241, 0.35);
+        }
+
+        .filter-action-btn.clear-btn:hover {
+            background: rgba(99, 102, 241, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .filter-action-btn.apply-btn {
+            background: linear-gradient(135deg, #6366f1, #4338ca);
+            color: white;
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.25);
+        }
+
+        .filter-action-btn.apply-btn:hover {
+            background: linear-gradient(135deg, #4f46e5, #3730a3);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(79, 70, 229, 0.35);
+        }
+
+        .filter-toggle-btn {
+            padding: 10px 14px;
+            background: var(--icon-bg);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .filter-toggle-btn:hover {
+            background: var(--surface-bg);
+            transform: scale(1.05);
+        }
+
+        .filter-toggle-btn #toggleIcon {
+            transition: transform 0.3s ease;
+        }
+
+        .filter-toggle-btn.collapsed #toggleIcon {
+            transform: rotate(-90deg);
+        }
+
+        .filters-content {
+            padding: 32px 28px;
+            max-height: 800px;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        }
+
+        .filters-content.collapsed {
+            max-height: 0;
+            padding: 0 28px;
+            overflow: hidden;
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+            overflow: visible;
+        }
+
+        .filter-group:focus-within,
+        .filter-group .choices.is-open {
+            z-index: 50;
+        }
+
+        .filter-group .choices.is-open .choices__list--dropdown {
+            z-index: 100;
+        }
+
+        .filter-group.range-group {
+            padding: 20px;
+            background: var(--surface-bg);
+            border-radius: 12px;
+            border: 1px solid var(--surface-border);
+            z-index: 1;
+        }
+
+        .filter-group.date-filter {
+            position: relative;
+            z-index: 25;
+        }
+
+        .filter-group.date-filter .flatpickr-calendar {
+            z-index: 40000 !important;
+            box-shadow: 0 12px 32px var(--card-shadow) !important;
+        }
+
+        .filter-label {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 12px;
+        }
+
+        .filter-select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--card-border);
+            border-radius: 12px;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            font-size: 16px;
+            transition: all 0.3s ease;
+            min-height: 52px;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        .range-slider {
+            margin: 20px 0;
+            min-height: 30px;
+            padding: 10px 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .range-values {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #6366f1;
+        }
+
+        .date-range-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--card-border);
+            border-radius: 12px;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 52px;
+            position: relative;
+        }
+
+        .date-range-input:hover {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+        }
+
+        .date-range-input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        .date-range-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        /* Choices.js customization */
+        .choices {
+            margin-bottom: 0;
+            position: relative;
+            z-index: 20;
+        }
+
+        .choices.is-open {
+            z-index: 10000;
+        }
+
+        .choices__inner {
+            background: var(--card-bg);
+            border: 2px solid var(--card-border);
+            border-radius: 12px;
+            padding: 8px 12px;
+            min-height: 52px;
+            font-size: 16px;
+        }
+
+        .choices__input {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            font-size: 16px;
+            padding: 6px;
+        }
+
+        .choices__inner:focus-within {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        .choices[data-type*="select-multiple"] .choices__button {
+            border-left: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .choices__list--multiple .choices__item {
+            background: linear-gradient(135deg, #6366f1, #4338ca);
+            border: none;
+            border-radius: 12px;
+            padding: 6px 12px;
+            margin: 3px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .choices__list--dropdown {
+            background: var(--card-bg);
+            border: 2px solid var(--card-border);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px var(--card-shadow);
+            margin-top: 4px;
+            z-index: 10001 !important;
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 4px);
+        }
+
+        .choices__list--dropdown .choices__item {
+            padding: 12px 16px;
+            font-size: 15px;
+            color: var(--text-primary);
+        }
+
+        .choices__item--selectable {
+            color: var(--text-primary);
+        }
+
+        .choices__item--selectable.is-highlighted {
+            background: var(--icon-bg);
+            color: var(--text-primary);
+        }
+
+        /* noUiSlider customization */
+        .noUi-target {
+            background: #e5e7eb;
+            border: none;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+            height: 8px !important;
+            border-radius: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        body.dark-mode .noUi-target {
+            background: #374151;
+        }
+
+        .noUi-connect {
+            background: linear-gradient(90deg, #6366f1, #4338ca) !important;
+        }
+
+        .noUi-horizontal {
+            height: 8px !important;
+        }
+
+        .noUi-horizontal .noUi-handle {
+            width: 24px !important;
+            height: 24px !important;
+            right: -12px !important;
+            top: -8px !important;
+        }
+
+        .noUi-handle {
+            background: white !important;
+            border: 3px solid #6366f1 !important;
+            border-radius: 50% !important;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3) !important;
+            cursor: pointer !important;
+            outline: none !important;
+        }
+
+        .noUi-handle:before,
+        .noUi-handle:after {
+            display: none !important;
+        }
+
+        .noUi-handle:hover {
+            transform: scale(1.15);
+            box-shadow: 0 3px 12px rgba(99, 102, 241, 0.5) !important;
+        }
+
+        .noUi-handle:active {
+            transform: scale(1.25);
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.6) !important;
+        }
+
+        .noUi-base {
+            height: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .noUi-origin {
+            z-index: 1;
+        }
+
+        /* Flatpickr customization */
+        .flatpickr-calendar {
+            background: var(--card-bg) !important;
+            border: 2px solid var(--card-border) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+            font-family: inherit !important;
+            z-index: 50000 !important;
+            margin-top: 8px !important;
+        }
+
+        /* Only show calendar when it has the open class */
+        .flatpickr-calendar.open {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        /* Hide calendar when closed */
+        .flatpickr-calendar:not(.open) {
+            display: none !important;
+        }
+
+        .flatpickr-calendar.static {
+            position: absolute !important;
+            top: 100% !important;
+        }
+
+        .flatpickr-months {
+            background: var(--card-bg) !important;
+            padding: 12px !important;
+        }
+
+        .flatpickr-month {
+            color: var(--text-primary) !important;
+            fill: var(--text-primary) !important;
+        }
+
+        .flatpickr-current-month {
+            padding: 8px 0 !important;
+        }
+
+        .flatpickr-current-month .flatpickr-monthDropdown-months {
+            background: var(--card-bg) !important;
+            color: var(--text-primary) !important;
+            font-weight: 700 !important;
+            font-size: 16px !important;
+        }
+
+        .flatpickr-current-month input.cur-year {
+            color: var(--text-primary) !important;
+            font-weight: 700 !important;
+        }
+
+        .flatpickr-weekdays {
+            background: var(--surface-bg) !important;
+            padding: 8px 0 !important;
+        }
+
+        .flatpickr-weekday {
+            color: var(--text-secondary) !important;
+            font-weight: 700 !important;
+        }
+
+        .flatpickr-days {
+            background: var(--card-bg) !important;
+        }
+
+        .flatpickr-day {
+            color: var(--text-primary) !important;
+            border-radius: 12px !important;
+            margin: 2px !important;
+        }
+
+        .flatpickr-day:hover {
+            background: var(--icon-bg) !important;
+            border-color: #6366f1 !important;
+        }
+
+        .flatpickr-day.today {
+            border-color: #6366f1 !important;
+            font-weight: 700 !important;
+        }
+
+        .flatpickr-day.selected {
+            background: linear-gradient(135deg, #6366f1, #4338ca) !important;
+            border-color: #6366f1 !important;
+            color: white !important;
+            font-weight: 700 !important;
+        }
+
+        .flatpickr-day.startRange,
+        .flatpickr-day.endRange {
+            background: linear-gradient(135deg, #6366f1, #4338ca) !important;
+            border-color: #6366f1 !important;
+            color: white !important;
+            font-weight: 700 !important;
+        }
+
+        .flatpickr-day.inRange {
+            background: var(--icon-bg) !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+        }
+
+        .flatpickr-day.disabled {
+            color: var(--text-tertiary) !important;
+            opacity: 0.4 !important;
+        }
+
+        .flatpickr-time {
+            background: var(--card-bg) !important;
+            border-top: 1px solid var(--card-border) !important;
+        }
+
+        .flatpickr-prev-month,
+        .flatpickr-next-month {
+            fill: var(--text-primary) !important;
+        }
+
+        .flatpickr-prev-month:hover,
+        .flatpickr-next-month:hover {
+            background: var(--icon-bg) !important;
+        }
+
+        .numInputWrapper:hover {
+            background: var(--icon-bg) !important;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .cards-grid {
+                grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .cert-search-page {
+                padding: 24px 16px;
+            }
+
+            .cert-hero h1 {
+                font-size: 28px;
+            }
+
+            .cert-hero p {
+                font-size: 14px;
+            }
+
+            .search-box {
+                flex-direction: column;
+            }
+
+            .search-button {
+                width: 100%;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <!-- Filter Libraries -->
+    <!-- Choices.js for multi-select dropdowns -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/styles/choices.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
+
+    <!-- noUiSlider for range sliders -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
+
+    <!-- Flatpickr for date range picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="page-header">
+        <div class="header-container">
+            <a href="/" class="logo"><span>Tender</span>Hub</a>
+            <nav class="nav">
+                <button type="button" class="theme-toggle-btn" id="themeToggle" aria-label="Toggle dark mode">
+                    🌙
+                </button>
+                <a href="/dashboard">Dashboard</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="cert-search-page">
+        <!-- Hero -->
+        <div class="cert-hero">
+            <h1>🔍 Certificate Search</h1>
+            <p>Search through your completion certificates by project name, client, services, location, or any keyword</p>
+        </div>
+
+        <!-- Search -->
+        <div class="search-wrapper">
+            <div class="search-box">
+                <input
+                    type="text"
+                    id="searchInput"
+                    class="search-input"
+                    placeholder="Type to search certificates..."
+                    autocomplete="off"
+                />
+                <button type="button" id="searchButton" class="search-button">
+                    Search
+                </button>
+                <button type="button" id="showAllButton" class="search-button show-all">
+                    Show All
+                </button>
+            </div>
+        </div>
+
+        <!-- Filters Panel (Collapsible) -->
+        <div id="filtersPanel" class="filters-panel" style="display: none;">
+            <div class="filters-header">
+                <h3>🎯 Refine Results</h3>
+                <div class="filters-actions">
+                    <button type="button" id="clearFiltersBtn" class="filter-action-btn clear-btn">
+                        Clear All
+                    </button>
+                    <button type="button" id="applyFiltersBtn" class="filter-action-btn apply-btn">
+                        Apply Filters
+                    </button>
+                    <button type="button" id="toggleFiltersBtn" class="filter-toggle-btn">
+                        <span id="toggleIcon">▼</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="filtersContent" class="filters-content">
+                <div class="filters-grid">
+                    <!-- Client Names Filter -->
+                    <div class="filter-group">
+                        <label class="filter-label">Client Names</label>
+                        <select id="filterClients" class="filter-select" multiple>
+                            <!-- Options populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Locations Filter -->
+                    <div class="filter-group">
+                        <label class="filter-label">Locations</label>
+                        <select id="filterLocations" class="filter-select" multiple>
+                            <!-- Options populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Services Filter -->
+                    <div class="filter-group">
+                        <label class="filter-label">Services Rendered</label>
+                        <select id="filterServices" class="filter-select" multiple>
+                            <!-- Options populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Sectors Filter -->
+                    <div class="filter-group">
+                        <label class="filter-label">Sectors</label>
+                        <select id="filterSectors" class="filter-select" multiple>
+                            <!-- Options populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Sub-Sectors Filter -->
+                    <div class="filter-group">
+                        <label class="filter-label">Sub-Sectors</label>
+                        <select id="filterSubSectors" class="filter-select" multiple>
+                            <!-- Options populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Funding Agencies Filter -->
+                    <div class="filter-group">
+                        <label class="filter-label">Funding Agencies</label>
+                        <select id="filterFundingAgencies" class="filter-select" multiple>
+                            <!-- Options populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Consultancy Fee Range -->
+                    <div class="filter-group range-group">
+                        <label class="filter-label">Consultancy Fee Range</label>
+                        <div id="feeRangeSlider" class="range-slider"></div>
+                        <div class="range-values">
+                            <span id="feeRangeMin">₹0</span>
+                            <span id="feeRangeMax">₹0</span>
+                        </div>
+                    </div>
+
+                    <!-- Project Value Range -->
+                    <div class="filter-group range-group">
+                        <label class="filter-label">Project Value Range</label>
+                        <div id="projectValueSlider" class="range-slider"></div>
+                        <div class="range-values">
+                            <span id="projectValueMin">₹0</span>
+                            <span id="projectValueMax">₹0</span>
+                        </div>
+                    </div>
+
+                    <!-- Completion Start Date -->
+                    <div class="filter-group">
+                        <label class="filter-label">📅 Completion Start Date</label>
+                        <input type="text" id="completionStartDate" class="date-range-input" placeholder="Select start date..." readonly>
+                    </div>
+
+                    <!-- Completion End Date -->
+                    <div class="filter-group">
+                        <label class="filter-label">📅 Completion End Date</label>
+                        <input type="text" id="completionEndDate" class="date-range-input" placeholder="Select end date..." readonly>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div id="searchStats" class="search-stats" style="display: none;">
+            <p>Found <strong id="resultCount">0</strong> certificate(s)</p>
+        </div>
+
+        <!-- Loading -->
+        <div id="loadingSpinner" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <div class="loading-text">Searching certificates...</div>
+        </div>
+
+        <!-- No Results -->
+        <div id="noResults" class="no-results" style="display: none;">
+            <div class="no-results-icon">📋</div>
+            <h3>No certificates found</h3>
+            <p>Try different keywords or check if you have uploaded any certificates yet.</p>
+            <a href="/dashboard" class="btn-primary">Go to Dashboard</a>
+        </div>
+
+        <!-- Results Grid -->
+        <div id="resultsGrid" class="cards-grid"></div>
+    </div>
+
+    <script>
+        // Theme Toggle Functionality
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(savedTheme);
+        }
+
+        function applyTheme(theme) {
+            const body = document.body;
+            const themeToggle = document.getElementById('themeToggle');
+
+            if (theme === 'dark') {
+                body.classList.add('dark-mode');
+                if (themeToggle) themeToggle.textContent = '☀️';
+                themeToggle.setAttribute('aria-label', 'Switch to light mode');
+            } else {
+                body.classList.remove('dark-mode');
+                if (themeToggle) themeToggle.textContent = '🌙';
+                themeToggle.setAttribute('aria-label', 'Switch to dark mode');
+            }
+
+            localStorage.setItem('theme', theme);
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        }
+
+        let searchTimeout = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize theme
+            initializeTheme();
+
+            // Add theme toggle listener
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', toggleTheme);
+            }
+
+            const searchInput = document.getElementById('searchInput');
+            const searchButton = document.getElementById('searchButton');
+            const showAllButton = document.getElementById('showAllButton');
+
+            // Restore previous search query from localStorage or load all certificates
+            const savedQuery = localStorage.getItem('certificateSearchQuery');
+            if (savedQuery) {
+                searchInput.value = savedQuery;
+            }
+        });
+
+        async function loadAllCertificates(page = 1) {
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const resultsGrid = document.getElementById('resultsGrid');
+            const noResults = document.getElementById('noResults');
+
+            loadingSpinner.style.display = 'block';
+            resultsGrid.innerHTML = '';
+            noResults.style.display = 'none';
+
+            try {
+                const response = await fetch(`/api/certificates?page=${page}&per_page=100`);
+                const data = await response.json();
+
+                loadingSpinner.style.display = 'none';
+
+                if (response.ok && data.certificates && data.certificates.length > 0) {
+                    const total = typeof data.total === 'number' ? data.total : data.certificates.length;
+                    displayResults(data.certificates, '');
+                    updateSearchStats(total);
+                } else {
+                    showNoResults();
+                }
+            } catch (error) {
+                console.error('Load all error:', error);
+                loadingSpinner.style.display = 'none';
+                showNoResults();
+            }
+        }
+
+        function displayResults(certificates, query) {
+            const resultsGrid = document.getElementById('resultsGrid');
+
+            resultsGrid.innerHTML = certificates.map(cert => {
+                const projectName = cert.project_name || 'Untitled Project';
+                const clientName = cert.client_name || 'Unknown Client';
+                const location = cert.location || 'Not specified';
+                const completionDate = cert.completion_date
+                    ? new Date(cert.completion_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                    : 'Date not specified';
+                const projectValue = cert.project_value
+                    ? `₹${cert.project_value.toLocaleString('en-IN')}`
+                    : 'Not specified';
+
+                // Ensure services is always an array
+                let services = [];
+                if (cert.services_rendered) {
+                    if (Array.isArray(cert.services_rendered)) {
+                        services = cert.services_rendered;
+                    } else if (typeof cert.services_rendered === 'string') {
+                        try {
+                            services = JSON.parse(cert.services_rendered);
+                        } catch (e) {
+                            services = [];
+                        }
+                    }
+                }
+
+                const filename = cert.original_filename || 'Unknown file';
+
+                const highlightedTitle = highlightText(projectName, query);
+                const highlightedClient = highlightText(clientName, query);
+                const highlightedLocation = highlightText(location, query);
+
+                return `
+                    <div class="material-card">
+                        <div class="card-header">
+                            <div class="card-title">${highlightedTitle}</div>
+                            <div class="card-client">
+                                <span>🏢</span>
+                                <span>${highlightedClient}</span>
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            <div class="info-row">
+                                <div class="info-icon">📅</div>
+                                <div class="info-content">
+                                    <div class="info-label">Completion Date</div>
+                                    <div class="info-value">${completionDate}</div>
+                                </div>
+                            </div>
+
+                            <div class="info-row">
+                                <div class="info-icon">💰</div>
+                                <div class="info-content">
+                                    <div class="info-label">Project Value</div>
+                                    <div class="info-value">${projectValue}</div>
+                                </div>
+                            </div>
+
+                            <div class="info-row">
+                                <div class="info-icon">📍</div>
+                                <div class="info-content">
+                                    <div class="info-label">Location</div>
+                                    <div class="info-value">${highlightedLocation}</div>
+                                </div>
+                            </div>
+
+                            <div class="info-row">
+                                <div class="info-icon">📄</div>
+                                <div class="info-content">
+                                    <div class="info-label">Certificate File</div>
+                                    <div class="info-value" style="font-size: 14px;" title="${filename}">${truncateText(filename, 30)}</div>
+                                </div>
+                            </div>
+
+                            ${services.length > 0 ? `
+                            <div class="services">
+                                <div class="services-title">Services Rendered</div>
+                                <div class="services-tags">
+                                    ${services.map(service => `
+                                        <span class="service-tag">${highlightText(service, query)}</span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="card-actions">
+                            <button class="action-btn primary" onclick="viewCertificateDetails('${cert.id}')">
+                                📄 View Details
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function highlightText(text, query) {
+            if (!query || !text) return text;
+            const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function truncateText(text, maxLength) {
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+
+        function updateSearchStats(count) {
+            const searchStats = document.getElementById('searchStats');
+            const resultCount = document.getElementById('resultCount');
+            resultCount.textContent = count;
+            searchStats.style.display = 'block';
+        }
+
+        function showNoResults() {
+            document.getElementById('noResults').style.display = 'block';
+        }
+
+        function clearResults() {
+            document.getElementById('resultsGrid').innerHTML = '';
+            document.getElementById('searchStats').style.display = 'none';
+            document.getElementById('noResults').style.display = 'none';
+            document.getElementById('loadingSpinner').style.display = 'none';
+        }
+
+        function viewCertificateDetails(certificateId) {
+            window.location.href = `/certificate/${certificateId}`;
+        }
+
+        // ========== FILTER SYSTEM ==========
+
+        // Global filter state
+        let filterOptions = null;
+        let choicesInstances = {};
+        let sliderInstances = {};
+        let startDatePicker = null;
+        let endDatePicker = null;
+        let currentFilters = {};
+
+        // Initialize filters on page load
+        async function initializeFilters() {
+            try {
+                // Fetch filter options from backend
+                const response = await fetch('/api/certificates/filter-options');
+                if (!response.ok) throw new Error('Failed to fetch filter options');
+
+                const data = await response.json();
+                filterOptions = data;
+
+                // Initialize all filter components
+                initializeChoicesJS();
+                initializeSliders();
+                initializeDatePicker();
+                initializeFilterToggle();
+                initializeFilterActions();
+
+                // Load saved filters from localStorage
+                loadSavedFilters();
+
+                console.log('✅ Filters initialized successfully');
+            } catch (error) {
+                console.error('❌ Error initializing filters:', error);
+            }
+        }
+
+        // Initialize Choices.js for multi-select dropdowns
+        function initializeChoicesJS() {
+            const selectConfigs = [
+                { id: 'filterClients', data: filterOptions.clients || [] },
+                { id: 'filterLocations', data: filterOptions.locations || [] },
+                { id: 'filterServices', data: filterOptions.services || [] },
+                { id: 'filterSectors', data: filterOptions.sectors || [] },
+                { id: 'filterSubSectors', data: filterOptions.sub_sectors || [] },
+                { id: 'filterFundingAgencies', data: filterOptions.funding_agencies || [] }
+            ];
+
+            selectConfigs.forEach(config => {
+                const element = document.getElementById(config.id);
+                if (!element) return;
+
+                // Clear existing options
+                element.innerHTML = '';
+
+                // Add options
+                config.data.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item;
+                    option.text = item;
+                    element.appendChild(option);
+                });
+
+                // Initialize Choices.js
+                choicesInstances[config.id] = new Choices(element, {
+                    removeItemButton: true,
+                    searchEnabled: true,
+                    searchPlaceholderValue: 'Search...',
+                    noResultsText: 'No results found',
+                    itemSelectText: 'Click to select',
+                    allowHTML: false,
+                    classNames: {
+                        containerOuter: 'choices',
+                        containerInner: 'choices__inner',
+                        input: 'choices__input',
+                        inputCloned: 'choices__input--cloned',
+                        list: 'choices__list',
+                        listItems: 'choices__list--multiple',
+                        listSingle: 'choices__list--single',
+                        listDropdown: 'choices__list--dropdown',
+                        item: 'choices__item',
+                        itemSelectable: 'choices__item--selectable',
+                        itemDisabled: 'choices__item--disabled',
+                        itemChoice: 'choices__item--choice',
+                        placeholder: 'choices__placeholder',
+                        group: 'choices__group',
+                        groupHeading: 'choices__heading',
+                        button: 'choices__button'
+                    }
+                });
+            });
+        }
+
+        // Initialize noUiSlider for range sliders
+        function initializeSliders() {
+            // Consultancy Fee Range Slider
+            const feeRanges = filterOptions.ranges?.consultancy_fee || [];
+            console.log('📊 Fee ranges data:', feeRanges);
+
+            let feeMin, feeMax;
+
+            if (feeRanges.length > 0) {
+                feeMin = feeRanges[0].min;
+                feeMax = feeRanges[feeRanges.length - 1].max;
+                console.log('✅ Using actual fee ranges:', feeMin, '-', feeMax);
+            } else {
+                // Fallback to default range if no data
+                feeMin = 0;
+                feeMax = 100000000; // 10 Crore default max
+                console.log('⚠️ Using default fee range (no data):', feeMin, '-', feeMax);
+            }
+
+            const feeSlider = document.getElementById('feeRangeSlider');
+            if (!feeSlider) {
+                console.error('❌ Fee slider element not found!');
+                return;
+            }
+
+            try {
+                sliderInstances.feeRange = noUiSlider.create(feeSlider, {
+                    start: [feeMin, feeMax],
+                    connect: true,
+                    range: {
+                        'min': feeMin,
+                        'max': feeMax
+                    },
+                    step: Math.max(1, (feeMax - feeMin) / 100),
+                    tooltips: false
+                });
+
+                sliderInstances.feeRange.on('update', function (values) {
+                    document.getElementById('feeRangeMin').textContent = formatCurrency(parseFloat(values[0]));
+                    document.getElementById('feeRangeMax').textContent = formatCurrency(parseFloat(values[1]));
+                });
+
+                console.log('✅ Fee range slider initialized successfully');
+            } catch (error) {
+                console.error('❌ Error creating fee range slider:', error);
+            }
+
+            // Project Value Range Slider
+            const pvRange = filterOptions.ranges?.project_value || { min: 0, max: 1000000000 };
+            const pvSlider = document.getElementById('projectValueSlider');
+            sliderInstances.projectValue = noUiSlider.create(pvSlider, {
+                start: [pvRange.min, pvRange.max],
+                connect: true,
+                range: {
+                    'min': pvRange.min,
+                    'max': pvRange.max
+                },
+                step: (pvRange.max - pvRange.min) / 100,
+                tooltips: false
+            });
+
+            sliderInstances.projectValue.on('update', function (values) {
+                document.getElementById('projectValueMin').textContent = formatCurrency(parseFloat(values[0]));
+                document.getElementById('projectValueMax').textContent = formatCurrency(parseFloat(values[1]));
+            });
+        }
+
+        // Initialize Flatpickr for date pickers (separate start and end)
+        function initializeDatePicker() {
+            const dateRange = filterOptions.ranges?.completion_date || {};
+            const startInput = document.getElementById('completionStartDate');
+            const endInput = document.getElementById('completionEndDate');
+
+            if (!startInput || !endInput) {
+                console.error('❌ Date input elements not found');
+                return;
+            }
+
+            console.log('📅 Initializing Flatpickr date pickers with range:', dateRange);
+
+            try {
+                // Destroy existing instances if any
+                if (startDatePicker) startDatePicker.destroy();
+                if (endDatePicker) endDatePicker.destroy();
+
+                // Initialize Start Date Picker
+                startDatePicker = flatpickr(startInput, {
+                    dateFormat: 'Y-m-d',
+                    // No minDate or maxDate restrictions - allow any date
+                    clickOpens: true,
+                    allowInput: false,
+                    static: false,  // Dynamic positioning, not static
+                    disableMobile: false,  // Use native picker on mobile if available
+                    onChange: function(selectedDates, dateStr, instance) {
+                        if (selectedDates.length > 0) {
+                            // Set minimum date for end date picker to ensure end >= start
+                            if (endDatePicker) {
+                                endDatePicker.set('minDate', dateStr);
+                            }
+                            console.log('📅 Start date selected:', dateStr);
+                            // Auto-close calendar after selection
+                            setTimeout(() => instance.close(), 100);
+                        }
+                    },
+                    onClose: function() {
+                        console.log('📅 Start date picker closed');
+                    },
+                    onReady: function(selectedDates, dateStr, instance) {
+                        console.log('✅ Start date picker ready');
+                        // Ensure calendar is closed on init
+                        instance.close();
+                    }
+                });
+
+                // Initialize End Date Picker
+                endDatePicker = flatpickr(endInput, {
+                    dateFormat: 'Y-m-d',
+                    // No initial restrictions - allow any date
+                    // minDate will be set dynamically when start date is selected
+                    clickOpens: true,
+                    allowInput: false,
+                    static: false,  // Dynamic positioning, not static
+                    disableMobile: false,  // Use native picker on mobile if available
+                    onChange: function(selectedDates, dateStr, instance) {
+                        if (selectedDates.length > 0) {
+                            // Set maximum date for start date picker to ensure start <= end
+                            if (startDatePicker) {
+                                startDatePicker.set('maxDate', dateStr);
+                            }
+                            console.log('📅 End date selected:', dateStr);
+                            // Auto-close calendar after selection
+                            setTimeout(() => instance.close(), 100);
+                        }
+                    },
+                    onClose: function() {
+                        console.log('📅 End date picker closed');
+                    },
+                    onReady: function(selectedDates, dateStr, instance) {
+                        console.log('✅ End date picker ready');
+                        // Ensure calendar is closed on init
+                        instance.close();
+                    }
+                });
+
+                console.log('✅ Both date pickers initialized successfully');
+
+            } catch (error) {
+                console.error('❌ Error initializing date pickers:', error);
+            }
+        }
+
+        // Initialize filter toggle functionality
+        function initializeFilterToggle() {
+            const toggleBtn = document.getElementById('toggleFiltersBtn');
+            const filtersContent = document.getElementById('filtersContent');
+            const toggleIcon = document.getElementById('toggleIcon');
+
+            toggleBtn.addEventListener('click', function() {
+                filtersContent.classList.toggle('collapsed');
+                toggleBtn.classList.toggle('collapsed');
+
+                // Save collapse state
+                const isCollapsed = filtersContent.classList.contains('collapsed');
+                localStorage.setItem('filtersCollapsed', isCollapsed);
+            });
+
+            // Restore collapse state
+            const wasCollapsed = localStorage.getItem('filtersCollapsed') === 'true';
+            if (wasCollapsed) {
+                filtersContent.classList.add('collapsed');
+                toggleBtn.classList.add('collapsed');
+            }
+        }
+
+        // Initialize filter action buttons
+        function initializeFilterActions() {
+            document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+            document.getElementById('clearFiltersBtn').addEventListener('click', clearAllFilters);
+        }
+
+        // Collect current filter values
+        function collectFilterValues() {
+            const filters = {};
+
+            // Multi-select filters
+            const clients = choicesInstances.filterClients?.getValue(true) || [];
+            const locations = choicesInstances.filterLocations?.getValue(true) || [];
+            const services = choicesInstances.filterServices?.getValue(true) || [];
+            const sectors = choicesInstances.filterSectors?.getValue(true) || [];
+            const subSectors = choicesInstances.filterSubSectors?.getValue(true) || [];
+            const fundingAgencies = choicesInstances.filterFundingAgencies?.getValue(true) || [];
+
+            if (clients.length > 0) filters.clients = clients;
+            if (locations.length > 0) filters.locations = locations;
+            if (services.length > 0) filters.services = services;
+            if (sectors.length > 0) filters.sectors = sectors;
+            if (subSectors.length > 0) filters.sub_sectors = subSectors;
+            if (fundingAgencies.length > 0) filters.funding_agencies = fundingAgencies;
+
+            // Range filters
+            if (sliderInstances.feeRange) {
+                const feeValues = sliderInstances.feeRange.get();
+                const feeRanges = filterOptions.ranges?.consultancy_fee || [];
+                if (feeRanges.length > 0) {
+                    const feeMin = feeRanges[0].min;
+                    const feeMax = feeRanges[feeRanges.length - 1].max;
+                    if (parseFloat(feeValues[0]) !== feeMin || parseFloat(feeValues[1]) !== feeMax) {
+                        filters.consultancy_fee_range = {
+                            min: parseFloat(feeValues[0]),
+                            max: parseFloat(feeValues[1])
+                        };
+                    }
+                }
+            }
+
+            if (sliderInstances.projectValue) {
+                const pvValues = sliderInstances.projectValue.get();
+                const pvRange = filterOptions.ranges?.project_value || { min: 0, max: 1000000000 };
+                if (parseFloat(pvValues[0]) !== pvRange.min || parseFloat(pvValues[1]) !== pvRange.max) {
+                    filters.project_value_range = {
+                        min: parseFloat(pvValues[0]),
+                        max: parseFloat(pvValues[1])
+                    };
+                }
+            }
+
+            // Date range filter (from separate start and end date pickers)
+            const startDate = startDatePicker && startDatePicker.selectedDates.length > 0
+                ? formatDateForAPI(startDatePicker.selectedDates[0])
+                : null;
+            const endDate = endDatePicker && endDatePicker.selectedDates.length > 0
+                ? formatDateForAPI(endDatePicker.selectedDates[0])
+                : null;
+
+            if (startDate && endDate) {
+                filters.completion_date_range = { start: startDate, end: endDate };
+            } else if (startDate) {
+                // If only start date, filter from start date onwards
+                filters.completion_date_range = { start: startDate, end: null };
+            } else if (endDate) {
+                // If only end date, filter up to end date
+                filters.completion_date_range = { start: null, end: endDate };
+            }
+
+            return filters;
+        }
+
+        function syncFiltersFromUI(save = true) {
+            currentFilters = collectFilterValues();
+            if (save) {
+                localStorage.setItem('certificateFilters', JSON.stringify(currentFilters));
+            }
+            return currentFilters;
+        }
+
+        // Apply filters
+        async function applyFilters() {
+            const query = document.getElementById('searchInput').value.trim();
+            const filters = syncFiltersFromUI();
+            await performSearch(query, filters);
+        }
+
+        // Clear all filters
+        async function clearAllFilters(triggerSearch = true) {
+            // Reset Choices.js instances
+            Object.values(choicesInstances).forEach(instance => {
+                instance.removeActiveItems();
+            });
+
+            // Reset sliders
+            if (sliderInstances.feeRange) {
+                const feeRanges = filterOptions.ranges?.consultancy_fee || [];
+                if (feeRanges.length > 0) {
+                    sliderInstances.feeRange.set([feeRanges[0].min, feeRanges[feeRanges.length - 1].max]);
+                }
+            }
+
+            if (sliderInstances.projectValue) {
+                const pvRange = filterOptions.ranges?.project_value || { min: 0, max: 1000000000 };
+                sliderInstances.projectValue.set([pvRange.min, pvRange.max]);
+            }
+
+            // Reset date pickers
+            if (startDatePicker) {
+                startDatePicker.clear();
+            }
+            if (endDatePicker) {
+                endDatePicker.clear();
+            }
+
+            // Clear stored filters
+            currentFilters = {};
+            localStorage.removeItem('certificateFilters');
+
+            if (triggerSearch) {
+                // Trigger search without filters
+                const query = document.getElementById('searchInput').value.trim();
+                await performSearch(query, {});
+            }
+        }
+
+        // Load saved filters from localStorage
+        function loadSavedFilters() {
+            try {
+                const saved = localStorage.getItem('certificateFilters');
+                if (!saved) return;
+
+                const filters = JSON.parse(saved);
+
+                // Restore Choices.js values
+                if (filters.clients) choicesInstances.filterClients?.setChoiceByValue(filters.clients);
+                if (filters.locations) choicesInstances.filterLocations?.setChoiceByValue(filters.locations);
+                if (filters.services) choicesInstances.filterServices?.setChoiceByValue(filters.services);
+                if (filters.sectors) choicesInstances.filterSectors?.setChoiceByValue(filters.sectors);
+                if (filters.sub_sectors) choicesInstances.filterSubSectors?.setChoiceByValue(filters.sub_sectors);
+                if (filters.funding_agencies) choicesInstances.filterFundingAgencies?.setChoiceByValue(filters.funding_agencies);
+
+                // Restore sliders
+                if (filters.consultancy_fee_range && sliderInstances.feeRange) {
+                    sliderInstances.feeRange.set([filters.consultancy_fee_range.min, filters.consultancy_fee_range.max]);
+                }
+                if (filters.project_value_range && sliderInstances.projectValue) {
+                    sliderInstances.projectValue.set([filters.project_value_range.min, filters.project_value_range.max]);
+                }
+
+                // Restore date range (separate pickers)
+                if (filters.completion_date_range) {
+                    if (filters.completion_date_range.start && startDatePicker) {
+                        startDatePicker.setDate(filters.completion_date_range.start);
+                    }
+                    if (filters.completion_date_range.end && endDatePicker) {
+                        endDatePicker.setDate(filters.completion_date_range.end);
+                    }
+                }
+
+                currentFilters = filters;
+            } catch (error) {
+                console.error('Error loading saved filters:', error);
+            }
+        }
+
+        // Enhanced search function with filters
+        async function performSearch(query, filters = {}) {
+            clearResults();
+            document.getElementById('loadingSpinner').style.display = 'block';
+
+            try {
+                const response = await fetch('/api/certificates/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: query,
+                        filters: filters,
+                        limit: 50
+                    })
+                });
+
+                if (!response.ok) throw new Error('Search failed');
+
+                const data = await response.json();
+                document.getElementById('loadingSpinner').style.display = 'none';
+
+                if (data.certificates && data.certificates.length > 0) {
+                    displayResults(data.certificates, query);
+                    updateSearchStats(data.total);
+
+                    // Show filters panel after search
+                    document.getElementById('filtersPanel').style.display = 'block';
+                } else {
+                    showNoResults();
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                document.getElementById('loadingSpinner').style.display = 'none';
+                alert('Search failed. Please try again.');
+            }
+        }
+
+        // Format currency helper
+        function formatCurrency(value) {
+            if (value >= 10000000) {
+                return '₹' + (value / 10000000).toFixed(2) + ' Cr';
+            } else if (value >= 100000) {
+                return '₹' + (value / 100000).toFixed(2) + ' L';
+            } else {
+                return '₹' + value.toLocaleString('en-IN');
+            }
+        }
+
+        function formatDateForAPI(date) {
+            if (!(date instanceof Date) || isNaN(date.getTime())) return null;
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Update existing search handlers to use new performSearch
+        document.getElementById('searchButton').addEventListener('click', async function() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (query) {
+                const filters = syncFiltersFromUI();
+                await performSearch(query, filters);
+            }
+        });
+
+        document.getElementById('showAllButton').addEventListener('click', async function() {
+            document.getElementById('searchInput').value = '';
+            await clearAllFilters(false);
+            await performSearch('', {});
+        });
+
+        document.getElementById('searchInput').addEventListener('keypress', async function(e) {
+            if (e.key === 'Enter') {
+                const query = this.value.trim();
+                if (query) {
+                    const filters = syncFiltersFromUI();
+                    await performSearch(query, filters);
+                }
+            }
+        });
+
+        // Initialize filters when page loads
+        window.addEventListener('DOMContentLoaded', function() {
+            initializeFilters();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found - TenderHub{% endblock %}
+
+{% block content %}
+<section class="error-page">
+    <div class="error-container">
+        <div class="error-illustration">
+            <div class="error-code">404</div>
+            <div class="error-icon">📋</div>
+        </div>
+
+        <div class="error-content">
+            <h1 class="error-title">Page Not Found</h1>
+            <p class="error-message">
+                The page you're looking for doesn't exist or has been moved.
+                It might have been removed, had its name changed, or is temporarily unavailable.
+            </p>
+
+            <div class="error-actions">
+                <a href="{% if current_user %}/dashboard{% elif current_employee %}/employee/dashboard{% else %}/{% endif %}" class="btn btn-primary">
+                    Go to Homepage
+                </a>
+                <button type="button" class="btn btn-outline" onclick="window.history.back()">
+                    Go Back
+                </button>
+            </div>
+
+            {% if current_user %}
+            <div class="error-suggestions">
+                <p class="text-muted mb-3">Quick links you might be looking for:</p>
+                <div class="quick-links">
+                    <a href="/dashboard" class="quick-link">
+                        <span class="quick-link-icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="/procurement" class="quick-link">
+                        <span class="quick-link-icon">🔍</span>
+                        <span>Tender Search</span>
+                    </a>
+                    <a href="/projects" class="quick-link">
+                        <span class="quick-link-icon">📁</span>
+                        <span>Projects</span>
+                    </a>
+                    <a href="/tender-management" class="quick-link">
+                        <span class="quick-link-icon">📋</span>
+                        <span>Tender Management</span>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<style>
+/* Error Page Styling */
+.error-page {
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.error-container {
+    max-width: 800px;
+    text-align: center;
+}
+
+.error-illustration {
+    position: relative;
+    margin-bottom: 3rem;
+}
+
+.error-code {
+    font-size: 10rem;
+    font-weight: 800;
+    color: #e2e8f0;
+    line-height: 1;
+    margin: 0;
+    user-select: none;
+}
+
+.error-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 5rem;
+    opacity: 0.9;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translate(-50%, -50%) translateY(0px);
+    }
+    50% {
+        transform: translate(-50%, -50%) translateY(-20px);
+    }
+}
+
+.error-content {
+    margin-top: 2rem;
+}
+
+.error-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 1rem;
+}
+
+.error-message {
+    font-size: 1.125rem;
+    color: #64748b;
+    max-width: 600px;
+    margin: 0 auto 2.5rem;
+    line-height: 1.6;
+}
+
+.error-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 3rem;
+    flex-wrap: wrap;
+}
+
+.error-suggestions {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-top: 3rem;
+}
+
+.quick-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.quick-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.5rem 1rem;
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    text-decoration: none;
+    color: #334155;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.quick-link:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.quick-link-icon {
+    font-size: 2rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .error-code {
+        font-size: 6rem;
+    }
+
+    .error-icon {
+        font-size: 3rem;
+    }
+
+    .error-title {
+        font-size: 2rem;
+    }
+
+    .error-message {
+        font-size: 1rem;
+    }
+
+    .error-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .error-actions .btn {
+        width: 100%;
+        max-width: 300px;
+    }
+
+    .quick-links {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .quick-links {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

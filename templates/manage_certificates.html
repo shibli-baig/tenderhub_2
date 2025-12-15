@@ -1,0 +1,827 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Certificates - TenderHub{% endblock %}
+
+{% block extra_css %}
+<style>
+.cert-page {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 3.5rem 1.5rem 4rem;
+    display: grid;
+    gap: 2rem;
+}
+
+.md-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 24px 64px -36px rgba(15, 23, 42, 0.5);
+    padding: 2.5rem;
+    display: grid;
+    gap: 1.6rem;
+}
+
+.card-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.card-title {
+    margin: 0;
+    font-size: clamp(2rem, 3.2vw, 2.6rem);
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.card-subtitle {
+    margin: 0;
+    color: #475569;
+    max-width: 620px;
+    font-size: 1.05rem;
+    line-height: 1.6;
+}
+
+.card-actions {
+    margin-left: auto;
+    display: grid;
+    gap: 0.4rem;
+    justify-items: end;
+}
+
+.card-actions-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.card-actions .btn {
+    border-radius: 999px;
+    padding: 0.85rem 1.6rem;
+    font-weight: 600;
+    text-transform: none;
+}
+
+.md-input {
+    width: 100%;
+    border: none;
+    border-radius: 999px;
+    padding: 1rem 1.4rem;
+    font-size: 1rem;
+    background: #f8fafc;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+    transition: box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.md-input:focus {
+    outline: none;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.45);
+}
+
+.file-label {
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.results-header {
+    display: grid;
+    gap: 0.3rem;
+}
+
+.results-title {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.results-subtitle {
+    margin: 0;
+    color: #64748b;
+}
+
+.status-message {
+    display: none;
+    border-radius: 12px;
+    padding: 0.85rem 1.2rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+
+.status-message.is-visible {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.status-message.tone-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: #1d4ed8;
+}
+
+.status-message.tone-success {
+    background: rgba(34, 197, 94, 0.18);
+    color: #047857;
+}
+
+.status-message.tone-error {
+    background: rgba(239, 68, 68, 0.18);
+    color: #b91c1c;
+}
+
+.status-message.tone-pending {
+    background: rgba(14, 165, 233, 0.18);
+    color: #0369a1;
+}
+
+.results-grid {
+    display: grid;
+    gap: 1.4rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.results-grid.is-empty {
+    display: none;
+}
+
+.result-card {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 1.6rem;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+    display: grid;
+    gap: 0.45rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.result-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 32px -24px rgba(15, 23, 42, 0.65);
+}
+
+.result-card h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.result-meta {
+    margin: 0;
+    color: #475569;
+    font-size: 0.95rem;
+}
+
+.result-date {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.empty-hint {
+    text-align: center;
+    color: #94a3b8;
+    font-weight: 500;
+    margin: 1.2rem 0 0;
+}
+
+.empty-hint.is-hidden {
+    display: none;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.drop-zone {
+    border: 3px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    background: #f8fafc;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.drop-zone.drag-over {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    transform: scale(1.02);
+}
+
+.drop-zone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.drop-zone-icon {
+    font-size: 4rem;
+    opacity: 0.5;
+}
+
+.drop-zone-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.drop-zone-subtitle {
+    margin: 0;
+    color: #64748b;
+    font-size: 1rem;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 24px;
+    background: #f1f5f9;
+    border-radius: 999px;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 0.75rem;
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.progress-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+    color: #475569;
+    font-weight: 500;
+}
+
+.progress-details {
+    display: grid;
+    gap: 0.75rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.progress-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    font-size: 0.9rem;
+}
+
+.progress-item-name {
+    flex: 1;
+    color: #1e293b;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.progress-item-status {
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.progress-item-status.processing {
+    background: rgba(14, 165, 233, 0.18);
+    color: #0369a1;
+}
+
+.progress-item-status.completed {
+    background: rgba(34, 197, 94, 0.18);
+    color: #047857;
+}
+
+.progress-item-status.failed {
+    background: rgba(239, 68, 68, 0.18);
+    color: #b91c1c;
+}
+
+.progress-item-status.duplicate {
+    background: rgba(251, 146, 60, 0.18);
+    color: #c2410c;
+}
+
+@media (max-width: 720px) {
+    .cert-page {
+        padding: 3rem 1.1rem 3.5rem;
+    }
+
+    .md-card {
+        padding: 2rem;
+    }
+
+    .card-actions {
+        width: 100%;
+        justify-items: stretch;
+    }
+
+    .card-actions-buttons {
+        justify-content: stretch;
+    }
+
+    .card-actions .btn {
+        width: 100%;
+    }
+
+    .drop-zone {
+        padding: 2rem 1rem;
+    }
+
+    .drop-zone-icon {
+        font-size: 3rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="cert-page">
+    <section class="md-card">
+        <form id="certSearchForm" autocomplete="off">
+            <div class="card-top">
+                <div>
+                    <h1 class="card-title">Certificate Library</h1>
+                    <p class="card-subtitle">Search past work instantly and keep your certifications up to date with a single upload.</p>
+                </div>
+                <div class="card-actions">
+                    <div class="card-actions-buttons">
+                        <button id="certSearchBtn" type="submit" class="btn btn-primary">Search</button>
+                        <button id="certUploadBtn" type="button" class="btn btn-primary">Upload certificates</button>
+                    </div>
+                    <span id="certFileHint" class="file-label">PDF, ZIP, JPG or PNG • Multi-file & folder supported</span>
+                </div>
+            </div>
+            <label class="sr-only" for="certSearchInput">Search certificates</label>
+            <input id="certSearchInput" name="query" class="md-input" type="text" placeholder="Search by client, project, location..." autofocus>
+            <input id="certFileInput" type="file" accept=".pdf,.zip,.jpg,.jpeg,.png" multiple hidden>
+        </form>
+
+        <!-- Drag and Drop Zone -->
+        <div id="certDropZone" class="drop-zone" style="display: none;">
+            <div class="drop-zone-content">
+                <div class="drop-zone-icon">📁</div>
+                <h3 class="drop-zone-title">Drop Files or Folder Here</h3>
+                <p class="drop-zone-subtitle">Supports multiple certificates, folders, and zip files</p>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('certFileInput').click()">
+                    Browse Files
+                </button>
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('certFolderInput').click()">
+                    Select Folder
+                </button>
+            </div>
+        </div>
+        <input id="certFolderInput" type="file" webkitdirectory directory multiple hidden>
+    </section>
+
+    <!-- Upload Progress Section -->
+    <section id="uploadProgress" class="md-card" style="display: none;">
+        <div class="results-header">
+            <h2 class="results-title">Upload Progress</h2>
+            <p class="results-subtitle">Processing certificates in the background</p>
+        </div>
+        <div class="progress-bar-container">
+            <div id="progressBar" class="progress-bar" style="width: 0%"></div>
+        </div>
+        <div class="progress-stats">
+            <span id="progressText">0 / 0 processed</span>
+            <span id="progressPercentage">0%</span>
+        </div>
+        <div id="progressDetails" class="progress-details"></div>
+    </section>
+
+    <section class="md-card">
+        <div class="results-header">
+            <h2 class="results-title">Search results</h2>
+            <p class="results-subtitle">Results appear here right after your search.</p>
+        </div>
+        <div id="certStatus" class="status-message" role="status" aria-live="polite"></div>
+        <div id="certResults" class="results-grid is-empty"></div>
+        <p id="certEmptyHint" class="empty-hint">Start with a keyword to explore your certificate library.</p>
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(() => {
+    const els = {};
+    const state = {
+        searchLabel: '',
+        uploadLabel: '',
+        fileHintDefault: '',
+        currentBatchId: null,
+        progressInterval: null
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        els.searchForm = document.getElementById('certSearchForm');
+        els.searchInput = document.getElementById('certSearchInput');
+        els.searchButton = document.getElementById('certSearchBtn');
+        els.status = document.getElementById('certStatus');
+        els.results = document.getElementById('certResults');
+        els.emptyHint = document.getElementById('certEmptyHint');
+        els.uploadButton = document.getElementById('certUploadBtn');
+        els.fileInput = document.getElementById('certFileInput');
+        els.folderInput = document.getElementById('certFolderInput');
+        els.fileHint = document.getElementById('certFileHint');
+        els.dropZone = document.getElementById('certDropZone');
+        els.uploadProgress = document.getElementById('uploadProgress');
+        els.progressBar = document.getElementById('progressBar');
+        els.progressText = document.getElementById('progressText');
+        els.progressPercentage = document.getElementById('progressPercentage');
+        els.progressDetails = document.getElementById('progressDetails');
+
+        state.searchLabel = els.searchButton.textContent;
+        state.uploadLabel = els.uploadButton.textContent;
+        state.fileHintDefault = els.fileHint.textContent;
+
+        // Search functionality
+        els.searchForm.addEventListener('submit', handleSearchSubmit);
+
+        // Upload button - show options
+        els.uploadButton.addEventListener('click', toggleDropZone);
+
+        // File inputs
+        els.fileInput.addEventListener('change', handleFileSelection);
+        els.folderInput.addEventListener('change', handleFileSelection);
+
+        // Drag and drop
+        els.dropZone.addEventListener('click', (e) => {
+            if (e.target === els.dropZone || e.target.classList.contains('drop-zone-content')) {
+                els.fileInput.click();
+            }
+        });
+        els.dropZone.addEventListener('dragover', handleDragOver);
+        els.dropZone.addEventListener('dragleave', handleDragLeave);
+        els.dropZone.addEventListener('drop', handleDrop);
+
+        // Prevent default drag behavior on the page
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    function toggleDropZone() {
+        const isVisible = els.dropZone.style.display !== 'none';
+        els.dropZone.style.display = isVisible ? 'none' : 'block';
+        if (!isVisible) {
+            els.searchInput.style.display = 'none';
+        } else {
+            els.searchInput.style.display = '';
+        }
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        els.dropZone.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+        e.preventDefault();
+        els.dropZone.classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        els.dropZone.classList.remove('drag-over');
+
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0) {
+            uploadCertificates(files);
+        }
+    }
+
+    function handleSearchSubmit(event) {
+        event.preventDefault();
+        const query = (els.searchInput.value || '').trim();
+        if (!query) {
+            setResultsVisible(false);
+            showStatus('Enter a keyword to search your certificates.', 'info');
+            return;
+        }
+        searchCertificates(query);
+    }
+
+    async function searchCertificates(query) {
+        setSearchLoading(true);
+        showStatus('Searching certificates...', 'pending');
+        try {
+            const response = await fetch(`/api/certificates/search?query=${encodeURIComponent(query)}`);
+            if (!response.ok) {
+                throw new Error('Search failed');
+            }
+            const payload = await response.json();
+            const results = Array.isArray(payload.results) ? payload.results : [];
+            if (!results.length) {
+                els.results.innerHTML = '';
+                setResultsVisible(false);
+                showStatus('No certificates matched that keyword yet.', 'info');
+                return;
+            }
+            renderResults(results);
+            setResultsVisible(true);
+            showStatus(`${results.length} certificate${results.length === 1 ? '' : 's'} found.`, 'success');
+        } catch (error) {
+            console.error('Certificate search error:', error);
+            els.results.innerHTML = '';
+            setResultsVisible(false);
+            showStatus('Could not complete the search. Please try again.', 'error');
+        } finally {
+            setSearchLoading(false);
+        }
+    }
+
+    async function handleFileSelection(event) {
+        const files = Array.from(event.target.files || []);
+        if (files.length === 0) {
+            return;
+        }
+        await uploadCertificates(files);
+        event.target.value = '';
+    }
+
+    async function uploadCertificates(files) {
+        if (files.length === 0) {
+            console.log('uploadCertificates called with 0 files');
+            return;
+        }
+
+        console.log(`uploadCertificates called with ${files.length} files:`, files);
+
+        setUploadLoading(true);
+        els.dropZone.style.display = 'none';
+        els.searchInput.style.display = '';
+
+        const fileCountText = files.length === 1 ? '1 file' : `${files.length} files`;
+        els.fileHint.textContent = `Uploading ${fileCountText}...`;
+        showStatus(`Uploading ${fileCountText}...`, 'pending');
+
+        try {
+            const formData = new FormData();
+            files.forEach((file, index) => {
+                console.log(`Appending file ${index}:`, file.name, file.type, file.size);
+                formData.append('files', file);
+            });
+
+            // Log FormData contents
+            console.log('FormData entries:');
+            for (let pair of formData.entries()) {
+                console.log(pair[0], pair[1]);
+            }
+
+            console.log('Sending POST request to /api/certificates/upload');
+            const response = await fetch('/api/certificates/upload', {
+                method: 'POST',
+                body: formData
+            });
+            console.log('Response status:', response.status);
+
+            if (!response.ok) {
+                let message = 'Upload failed. Please try again.';
+                try {
+                    const error = await response.json();
+                    if (error && error.detail) {
+                        message = error.detail;
+                    }
+                } catch (_) {
+                    /* ignore JSON parse issues */
+                }
+                throw new Error(message);
+            }
+
+            const result = await response.json();
+            state.currentBatchId = result.batch_id;
+
+            // Build status message including duplicates if any
+            let statusMessage = result.message || `Successfully uploaded ${result.total_files} certificate(s)`;
+            showStatus(statusMessage, result.skipped_files > 0 ? 'info' : 'success');
+
+            // Show progress section and start tracking
+            els.uploadProgress.style.display = 'block';
+            startProgressTracking(result.batch_id);
+
+        } catch (error) {
+            console.error('Certificate upload error:', error);
+            showStatus(error.message || 'Upload failed. Please try again.', 'error');
+        } finally {
+            setUploadLoading(false);
+            els.fileHint.textContent = state.fileHintDefault;
+        }
+    }
+
+    function startProgressTracking(batchId) {
+        // Clear any existing interval
+        if (state.progressInterval) {
+            clearInterval(state.progressInterval);
+        }
+
+        // Poll for updates every 2 seconds
+        state.progressInterval = setInterval(() => updateProgress(batchId), 2000);
+
+        // Initial update
+        updateProgress(batchId);
+    }
+
+    async function updateProgress(batchId) {
+        try {
+            const response = await fetch(`/api/certificates/batch/${batchId}/status`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch progress');
+            }
+
+            const data = await response.json();
+            const batch = data.batch;
+            const percentage = data.progress_percentage;
+
+            // Update progress bar
+            els.progressBar.style.width = `${percentage}%`;
+            els.progressPercentage.textContent = `${percentage}%`;
+            els.progressText.textContent = `${batch.processed_count} / ${batch.total_files} processed`;
+
+            // Update certificate details
+            if (data.certificates && data.certificates.length > 0) {
+                renderProgressDetails(data.certificates);
+            }
+
+            // Stop tracking if completed
+            if (batch.status === 'completed' || batch.status === 'failed') {
+                clearInterval(state.progressInterval);
+                state.progressInterval = null;
+
+                const message = batch.status === 'completed'
+                    ? `✓ Completed: ${batch.success_count} successful, ${batch.failed_count} failed`
+                    : `Processing completed with errors`;
+
+                showStatus(message, batch.status === 'completed' ? 'success' : 'error');
+            }
+
+        } catch (error) {
+            console.error('Progress update error:', error);
+        }
+    }
+
+    function renderProgressDetails(certificates) {
+        els.progressDetails.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+
+        certificates.forEach(cert => {
+            const item = document.createElement('div');
+            item.className = 'progress-item';
+
+            const name = document.createElement('span');
+            name.className = 'progress-item-name';
+            name.textContent = cert.filename || cert.project_name || 'Unknown file';
+            name.title = cert.filename || cert.project_name || 'Unknown file';
+
+            const status = document.createElement('span');
+            status.className = `progress-item-status ${cert.status}`;
+            status.textContent = cert.status === 'processing' ? 'Processing...' :
+                                cert.status === 'completed' ? '✓ Complete' :
+                                cert.status === 'duplicate' ? '⊘ Duplicate' :
+                                '✗ Failed';
+
+            item.appendChild(name);
+            item.appendChild(status);
+            fragment.appendChild(item);
+        });
+
+        els.progressDetails.appendChild(fragment);
+    }
+
+    function renderResults(results) {
+        els.results.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+        results.forEach((item) => {
+            const card = document.createElement('article');
+            card.className = 'result-card';
+
+            const title = document.createElement('h3');
+            title.textContent = item.project_name || 'Untitled project';
+            card.appendChild(title);
+
+            const meta = document.createElement('p');
+            meta.className = 'result-meta';
+            meta.textContent = buildMetaLine(item);
+            card.appendChild(meta);
+
+            const date = document.createElement('p');
+            date.className = 'result-date';
+            date.textContent = formatDate(item.completion_date) || 'Completion date unknown';
+            card.appendChild(date);
+
+            fragment.appendChild(card);
+        });
+        els.results.appendChild(fragment);
+    }
+
+    function buildMetaLine(item) {
+        const parts = [];
+        if (item.client_name) {
+            parts.push(item.client_name);
+        }
+        if (item.location) {
+            parts.push(item.location);
+        }
+        if (item.project_value !== null && item.project_value !== undefined) {
+            parts.push(formatCurrency(item.project_value));
+        }
+        return parts.length ? parts.join(' • ') : 'Details coming soon';
+    }
+
+    function setResultsVisible(hasResults) {
+        if (hasResults) {
+            els.results.classList.remove('is-empty');
+            els.emptyHint.classList.add('is-hidden');
+        } else {
+            els.results.classList.add('is-empty');
+            els.emptyHint.classList.remove('is-hidden');
+        }
+    }
+
+    function setSearchLoading(isLoading) {
+        els.searchButton.disabled = isLoading;
+        els.searchButton.textContent = isLoading ? 'Searching...' : state.searchLabel;
+    }
+
+    function setUploadLoading(isLoading) {
+        els.uploadButton.disabled = isLoading;
+        els.uploadButton.textContent = isLoading ? 'Uploading...' : state.uploadLabel;
+    }
+
+    function showStatus(message, tone) {
+        els.status.textContent = message || '';
+        els.status.classList.remove('is-visible', 'tone-info', 'tone-success', 'tone-error', 'tone-pending');
+        if (!message) {
+            return;
+        }
+        els.status.classList.add('is-visible');
+        if (tone) {
+            els.status.classList.add(`tone-${tone}`);
+        }
+    }
+
+    function formatDate(value) {
+        if (!value) {
+            return '';
+        }
+        try {
+            return new Date(value).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+        } catch (_) {
+            return '';
+        }
+    }
+
+    function formatCurrency(value) {
+        try {
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                maximumFractionDigits: 0
+            }).format(value);
+        } catch (_) {
+            return `₹${value}`;
+        }
+    }
+})();
+</script>
+{% endblock %}

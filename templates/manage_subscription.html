@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Subscription - TenderHub{% endblock %}
+
+{% block extra_head %}
+<style>
+    .subscription-hero {
+        text-align: center;
+        padding: 60px 20px 40px;
+        background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+        color: white;
+        border-radius: var(--radius-lg);
+        margin-bottom: 60px;
+    }
+
+    .subscription-hero h1 {
+        font-size: var(--text-4xl);
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+
+    .subscription-hero p {
+        font-size: var(--text-lg);
+        opacity: 0.95;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .pricing-toggle {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 48px;
+    }
+
+    .pricing-toggle span {
+        font-size: var(--text-base);
+        font-weight: 500;
+        color: var(--neutral-700);
+    }
+
+    .pricing-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 32px;
+        margin-bottom: 60px;
+        max-width: 1200px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .pricing-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        padding: 40px 32px;
+        box-shadow: var(--shadow);
+        border: 2px solid var(--neutral-200);
+        transition: all 0.3s ease;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .pricing-card:hover {
+        transform: translateY(-8px);
+        box-shadow: var(--shadow-lg);
+        border-color: var(--primary-400);
+    }
+
+    .pricing-card.featured {
+        border-color: var(--primary-600);
+        box-shadow: 0 20px 60px rgba(99, 102, 241, 0.25);
+    }
+
+    .pricing-card.featured::before {
+        content: 'MOST POPULAR';
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+        color: white;
+        padding: 6px 20px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    .pricing-header {
+        text-align: center;
+        margin-bottom: 24px;
+    }
+
+    .plan-name {
+        font-size: var(--text-xl);
+        font-weight: 700;
+        color: var(--neutral-900);
+        margin-bottom: 8px;
+    }
+
+    .plan-description {
+        font-size: var(--text-sm);
+        color: var(--neutral-500);
+        margin-bottom: 20px;
+    }
+
+    .plan-price {
+        font-size: var(--text-4xl);
+        font-weight: 800;
+        color: var(--primary-600);
+        margin-bottom: 4px;
+    }
+
+    .plan-price span {
+        font-size: var(--text-lg);
+        font-weight: 500;
+        color: var(--neutral-500);
+    }
+
+    .plan-period {
+        font-size: var(--text-sm);
+        color: var(--neutral-500);
+        margin-bottom: 24px;
+    }
+
+    .plan-features {
+        list-style: none;
+        padding: 0;
+        margin: 32px 0;
+        flex-grow: 1;
+    }
+
+    .plan-features li {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 16px;
+        font-size: var(--text-sm);
+        color: var(--neutral-700);
+    }
+
+    .plan-features li svg {
+        flex-shrink: 0;
+        margin-top: 2px;
+        color: var(--success);
+    }
+
+    .plan-cta {
+        width: 100%;
+        padding: 14px 24px;
+        border-radius: var(--radius);
+        font-size: var(--text-base);
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+
+    .plan-cta.primary {
+        background: var(--primary-600);
+        color: white;
+    }
+
+    .plan-cta.primary:hover {
+        background: var(--primary-700);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+    }
+
+    .plan-cta.secondary {
+        background: var(--neutral-100);
+        color: var(--neutral-700);
+        border: 2px solid var(--neutral-300);
+    }
+
+    .plan-cta.secondary:hover {
+        background: var(--neutral-200);
+        border-color: var(--neutral-400);
+    }
+
+    .plan-cta.enterprise {
+        background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+        color: white;
+    }
+
+    .plan-cta.enterprise:hover {
+        background: linear-gradient(135deg, var(--primary-700), var(--primary-800));
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+    }
+
+    .current-plan-badge {
+        display: inline-block;
+        background: var(--success);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        margin-top: 8px;
+    }
+
+    .faq-section {
+        max-width: 800px;
+        margin: 80px auto 40px;
+    }
+
+    .faq-section h2 {
+        text-align: center;
+        font-size: var(--text-3xl);
+        font-weight: 700;
+        color: var(--neutral-900);
+        margin-bottom: 40px;
+    }
+
+    .faq-item {
+        background: white;
+        border-radius: var(--radius);
+        padding: 24px;
+        margin-bottom: 16px;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--neutral-200);
+    }
+
+    .faq-question {
+        font-size: var(--text-lg);
+        font-weight: 600;
+        color: var(--neutral-900);
+        margin-bottom: 12px;
+    }
+
+    .faq-answer {
+        font-size: var(--text-base);
+        color: var(--neutral-600);
+        line-height: 1.7;
+    }
+
+    @media (max-width: 768px) {
+        .pricing-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .subscription-hero h1 {
+            font-size: var(--text-3xl);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="subscription-hero">
+    <h1>Choose Your Perfect Plan</h1>
+    <p>Scale your tender management capabilities with flexible pricing designed for businesses of all sizes</p>
+</div>
+
+<div class="pricing-grid">
+    <!-- Starter Plan -->
+    <div class="pricing-card">
+        <div class="pricing-header">
+            <h3 class="plan-name">Starter</h3>
+            <p class="plan-description">Perfect for small teams getting started</p>
+            <div class="plan-price">₹50,000<span>/year</span></div>
+            <p class="plan-period">Billed annually</p>
+        </div>
+
+        <ul class="plan-features">
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Up to 3 team members</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>50 tender searches per month</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Basic tender tracking</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Email notifications</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Standard support</span>
+            </li>
+        </ul>
+
+        <a href="/subscription/checkout?plan=starter" class="plan-cta secondary">Get Started</a>
+    </div>
+
+    <!-- Professional Plan (Featured) -->
+    <div class="pricing-card featured">
+        <div class="pricing-header">
+            <h3 class="plan-name">Professional</h3>
+            <p class="plan-description">For growing teams with higher demands</p>
+            <div class="plan-price">₹1,00,000<span>/year</span></div>
+            <p class="plan-period">Billed annually</p>
+        </div>
+
+        <ul class="plan-features">
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Up to 10 team members</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Unlimited tender searches</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Advanced tender analytics</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Real-time notifications</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Custom tender alerts</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Priority support (24/7)</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>API access</span>
+            </li>
+        </ul>
+
+        <a href="/subscription/checkout?plan=professional" class="plan-cta primary">Upgrade Now</a>
+    </div>
+
+    <!-- Premium Plan -->
+    <div class="pricing-card">
+        <div class="pricing-header">
+            <h3 class="plan-name">Premium</h3>
+            <p class="plan-description">For large organizations needing full power</p>
+            <div class="plan-price">₹2,00,000<span>/year</span></div>
+            <p class="plan-period">Billed annually</p>
+        </div>
+
+        <ul class="plan-features">
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Unlimited team members</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Unlimited tender searches</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>AI-powered tender matching</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Advanced analytics & reporting</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Custom integrations</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Dedicated account manager</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>White-label options</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>SLA guarantee</span>
+            </li>
+        </ul>
+
+        <a href="/subscription/checkout?plan=premium" class="plan-cta secondary">Get Premium</a>
+    </div>
+
+    <!-- Enterprise Plan -->
+    <div class="pricing-card">
+        <div class="pricing-header">
+            <h3 class="plan-name">Enterprise</h3>
+            <p class="plan-description">Custom solutions for your unique needs</p>
+            <div class="plan-price" style="font-size: var(--text-3xl);">Custom Pricing</div>
+            <p class="plan-period">Tailored to your requirements</p>
+        </div>
+
+        <ul class="plan-features">
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Everything in Premium</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Custom deployment options</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>On-premise installation</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Advanced security features</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Custom feature development</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Dedicated infrastructure</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Training & onboarding</span>
+            </li>
+            <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Legal & compliance support</span>
+            </li>
+        </ul>
+
+        <a href="mailto:sales@tenderhub.com" class="plan-cta enterprise">Contact Sales</a>
+    </div>
+</div>
+
+<div class="faq-section">
+    <h2>Frequently Asked Questions</h2>
+
+    <div class="faq-item">
+        <div class="faq-question">Can I upgrade or downgrade my plan?</div>
+        <div class="faq-answer">Yes, you can upgrade or downgrade your plan at any time. Changes will be prorated based on your billing cycle.</div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question">What payment methods do you accept?</div>
+        <div class="faq-answer">We accept all major credit/debit cards, UPI, net banking, and digital wallets including Paytm, PhonePe, and Google Pay.</div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question">Is there a free trial available?</div>
+        <div class="faq-answer">Yes! We offer a 14-day free trial for all our plans. No credit card required to get started.</div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question">Can I cancel my subscription?</div>
+        <div class="faq-answer">Absolutely. You can cancel your subscription at any time from your account settings. Your access will continue until the end of your billing period.</div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Profile - TenderHub Expert-Verse{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h1 class="section-title">Edit Profile</h1>
+            <p class="section-subtitle">Update your professional information and expertise</p>
+        </div>
+        <div class="section-actions">
+            <a href="/expert/dashboard" class="btn btn-outline">Back to Dashboard</a>
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="alert alert-info" style="margin-bottom: 2rem;">
+        <svg class="alert-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <div>
+            <strong>Profile Editing:</strong> You can update your profile using the same form you used during signup. Navigate to <a href="/expert/profile-setup">Profile Setup</a> to make changes.
+        </div>
+    </div>
+
+    <div style="text-align: center;">
+        <a href="/expert/profile-setup" class="btn btn-primary btn-lg">Go to Profile Setup</a>
+    </div>
+</section>
+{% endblock %}
+

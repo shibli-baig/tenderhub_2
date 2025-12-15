@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}All Tenders (Troubleshooting){% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h1 class="section-title">All Tenders</h1>
+            <p class="section-subtitle">
+                Temporary troubleshooting view showing every tender in the database. Total: {{ total_tenders }}.
+            </p>
+        </div>
+        <button type="button" class="btn btn-outline" onclick="window.history.back()">Go Back</button>
+    </div>
+
+    <form method="get" action="/show-all-tneders" style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1.5rem;">
+        <div class="form-group" style="flex: 1;">
+            <label for="search" class="form-label">Keyword search</label>
+            <input
+                type="text"
+                id="search"
+                name="search"
+                value="{{ search or '' }}"
+                placeholder="Search title, authority, reference number, organisation…"
+            >
+        </div>
+        <div>
+            <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+    </form>
+
+    {% if tenders %}
+        <div>
+            {% for tender in tenders %}
+                <article class="surface-card" style="padding: 1rem 1.25rem; margin-bottom: 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;"
+                         onclick="window.location.href='/tender/{{ tender.id }}'"
+                         onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'"
+                         onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow=''">
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--primary, #1976d2);">{{ tender.title or 'Untitled Tender' }}</h3>
+                        <span class="badge badge--muted">
+                            {{ tender.tender_reference_number or tender.tender_id or 'No Reference' }}
+                        </span>
+                    </div>
+                    <p style="margin: 0.4rem 0 0; font-size: 0.95rem;">
+                        <strong>Authority:</strong> {{ tender.authority or 'Not available' }} |
+                        <strong>Organisation:</strong> {{ tender.organisation_chain or 'Not available' }}
+                    </p>
+                    <p style="margin: 0.2rem 0 0; font-size: 0.9rem;">
+                        <strong>Category:</strong> {{ tender.category or 'NA' }} |
+                        <strong>Value:</strong> {% if tender.estimated_value %}₹{{ '{:,.2f}'.format(tender.estimated_value) }}{% else %}NA{% endif %} |
+                        <strong>Source:</strong> {{ tender.source or 'NA' }}
+                    </p>
+                    <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--muted-text, #555);">
+                        <strong>Published:</strong> {{ tender.published_at or 'NA' }} |
+                        <strong>Deadline:</strong> {{ tender.deadline or 'NA' }} |
+                        <strong>Scraped:</strong> {{ tender.scraped_at or 'NA' }}
+                    </p>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="panel panel--compact">
+            <p class="panel-subtitle mb-0">No tenders found for this keyword.</p>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}Request Details - TenderHub Expert-Verse{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h1 class="section-title">Service Request Details</h1>
+            <p class="section-subtitle">Review and respond to service request</p>
+        </div>
+        <div class="section-actions">
+            <a href="/expert/requests" class="btn btn-outline">← Back to Requests</a>
+        </div>
+    </div>
+</section>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+    <!-- Main Content -->
+    <div>
+        <!-- Request Information -->
+        <section class="panel" style="margin-bottom: 1.5rem;">
+            <div class="profile-card__header" style="margin-bottom: 1.5rem;">
+                <div>
+                    <h2 class="surface-card__title">Request Information</h2>
+                </div>
+                <span class="badge badge-{{ 'warning' if service_request.status == 'pending' else 'success' if service_request.status == 'accepted' else 'danger' if service_request.status == 'rejected' else 'secondary' }}">
+                    {{ service_request.status|title }}
+                </span>
+            </div>
+
+            <div class="detail-grid" style="display: grid; gap: 1.5rem;">
+                <div>
+                    <span class="detail-label">Service Type</span>
+                    <p class="detail-value" style="margin-top: 0.5rem;">{{ service_request.service_type }}</p>
+                </div>
+
+                <div>
+                    <span class="detail-label">Description</span>
+                    <p style="margin-top: 0.5rem; color: var(--text-secondary); line-height: 1.6;">
+                        {{ service_request.description }}
+                    </p>
+                </div>
+
+                {% if service_request.budget %}
+                <div>
+                    <span class="detail-label">Budget</span>
+                    <p class="detail-value" style="margin-top: 0.5rem;">₹{{ "{:,.0f}".format(service_request.budget) }}</p>
+                </div>
+                {% endif %}
+
+                {% if service_request.deadline %}
+                <div>
+                    <span class="detail-label">Deadline</span>
+                    <p class="detail-value" style="margin-top: 0.5rem;">{{ service_request.deadline.strftime('%b %d, %Y') }}</p>
+                </div>
+                {% endif %}
+
+                <div>
+                    <span class="detail-label">Requested On</span>
+                    <p class="detail-value" style="margin-top: 0.5rem;">{{ service_request.created_at.strftime('%b %d, %Y at %I:%M %p') if service_request.created_at else 'N/A' }}</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tender Information -->
+        {% if tender %}
+        <section class="panel">
+            <h2 class="surface-card__title" style="margin-bottom: 1.5rem;">Related Tender</h2>
+            
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin-bottom: 1rem;">
+                {{ tender.title }}
+            </h3>
+
+            <div class="detail-grid" style="display: grid; gap: 1rem;">
+                <div>
+                    <span class="detail-label">Organization</span>
+                    <p class="detail-value" style="margin-top: 0.25rem;">{{ tender.authority }}</p>
+                </div>
+
+                <div>
+                    <span class="detail-label">Sector</span>
+                    <p class="detail-value" style="margin-top: 0.25rem;">{{ tender.category }}</p>
+                </div>
+
+                {% if tender.deadline %}
+                <div>
+                    <span class="detail-label">Tender Deadline</span>
+                    <p class="detail-value" style="margin-top: 0.25rem;">{{ tender.deadline.strftime('%b %d, %Y') }}</p>
+                </div>
+                {% endif %}
+
+                {% if tender.estimated_value %}
+                <div>
+                    <span class="detail-label">Estimated Value</span>
+                    <p class="detail-value" style="margin-top: 0.25rem;">{{ tender.estimated_value }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div style="margin-top: 1.5rem;">
+                <a href="/expert/tender/{{ tender.id }}" class="btn btn-outline">View Full Tender Details</a>
+            </div>
+        </section>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div>
+        <!-- Company Information -->
+        {% if company %}
+        <section class="panel" style="margin-bottom: 1.5rem;">
+            <h2 class="surface-card__title" style="margin-bottom: 1rem;">Company Information</h2>
+            
+            <div class="detail-grid" style="display: grid; gap: 1rem;">
+                <div>
+                    <span class="detail-label">Company Name</span>
+                    <p class="detail-value" style="margin-top: 0.25rem;">{{ company.company_name }}</p>
+                </div>
+
+                {% if company.industry_sector %}
+                <div>
+                    <span class="detail-label">Industry Sector</span>
+                    <p class="detail-value" style="margin-top: 0.25rem;">{{ company.industry_sector }}</p>
+                </div>
+                {% endif %}
+
+                {% if company.email_address %}
+                <div>
+                    <span class="detail-label">Contact Email</span>
+                    <p class="detail-value" style="margin-top: 0.25rem;">{{ company.email_address }}</p>
+                </div>
+                {% endif %}
+
+                {% if company.phone_number %}
+                <div>
+                    <span class="detail-label">Phone Number</span>
+                    <p class="detail-value" style="margin-top: 0.25rem;">{{ company.phone_number }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Actions -->
+        <section class="panel">
+            <h2 class="surface-card__title" style="margin-bottom: 1rem;">Actions</h2>
+
+            {% if service_request.status == 'pending' %}
+            <div style="display: grid; gap: 0.75rem;">
+                <button onclick="acceptRequest()" class="btn btn-success w-100">Accept Request</button>
+                <button onclick="rejectRequest()" class="btn btn-danger w-100">Reject Request</button>
+            </div>
+            {% elif service_request.status == 'accepted' %}
+            <div class="alert alert-success">
+                <svg class="alert-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div>
+                    <strong>Request Accepted</strong>
+                    <p>You have accepted this service request.</p>
+                </div>
+            </div>
+            {% elif service_request.status == 'rejected' %}
+            <div class="alert alert-error">
+                <svg class="alert-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+                <div>
+                    <strong>Request Rejected</strong>
+                    <p>You have rejected this service request.</p>
+                </div>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function acceptRequest() {
+    if (!confirm('Are you sure you want to accept this service request?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/expert/request/{{ service_request.id }}/accept', {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('Request accepted successfully!');
+            window.location.reload();
+        } else {
+            alert(data.detail || 'Failed to accept request');
+        }
+    } catch (error) {
+        console.error('Error accepting request:', error);
+        alert('An error occurred. Please try again.');
+    }
+}
+
+async function rejectRequest() {
+    if (!confirm('Are you sure you want to reject this service request?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/expert/request/{{ service_request.id }}/reject', {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('Request rejected successfully.');
+            window.location.reload();
+        } else {
+            alert(data.detail || 'Failed to reject request');
+        }
+    } catch (error) {
+        console.error('Error rejecting request:', error);
+        alert('An error occurred. Please try again.');
+    }
+}
+</script>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+.detail-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.detail-value {
+    font-size: 1rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.badge-warning {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.badge-success {
+    background-color: #10b981;
+    color: white;
+}
+
+.badge-danger {
+    background-color: #ef4444;
+    color: white;
+}
+
+.badge-secondary {
+    background-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.btn-success {
+    background-color: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #059669;
+}
+
+.btn-danger {
+    background-color: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+}
+</style>
+{% endblock %}
+

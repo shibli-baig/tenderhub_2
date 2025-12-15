@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}TenderHub - Government Tender Management{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Dark Mode - ONLY Card Backgrounds */
+body.dark-mode .feature-card {
+    background: #1a1f2e !important;
+}
+
+body.dark-mode .surface-card {
+    background: #1a1f2e !important;
+}
+
+body.dark-mode .metric-card {
+    background: #1a1f2e !important;
+}
+
+body.dark-mode .hero-metric {
+    background: #1a1f2e !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<section class="hero mb-8">
+    <div class="hero__meta">
+        <span class="chip chip--neutral">Procurement Intelligence</span>
+        <span class="chip chip--neutral">AI Enabled</span>
+    </div>
+    <h1 class="hero__title">Operational command centre for government tender strategy.</h1>
+    <p class="hero__subtitle">
+        TenderHub unifies discovery, evaluation, collaboration, and compliance into a single experience
+        built for leadership teams navigating high-value public infrastructure opportunities.
+    </p>
+    <div class="hero__actions">
+        <a href="/procurement" class="btn btn-primary">Explore live tenders</a>
+        {% if not current_user %}
+            <a href="/login" class="btn btn-outline">Sign in to your workspace</a>
+        {% else %}
+            <a href="/dashboard" class="btn btn-outline">Go to dashboard</a>
+        {% endif %}
+    </div>
+    <div class="hero__metrics">
+        <div class="hero-metric">
+            <div class="hero-metric__value">30K+</div>
+            <div class="hero-metric__label">Government tenders indexed</div>
+        </div>
+        <div class="hero-metric">
+            <div class="hero-metric__value">19</div>
+            <div class="hero-metric__label">Industry vertical blueprints</div>
+        </div>
+        <div class="hero-metric">
+            <div class="hero-metric__value">24 × 7</div>
+            <div class="hero-metric__label">Portfolio monitoring</div>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Platform capabilities</h2>
+            <p class="section-subtitle">Designed for middle and top management teams running complex procurement programs.</p>
+        </div>
+    </div>
+
+    <div class="feature-grid">
+        <article class="feature-card surface-card surface-card--clickable" onclick="window.location.href='/add_project'">
+            <div class="feature-card__icon">📁</div>
+            <div>
+                <h3 class="surface-card__title">Project intelligence vault</h3>
+                <p class="text-muted">
+                    Capture credentials, past performance and JV history once. TenderHub transforms it into reusable profiles
+                    that power AI-driven tender recommendations.
+                </p>
+            </div>
+        </article>
+
+        <article class="feature-card surface-card surface-card--clickable" onclick="window.location.href='/procurement'">
+            <div class="feature-card__icon">🔍</div>
+            <div>
+                <h3 class="surface-card__title">Executive tender cockpit</h3>
+                <p class="text-muted">
+                    Multi-dimensional filters, curated watchlists and premium insights ensure you never miss a relevant opportunity
+                    across central, state and PSU portals.
+                </p>
+            </div>
+        </article>
+
+        <article class="feature-card surface-card">
+            <div class="feature-card__icon">🤝</div>
+            <div>
+                <h3 class="surface-card__title">Assignment & governance</h3>
+                <p class="text-muted">
+                    Allocate responsibilities, track responses, and supervise approvals with real-time visibility into team bandwidth and progress.
+                </p>
+            </div>
+        </article>
+
+        <article class="feature-card surface-card">
+            <div class="feature-card__icon">🧠</div>
+            <div>
+                <h3 class="surface-card__title">AI assisted diligence</h3>
+                <p class="text-muted">
+                    Extract structured detail from certificates, tender PDFs and scanned images using GPT-powered processors and enterprise-grade vector search.
+                </p>
+            </div>
+        </article>
+    </div>
+</section>
+
+<section class="section section--surface">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">End-to-end workflow alignment</h2>
+            <p class="section-subtitle">Every milestone from first notification to submission packaged for clarity and accountability.</p>
+        </div>
+    </div>
+
+    <div class="metric-grid">
+        <div class="metric-card">
+            <div class="metric-card__value">Discovery → Qualification</div>
+            <p class="metric-card__label">
+                Unified tender feeds, saved searches, similarity scoring with your portfolio and granular alerts for deadlines or corrigendum updates.
+            </p>
+        </div>
+        <div class="metric-card">
+            <div class="metric-card__value">Preparation → Response</div>
+            <p class="metric-card__label">
+                Assignment boards, task SLAs, document checklists and collaborative notes to keep leadership synced with execution teams.
+            </p>
+        </div>
+        <div class="metric-card">
+            <div class="metric-card__value">Post submission analytics</div>
+            <p class="metric-card__label">
+                Track awards, capture feedback loops and refine win strategy with performance dashboards tailored for enterprise reviews.
+            </p>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Bring your procurement office onto a single canvas</h2>
+            <p class="section-subtitle">
+                From CXOs to pursuit managers, TenderHub keeps everyone aligned on priorities, risks and deliverables.
+            </p>
+        </div>
+        <div class="page-toolbar__actions">
+            <a href="/login" class="btn btn-outline">Schedule a walkthrough</a>
+        </div>
+    </div>
+
+    <div class="card-grid">
+        <div class="surface-card">
+            <div class="surface-card__title">Leadership dashboards</div>
+            <p class="text-muted">Monitor funnel health, financial exposure and team load in a single glance.</p>
+            <div class="surface-card__meta">
+                <span class="badge badge--primary">Portfolio view</span>
+                <span class="badge badge--muted">Real-time metrics</span>
+            </div>
+        </div>
+
+        <div class="surface-card">
+            <div class="surface-card__title">Secure collaboration</div>
+            <p class="text-muted">Role-based access, company-code onboarding and audit-ready logs built for enterprise governance.</p>
+            <div class="surface-card__meta">
+                <span class="badge badge--primary">RBAC</span>
+                <span class="badge badge--muted">Audit trail</span>
+            </div>
+        </div>
+
+        <div class="surface-card">
+            <div class="surface-card__title">Certificate knowledge base</div>
+            <p class="text-muted">Search and reuse validated credentials instantly while preparing qualification documents.</p>
+            <div class="surface-card__meta">
+                <span class="badge badge--primary">Vector search</span>
+                <span class="badge badge--success">GPT extraction</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section section--surface">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Ready to modernise tender operations?</h2>
+            <p class="section-subtitle">Let our team help you set up a high-trust, insight-rich procurement workspace.</p>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-6 align-center">
+        <div class="surface-card" style="max-width: 420px;">
+            <h3 class="surface-card__title">Tailored onboarding</h3>
+            <p class="text-muted">We partner with you to migrate historic tenders, configure KPIs and align workflows with existing governance policies.</p>
+        </div>
+        <div class="surface-card" style="max-width: 420px;">
+            <h3 class="surface-card__title">Enterprise-grade support</h3>
+            <p class="text-muted">Dedicated success managers, SLA-backed assistance and proactive release notes keep your teams moving without friction.</p>
+        </div>
+        <div class="surface-card" style="max-width: 420px;">
+            <h3 class="surface-card__title">Secure and compliant</h3>
+            <p class="text-muted">Encryption, access auditing and data residency controls ensure sensitive documentation stays protected.</p>
+        </div>
+    </div>
+
+    <div class="text-center mt-6">
+        <a href="/login" class="btn btn-primary btn-lg">Launch your TenderHub workspace</a>
+    </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,106 @@
+INDUSTRY SECTORS AND SUB-SECTORS REFERENCE LIST
+================================================
+
+This file contains the original pre-defined industry sectors that were available
+in the TenderHub application before switching to user-defined sectors.
+
+Created: 2025-10-05
+Purpose: Reference for future use
+
+SECTORS:
+--------
+1. Information Technology & Software
+2. Engineering & Technical Services
+3. Construction & Infrastructure
+4. Healthcare & Medical Services
+5. Education & Training
+6. Transportation & Logistics
+7. Defense & Security
+8. Financial Services & Banking
+9. Manufacturing & Production
+10. Energy & Utilities
+11. Agriculture & Food Processing
+12. Telecommunications
+13. Media & Entertainment
+14. Retail & E-commerce
+15. Real Estate & Property
+16. Legal & Consulting Services
+17. Research & Development
+18. Environmental Services
+19. Tourism & Hospitality
+20. Automotive & Transportation
+21. Aerospace & Aviation
+22. Biotechnology & Pharmaceuticals
+23. Mining & Minerals
+24. Textiles & Apparel
+25. Sports & Recreation
+26. Non-Profit & NGO
+27. Government & Public Sector
+28. Other
+
+COMMON SUB-SECTORS BY INDUSTRY:
+--------------------------------
+
+Information Technology & Software:
+- Software Development
+- Cloud Computing
+- Cybersecurity
+- Data Analytics
+- AI & Machine Learning
+- Mobile App Development
+- Web Development
+- IT Consulting
+
+Engineering & Technical Services:
+- Civil Engineering
+- Mechanical Engineering
+- Electrical Engineering
+- Structural Engineering
+- Project Management
+- Quality Assurance
+- Technical Consulting
+
+Construction & Infrastructure:
+- Building Construction
+- Road & Highway Construction
+- Bridge Construction
+- Water & Sewage Systems
+- Urban Planning
+- Architecture & Design
+
+Healthcare & Medical Services:
+- Hospital Management
+- Medical Equipment
+- Pharmaceuticals
+- Diagnostic Services
+- Healthcare IT
+- Medical Research
+
+Education & Training:
+- K-12 Education
+- Higher Education
+- Vocational Training
+- E-Learning
+- Educational Technology
+- Corporate Training
+
+Transportation & Logistics:
+- Freight & Cargo
+- Fleet Management
+- Warehousing
+- Supply Chain Management
+- Last Mile Delivery
+
+Energy & Utilities:
+- Power Generation
+- Renewable Energy
+- Oil & Gas
+- Water Supply
+- Waste Management
+
+Agriculture & Food Processing:
+- Crop Production
+- Food Manufacturing
+- Agricultural Technology
+- Cold Chain & Storage
+- Organic Farming

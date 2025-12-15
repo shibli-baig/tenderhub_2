@@ -1,0 +1,704 @@
+{% extends "base.html" %}
+
+{% block title %}TenderHub - Government Tender Management{% endblock %}
+
+{% block extra_head %}
+<style>
+/* Animation Keyframes */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+}
+
+/* Hero Enhanced */
+.hero-enhanced {
+    position: relative;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    background: radial-gradient(circle at top left, rgba(99,102,241,0.4), transparent 60%),
+                radial-gradient(circle at bottom right, rgba(14,165,233,0.3), transparent 60%),
+                linear-gradient(135deg, #0f172a, #1e293b, #1f2937);
+    color: white;
+    padding: var(--space-16) var(--space-12);
+    display: grid;
+    gap: var(--space-8);
+    box-shadow: 0 25px 50px rgba(15, 23, 42, 0.3);
+    animation: fadeIn 0.8s ease-out;
+}
+
+.hero-enhanced::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 200%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    animation: shimmer 3s infinite;
+}
+
+.hero-enhanced__content {
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+    animation: fadeInUp 1s ease-out 0.2s both;
+}
+
+.hero-enhanced__meta {
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-6);
+    animation: fadeInUp 1s ease-out 0.3s both;
+}
+
+.hero-enhanced__title {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+    margin-bottom: var(--space-6);
+    background: linear-gradient(120deg, #fff, rgba(255,255,255,0.8));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero-enhanced__subtitle {
+    font-size: var(--text-xl);
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.6;
+    margin-bottom: var(--space-8);
+}
+
+.hero-enhanced__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    justify-content: center;
+    animation: fadeInUp 1s ease-out 0.5s both;
+}
+
+.hero-enhanced__actions .btn {
+    animation: pulse 2s infinite;
+}
+
+.hero-enhanced__metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-6);
+    margin-top: var(--space-12);
+}
+
+.hero-metric-enhanced {
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    animation: fadeInUp 1s ease-out calc(0.6s + var(--delay)) both;
+}
+
+.hero-metric-enhanced:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(99, 102, 241, 0.3);
+}
+
+.hero-metric-enhanced__value {
+    font-size: var(--text-4xl);
+    font-weight: 700;
+    margin-bottom: var(--space-2);
+    background: linear-gradient(120deg, #fff, rgba(255,255,255,0.7));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero-metric-enhanced__label {
+    font-size: var(--text-sm);
+    opacity: 0.85;
+}
+
+/* Feature Cards Enhanced */
+.feature-grid-enhanced {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-8);
+}
+
+.feature-card-enhanced {
+    position: relative;
+    padding: var(--space-8);
+    border-radius: var(--radius-xl);
+    background: white;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: grid;
+    gap: var(--space-5);
+    overflow: hidden;
+    animation: fadeInUp 0.6s ease-out calc(var(--delay) * 0.1s) both;
+}
+
+.feature-card-enhanced::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: linear-gradient(120deg, var(--primary-500), var(--info-500));
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: -1;
+}
+
+.feature-card-enhanced:hover {
+    transform: translateY(-12px) scale(1.02);
+    box-shadow: 0 25px 50px rgba(99, 102, 241, 0.25);
+}
+
+.feature-card-enhanced:hover::before {
+    opacity: 1;
+}
+
+.feature-card-enhanced__icon {
+    width: 72px;
+    height: 72px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(14,165,233,0.15));
+    font-size: 2rem;
+    transition: transform 0.4s ease;
+}
+
+.feature-card-enhanced:hover .feature-card-enhanced__icon {
+    transform: rotate(10deg) scale(1.1);
+    animation: float 2s ease-in-out infinite;
+}
+
+.feature-card-enhanced__title {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--neutral-900);
+    margin-bottom: var(--space-3);
+}
+
+.feature-card-enhanced__description {
+    color: var(--neutral-600);
+    line-height: 1.7;
+    font-size: var(--text-base);
+}
+
+/* Workflow Section */
+.workflow-section {
+    background: linear-gradient(135deg, rgba(99,102,241,0.03), rgba(14,165,233,0.03));
+    border-radius: var(--radius-xl);
+    padding: var(--space-12);
+    border: 1px solid rgba(99,102,241,0.1);
+}
+
+.workflow-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-8);
+    margin-top: var(--space-8);
+}
+
+.workflow-card {
+    position: relative;
+    padding: var(--space-8);
+    border-radius: var(--radius-lg);
+    background: white;
+    border: 2px solid rgba(99,102,241,0.2);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    transition: all 0.4s ease;
+    animation: fadeInUp 0.8s ease-out calc(var(--delay) * 0.15s) both;
+}
+
+.workflow-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-500), var(--info-500));
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+}
+
+.workflow-card:hover::before {
+    transform: scaleX(1);
+}
+
+.workflow-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(99, 102, 241, 0.2);
+    border-color: var(--primary-500);
+}
+
+.workflow-card__number {
+    display: inline-block;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+    color: white;
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-4);
+}
+
+.workflow-card__title {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--neutral-900);
+    margin-bottom: var(--space-3);
+}
+
+.workflow-card__description {
+    color: var(--neutral-600);
+    line-height: 1.7;
+}
+
+/* Benefits Section */
+.benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-6);
+    margin-top: var(--space-8);
+}
+
+.benefit-card {
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    background: white;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    transition: all 0.3s ease;
+    animation: slideInRight 0.6s ease-out calc(var(--delay) * 0.1s) both;
+}
+
+.benefit-card:hover {
+    transform: translateX(8px);
+    box-shadow: 0 12px 30px rgba(99, 102, 241, 0.15);
+}
+
+.benefit-card__title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--neutral-900);
+    margin-bottom: var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.benefit-card__title::before {
+    content: '✓';
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-500), var(--accent-600));
+    color: white;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.benefit-card__description {
+    color: var(--neutral-600);
+    line-height: 1.6;
+}
+
+.benefit-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+
+/* CTA Section */
+.cta-section {
+    background: linear-gradient(135deg, var(--primary-600), var(--primary-800));
+    border-radius: var(--radius-xl);
+    padding: var(--space-16) var(--space-12);
+    text-align: center;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    animation: scaleIn 0.8s ease-out;
+}
+
+.cta-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: float 20s linear infinite;
+}
+
+.cta-section__content {
+    position: relative;
+    z-index: 1;
+}
+
+.cta-section__title {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    margin-bottom: var(--space-4);
+}
+
+.cta-section__subtitle {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-8);
+    opacity: 0.9;
+}
+
+.cta-section__button {
+    background: white;
+    color: var(--primary-700);
+    font-weight: 700;
+    padding: var(--space-4) var(--space-10);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-lg);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.cta-section__button:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+    color: var(--primary-700);
+}
+
+/* Section Animations */
+.section-animated {
+    animation: fadeInUp 0.8s ease-out both;
+}
+
+/* Stats Counter */
+.stat-number {
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero-enhanced {
+        padding: var(--space-10) var(--space-6);
+    }
+
+    .feature-grid-enhanced,
+    .workflow-grid,
+    .benefits-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .workflow-card,
+    .feature-card-enhanced {
+        padding: var(--space-6);
+    }
+
+    .cta-section {
+        padding: var(--space-10) var(--space-6);
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<section class="hero-enhanced mb-8">
+    <div class="hero-enhanced__content">
+        <div class="hero-enhanced__meta">
+            <span class="chip chip--neutral">Procurement Intelligence</span>
+            <span class="chip chip--neutral">AI Enabled</span>
+            <span class="chip chip--success">Enterprise Ready</span>
+        </div>
+
+        <h1 class="hero-enhanced__title">
+            Command Centre for Government Tender Strategy
+        </h1>
+
+        <p class="hero-enhanced__subtitle">
+            TenderHub unifies discovery, evaluation, collaboration, and compliance into a single intelligent platform
+            built for leadership teams navigating high-value public infrastructure opportunities.
+        </p>
+
+        <div class="hero-enhanced__actions">
+            <a href="/procurement" class="btn btn-primary btn-lg">Explore Live Tenders</a>
+            {% if not current_user %}
+                <a href="/login" class="btn btn-outline btn-lg">Sign In to Your Workspace</a>
+            {% else %}
+                <a href="/dashboard" class="btn btn-outline btn-lg">Go to Dashboard</a>
+            {% endif %}
+        </div>
+
+        <div class="hero-enhanced__metrics">
+            <div class="hero-metric-enhanced" style="--delay: 0s;">
+                <div class="hero-metric-enhanced__value">30,000+</div>
+                <div class="hero-metric-enhanced__label">Government Tenders Indexed</div>
+            </div>
+            <div class="hero-metric-enhanced" style="--delay: 0.1s;">
+                <div class="hero-metric-enhanced__value">19</div>
+                <div class="hero-metric-enhanced__label">Industry Vertical Blueprints</div>
+            </div>
+            <div class="hero-metric-enhanced" style="--delay: 0.2s;">
+                <div class="hero-metric-enhanced__value">24×7</div>
+                <div class="hero-metric-enhanced__label">Portfolio Monitoring</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Platform Capabilities -->
+<section class="section section-animated">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Platform Capabilities</h2>
+            <p class="section-subtitle">Designed for middle and top management teams running complex procurement programs.</p>
+        </div>
+    </div>
+
+    <div class="feature-grid-enhanced">
+        <article class="feature-card-enhanced surface-card--clickable" onclick="window.location.href='/add_project'" style="--delay: 0;">
+            <div class="feature-card-enhanced__icon">📁</div>
+            <div>
+                <h3 class="feature-card-enhanced__title">Project Intelligence Vault</h3>
+                <p class="feature-card-enhanced__description">
+                    Capture credentials, past performance and JV history once. TenderHub transforms it into reusable profiles
+                    that power AI-driven tender recommendations across all opportunities.
+                </p>
+            </div>
+        </article>
+
+        <article class="feature-card-enhanced surface-card--clickable" onclick="window.location.href='/procurement'" style="--delay: 1;">
+            <div class="feature-card-enhanced__icon">🔍</div>
+            <div>
+                <h3 class="feature-card-enhanced__title">Executive Tender Cockpit</h3>
+                <p class="feature-card-enhanced__description">
+                    Multi-dimensional filters, curated watchlists and premium insights ensure you never miss a relevant opportunity
+                    across central, state and PSU portals.
+                </p>
+            </div>
+        </article>
+
+        <article class="feature-card-enhanced" style="--delay: 2;">
+            <div class="feature-card-enhanced__icon">🤝</div>
+            <div>
+                <h3 class="feature-card-enhanced__title">Assignment & Governance</h3>
+                <p class="feature-card-enhanced__description">
+                    Allocate responsibilities, track responses, and supervise approvals with real-time visibility into team bandwidth and progress
+                    across all active tenders.
+                </p>
+            </div>
+        </article>
+
+        <article class="feature-card-enhanced" style="--delay: 3;">
+            <div class="feature-card-enhanced__icon">🧠</div>
+            <div>
+                <h3 class="feature-card-enhanced__title">AI Assisted Diligence</h3>
+                <p class="feature-card-enhanced__description">
+                    Extract structured detail from certificates, tender PDFs and scanned images using GPT-powered processors and enterprise-grade vector search.
+                </p>
+            </div>
+        </article>
+    </div>
+</section>
+
+<!-- Workflow Section -->
+<section class="section section-animated">
+    <div class="workflow-section">
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">End-to-End Workflow Alignment</h2>
+                <p class="section-subtitle">Every milestone from first notification to submission packaged for clarity and accountability.</p>
+            </div>
+        </div>
+
+        <div class="workflow-grid">
+            <div class="workflow-card" style="--delay: 0;">
+                <div class="workflow-card__number">1</div>
+                <h3 class="workflow-card__title">Discovery → Qualification</h3>
+                <p class="workflow-card__description">
+                    Unified tender feeds, saved searches, similarity scoring with your portfolio and granular alerts for deadlines or corrigendum updates.
+                </p>
+            </div>
+
+            <div class="workflow-card" style="--delay: 1;">
+                <div class="workflow-card__number">2</div>
+                <h3 class="workflow-card__title">Preparation → Response</h3>
+                <p class="workflow-card__description">
+                    Assignment boards, task SLAs, document checklists and collaborative notes to keep leadership synced with execution teams.
+                </p>
+            </div>
+
+            <div class="workflow-card" style="--delay: 2;">
+                <div class="workflow-card__number">3</div>
+                <h3 class="workflow-card__title">Post Submission Analytics</h3>
+                <p class="workflow-card__description">
+                    Track awards, capture feedback loops and refine win strategy with performance dashboards tailored for enterprise reviews.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Benefits Section -->
+<section class="section section-animated">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Bring Your Procurement Office Onto a Single Canvas</h2>
+            <p class="section-subtitle">
+                From CXOs to pursuit managers, TenderHub keeps everyone aligned on priorities, risks and deliverables.
+            </p>
+        </div>
+    </div>
+
+    <div class="benefits-grid">
+        <div class="benefit-card" style="--delay: 0;">
+            <h3 class="benefit-card__title">Leadership Dashboards</h3>
+            <p class="benefit-card__description">
+                Monitor funnel health, financial exposure and team load in a single glance with real-time metrics and portfolio views.
+            </p>
+            <div class="benefit-card__tags">
+                <span class="badge badge--primary">Portfolio View</span>
+                <span class="badge badge--muted">Real-time Metrics</span>
+            </div>
+        </div>
+
+        <div class="benefit-card" style="--delay: 1;">
+            <h3 class="benefit-card__title">Secure Collaboration</h3>
+            <p class="benefit-card__description">
+                Role-based access, company-code onboarding and audit-ready logs built for enterprise governance and compliance.
+            </p>
+            <div class="benefit-card__tags">
+                <span class="badge badge--primary">RBAC</span>
+                <span class="badge badge--success">Audit Trail</span>
+            </div>
+        </div>
+
+        <div class="benefit-card" style="--delay: 2;">
+            <h3 class="benefit-card__title">Certificate Knowledge Base</h3>
+            <p class="benefit-card__description">
+                Search and reuse validated credentials instantly while preparing qualification documents with AI-powered extraction.
+            </p>
+            <div class="benefit-card__tags">
+                <span class="badge badge--primary">Vector Search</span>
+                <span class="badge badge--success">GPT Extraction</span>
+            </div>
+        </div>
+
+        <div class="benefit-card" style="--delay: 3;">
+            <h3 class="benefit-card__title">Tailored Onboarding</h3>
+            <p class="benefit-card__description">
+                We partner with you to migrate historic tenders, configure KPIs and align workflows with existing governance policies.
+            </p>
+            <div class="benefit-card__tags">
+                <span class="badge badge--muted">Customizable</span>
+                <span class="badge badge--primary">Dedicated Support</span>
+            </div>
+        </div>
+
+        <div class="benefit-card" style="--delay: 4;">
+            <h3 class="benefit-card__title">Enterprise-Grade Support</h3>
+            <p class="benefit-card__description">
+                Dedicated success managers, SLA-backed assistance and proactive release notes keep your teams moving without friction.
+            </p>
+            <div class="benefit-card__tags">
+                <span class="badge badge--success">24/7 Support</span>
+                <span class="badge badge--muted">SLA Backed</span>
+            </div>
+        </div>
+
+        <div class="benefit-card" style="--delay: 5;">
+            <h3 class="benefit-card__title">Secure and Compliant</h3>
+            <p class="benefit-card__description">
+                Encryption, access auditing and data residency controls ensure sensitive documentation stays protected at all times.
+            </p>
+            <div class="benefit-card__tags">
+                <span class="badge badge--primary">Encrypted</span>
+                <span class="badge badge--success">Compliant</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="section section-animated">
+    <div class="cta-section">
+        <div class="cta-section__content">
+            <h2 class="cta-section__title">Ready to Modernise Tender Operations?</h2>
+            <p class="cta-section__subtitle">
+                Let our team help you set up a high-trust, insight-rich procurement workspace.
+            </p>
+            <a href="/login" class="btn cta-section__button">Launch Your TenderHub Workspace</a>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

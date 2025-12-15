@@ -1,0 +1,1087 @@
+{% extends "base.html" %}
+
+{% block title %}Employee Performance Analytics - TenderHub{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    .performance-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    /* Header Section */
+    .performance-header {
+        margin-bottom: 2rem;
+    }
+
+    .header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .time-selector {
+        display: flex;
+        gap: 0.5rem;
+        background: var(--background, #f9fafb);
+        border-radius: 12px;
+        padding: 0.25rem;
+    }
+
+    .time-btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        background: transparent;
+        border-radius: 12px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: var(--text-secondary);
+    }
+
+    .time-btn.active {
+        background: white;
+        color: var(--primary-600, #3b82f6);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .time-btn:hover:not(.active) {
+        background: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Controls Bar */
+    .controls-bar {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: center;
+        background: white;
+        padding: 1rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        margin-bottom: 2rem;
+    }
+
+    .search-box {
+        flex: 1;
+        min-width: 250px;
+        position: relative;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 18px;
+        height: 18px;
+        color: var(--text-muted);
+    }
+
+    .search-box input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 3rem;
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        font-size: 0.875rem;
+    }
+
+    .search-box input:focus {
+        outline: none;
+        border-color: var(--primary-600, #3b82f6);
+    }
+
+    .filter-select, .sort-select {
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        font-size: 0.875rem;
+        background: white;
+        cursor: pointer;
+        min-width: 150px;
+    }
+
+    .filter-select:focus, .sort-select:focus {
+        outline: none;
+        border-color: var(--primary-600, #3b82f6);
+    }
+
+    /* Employee Cards */
+    .employees-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .employee-card {
+        background: white;
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+    }
+
+    .employee-card:hover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    /* Card Header */
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+        gap: 1.5rem;
+    }
+
+    .employee-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex: 1;
+    }
+
+    .employee-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .employee-details {
+        flex: 1;
+    }
+
+    .employee-name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .employee-meta {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        flex-wrap: wrap;
+    }
+
+    .employee-email {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .employee-team {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0.75rem;
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+        border-radius: 12px;
+        font-size: 0.8125rem;
+        font-weight: 600;
+    }
+
+    /* Performance Score */
+    .performance-score-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .score-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        font-weight: 700;
+        border: 4px solid;
+        position: relative;
+    }
+
+    .score-circle.excellent {
+        color: #10b981;
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+    }
+
+    .score-circle.good {
+        color: #3b82f6;
+        border-color: #3b82f6;
+        background: rgba(59, 130, 246, 0.1);
+    }
+
+    .score-circle.average {
+        color: #f59e0b;
+        border-color: #f59e0b;
+        background: rgba(245, 158, 11, 0.1);
+    }
+
+    .score-circle.needs-improvement {
+        color: #ef4444;
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+    }
+
+    .score-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    /* Rating Section */
+    .rating-section {
+        text-align: center;
+        padding: 1rem;
+        background: var(--background, #f9fafb);
+        border-radius: 12px;
+        margin-top: 0.5rem;
+        min-width: 200px;
+    }
+
+    .rating-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+    }
+
+    .star-rating {
+        display: flex;
+        justify-content: center;
+        gap: 0.25rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .star {
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        fill: #d1d5db;
+        transition: all 0.2s ease;
+    }
+
+    .star.active {
+        fill: #fbbf24;
+    }
+
+    .star.editable:hover {
+        fill: #fbbf24;
+        transform: scale(1.1);
+    }
+
+    .rating-value {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .rating-date {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    .save-rating-btn {
+        margin-top: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: none;
+    }
+
+    .save-rating-btn:hover {
+        background: #2563eb;
+    }
+
+    .save-rating-btn.show {
+        display: inline-block;
+    }
+
+    /* Metrics Grid */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .metric-card {
+        background: var(--background, #f9fafb);
+        border-radius: 12px;
+        padding: 1.25rem;
+        transition: all 0.2s ease;
+    }
+
+    .metric-card:hover {
+        background: rgba(59, 130, 246, 0.05);
+        transform: translateY(-2px);
+    }
+
+    .metric-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+    }
+
+    .metric-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .metric-icon.primary {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
+
+    .metric-icon.success {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .metric-icon.warning {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+
+    .metric-icon.danger {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .metric-label {
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+        margin-bottom: 0.25rem;
+    }
+
+    .metric-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .metric-subvalue {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+
+    /* Chart Section */
+    .chart-section {
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border-color, #e5e7eb);
+    }
+
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .chart-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .chart-container {
+        position: relative;
+        height: 200px;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .empty-state-icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 1.5rem;
+        opacity: 0.3;
+    }
+
+    .empty-state-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state-description {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        max-width: 500px;
+        margin: 0 auto;
+    }
+
+    /* Loading State */
+    .loading-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid var(--border-color, #e5e7eb);
+        border-top-color: var(--primary-600, #3b82f6);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .performance-container {
+            padding: 1rem;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+        }
+
+        .header-top {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .time-selector {
+            width: 100%;
+            justify-content: space-around;
+        }
+
+        .controls-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .search-box,
+        .filter-select,
+        .sort-select {
+            width: 100%;
+        }
+
+        .employee-card {
+            padding: 1.25rem;
+        }
+
+        .card-header {
+            flex-direction: column;
+        }
+
+        .rating-section {
+            width: 100%;
+        }
+
+        .metrics-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="performance-container">
+    <!-- Header -->
+    <div class="performance-header">
+        <div class="header-top">
+            <h1 class="page-title">Employee Performance Analytics</h1>
+            <div class="time-selector">
+                <button class="time-btn active" data-days="30" onclick="changeTimePeriod(30)">Last 30 Days</button>
+                <button class="time-btn" data-days="60" onclick="changeTimePeriod(60)">Last 60 Days</button>
+                <button class="time-btn" data-days="90" onclick="changeTimePeriod(90)">Last 90 Days</button>
+            </div>
+        </div>
+
+        <!-- Controls Bar -->
+        <div class="controls-bar">
+            <div class="search-box">
+                <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search by employee name or email..." onkeyup="filterEmployees()">
+            </div>
+            
+            <select class="filter-select" id="teamFilter" onchange="filterEmployees()">
+                <option value="">All Teams</option>
+                {% for team in teams %}
+                <option value="{{ team }}">{{ team }}</option>
+                {% endfor %}
+            </select>
+            
+            <select class="sort-select" id="sortSelect" onchange="sortEmployees()">
+                <option value="name_asc">Name (A-Z)</option>
+                <option value="name_desc">Name (Z-A)</option>
+                <option value="score_desc">Performance Score (High to Low)</option>
+                <option value="score_asc">Performance Score (Low to High)</option>
+                <option value="completion_desc">Completion Rate (High to Low)</option>
+                <option value="rating_desc">Manager Rating (High to Low)</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="loading-state" style="display: none;">
+        <div class="spinner"></div>
+        <p style="color: var(--text-secondary); margin-top: 1rem;">Loading employee performance data...</p>
+    </div>
+
+    <!-- Employees List -->
+    <div id="employeesList" class="employees-list"></div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state" style="display: none;">
+        <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+        </svg>
+        <h2 class="empty-state-title">No Employees Found</h2>
+        <p class="empty-state-description">No employee performance data available for the selected filters.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let currentDays = 30;
+    let allEmployeesData = [];
+    let employeeCharts = {};
+    const isFriday = new Date().getDay() === 5; // 5 = Friday
+
+    // Load initial data
+    document.addEventListener('DOMContentLoaded', () => {
+        loadEmployeePerformance();
+    });
+
+    // Change time period
+    function changeTimePeriod(days) {
+        currentDays = days;
+        
+        // Update button states
+        document.querySelectorAll('.time-btn').forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
+        });
+        
+        loadEmployeePerformance();
+    }
+
+    // Load employee performance data
+    async function loadEmployeePerformance() {
+        const loadingEl = document.getElementById('loadingState');
+        const listEl = document.getElementById('employeesList');
+        const emptyEl = document.getElementById('emptyState');
+
+        loadingEl.style.display = 'block';
+        listEl.innerHTML = '';
+        emptyEl.style.display = 'none';
+
+        try {
+            const response = await fetch(`/api/employee-performance?days=${currentDays}`);
+            if (!response.ok) throw new Error('Failed to fetch data');
+
+            const data = await response.json();
+            allEmployeesData = data.employees || [];
+
+            loadingEl.style.display = 'none';
+
+            if (allEmployeesData.length === 0) {
+                emptyEl.style.display = 'block';
+            } else {
+                renderEmployees(allEmployeesData);
+            }
+        } catch (error) {
+            console.error('Error loading performance data:', error);
+            loadingEl.style.display = 'none';
+            listEl.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ef4444;">Error loading performance data. Please try again.</div>';
+        }
+    }
+
+    // Render employee cards
+    function renderEmployees(employees) {
+        const listEl = document.getElementById('employeesList');
+        
+        if (employees.length === 0) {
+            document.getElementById('emptyState').style.display = 'block';
+            listEl.innerHTML = '';
+            return;
+        }
+
+        document.getElementById('emptyState').style.display = 'none';
+        
+        listEl.innerHTML = employees.map(emp => generateEmployeeCard(emp)).join('');
+        
+        // Initialize charts after render
+        setTimeout(() => {
+            employees.forEach(emp => initializeChart(emp.id, emp.weekly_tasks));
+        }, 100);
+    }
+
+    // Generate employee card HTML
+    function generateEmployeeCard(emp) {
+        const scoreClass = 
+            emp.performance_score >= 80 ? 'excellent' :
+            emp.performance_score >= 60 ? 'good' :
+            emp.performance_score >= 40 ? 'average' : 'needs-improvement';
+
+        return `
+            <div class="employee-card" data-employee-id="${emp.id}" data-name="${emp.name.toLowerCase()}" data-email="${emp.email.toLowerCase()}" data-team="${emp.team || ''}">
+                <!-- Card Header -->
+                <div class="card-header">
+                    <div class="employee-info">
+                        <div class="employee-avatar">${emp.name[0].toUpperCase()}</div>
+                        <div class="employee-details">
+                            <div class="employee-name">${emp.name}</div>
+                            <div class="employee-meta">
+                                <div class="employee-email">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 14px; height: 14px;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                    </svg>
+                                    ${emp.email}
+                                </div>
+                                ${emp.team ? `<div class="employee-team">${emp.team}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Score and Rating -->
+                    <div class="performance-score-section">
+                        <div class="score-circle ${scoreClass}">
+                            ${emp.performance_score}
+                            <div style="font-size: 0.6rem; font-weight: 500; margin-top: -4px;">/ 100</div>
+                        </div>
+                        <div class="score-label">Performance</div>
+                        
+                        <!-- Manager Rating -->
+                        <div class="rating-section">
+                            <div class="rating-label">Manager Rating</div>
+                            <div class="star-rating" id="rating-${emp.id}" data-employee-id="${emp.id}">
+                                ${generateStars(emp.id, emp.current_rating || 0)}
+                            </div>
+                            <div class="rating-value">${(emp.current_rating || 0).toFixed(1)} / 5</div>
+                            <div class="rating-date">${emp.rating_date || 'Not rated'}</div>
+                            <button class="save-rating-btn" id="save-${emp.id}" onclick="saveRating('${emp.id}')">Save Rating</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="metrics-grid">
+                    <!-- Tasks -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon success">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="metric-label">Tasks Completed</div>
+                        <div class="metric-value">${emp.tasks_completed}</div>
+                        <div class="metric-subvalue">${emp.completion_rate}% completion rate</div>
+                    </div>
+
+                    <!-- Pending Tasks -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon warning">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="metric-label">Tasks Pending</div>
+                        <div class="metric-value">${emp.tasks_pending}</div>
+                        <div class="metric-subvalue">${emp.tasks_in_progress} in progress</div>
+                    </div>
+
+                    <!-- Avg Completion Time -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon primary">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="metric-label">Avg Completion Time</div>
+                        <div class="metric-value">${emp.avg_completion_time}</div>
+                        <div class="metric-subvalue">days per task</div>
+                    </div>
+
+                    <!-- Response Time -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon primary">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="metric-label">Avg First Response</div>
+                        <div class="metric-value">${emp.avg_first_response_time}</div>
+                        <div class="metric-subvalue">hours</div>
+                    </div>
+
+                    <!-- Progress Logs -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon success">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="metric-label">Progress Updates</div>
+                        <div class="metric-value">${emp.total_progress_logs}</div>
+                        <div class="metric-subvalue">${emp.avg_updates_per_task} per task</div>
+                    </div>
+
+                    <!-- Concerns -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon ${emp.total_concerns > 5 ? 'warning' : 'primary'}">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="metric-label">Concerns Raised</div>
+                        <div class="metric-value">${emp.total_concerns}</div>
+                        <div class="metric-subvalue">${emp.concerns_resolved} resolved</div>
+                    </div>
+
+                    <!-- Deliverables -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon success">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="metric-label">Deliverables</div>
+                        <div class="metric-value">${emp.deliverables_uploaded}</div>
+                        <div class="metric-subvalue">files uploaded</div>
+                    </div>
+
+                    <!-- Tender Participation -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon primary">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="metric-label">Tenders Participated</div>
+                        <div class="metric-value">${emp.tenders_participated}</div>
+                        <div class="metric-subvalue">${emp.active_tenders} active</div>
+                    </div>
+
+                    <!-- Tender Value -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon success">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="metric-label">Total Tender Value</div>
+                        <div class="metric-value">${emp.total_tender_value}</div>
+                        <div class="metric-subvalue">estimated value</div>
+                    </div>
+                </div>
+
+                <!-- Performance Chart -->
+                <div class="chart-section">
+                    <div class="chart-header">
+                        <div class="chart-title">Weekly Task Completion Trend</div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart-${emp.id}"></canvas>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Generate star rating HTML
+    function generateStars(employeeId, rating) {
+        let html = '';
+        const editableClass = isFriday ? 'editable' : '';
+        
+        for (let i = 1; i <= 5; i++) {
+            const activeClass = i <= Math.round(rating) ? 'active' : '';
+            const onclick = isFriday ? `onclick="setRating('${employeeId}', ${i})"` : '';
+            html += `<svg class="star ${activeClass} ${editableClass}" ${onclick} viewBox="0 0 24 24">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+            </svg>`;
+        }
+        
+        return html;
+    }
+
+    // Set rating (only on Fridays)
+    function setRating(employeeId, rating) {
+        if (!isFriday) return;
+        
+        const starContainer = document.getElementById(`rating-${employeeId}`);
+        const stars = starContainer.querySelectorAll('.star');
+        
+        stars.forEach((star, index) => {
+            if (index < rating) {
+                star.classList.add('active');
+            } else {
+                star.classList.remove('active');
+            }
+        });
+        
+        // Store rating temporarily
+        starContainer.dataset.newRating = rating;
+        
+        // Show save button
+        document.getElementById(`save-${employeeId}`).classList.add('show');
+    }
+
+    // Save rating
+    async function saveRating(employeeId) {
+        const starContainer = document.getElementById(`rating-${employeeId}`);
+        const rating = starContainer.dataset.newRating;
+        
+        if (!rating) return;
+        
+        try {
+            const response = await fetch('/api/employee-performance/rating', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    employee_id: employeeId,
+                    rating: parseFloat(rating)
+                })
+            });
+            
+            if (!response.ok) throw new Error('Failed to save rating');
+            
+            // Hide save button
+            document.getElementById(`save-${employeeId}`).classList.remove('show');
+            
+            // Show success message
+            alert('Rating saved successfully!');
+            
+        } catch (error) {
+            console.error('Error saving rating:', error);
+            alert('Failed to save rating. Please try again.');
+        }
+    }
+
+    // Initialize chart
+    function initializeChart(employeeId, weeklyData) {
+        const ctx = document.getElementById(`chart-${employeeId}`);
+        if (!ctx) return;
+
+        const labels = weeklyData.map(w => w.week);
+        const completedData = weeklyData.map(w => w.completed);
+        const assignedData = weeklyData.map(w => w.assigned);
+
+        if (employeeCharts[employeeId]) {
+            employeeCharts[employeeId].destroy();
+        }
+
+        employeeCharts[employeeId] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Completed',
+                        data: completedData,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Assigned',
+                        data: assignedData,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            boxWidth: 12,
+                            boxHeight: 12,
+                            useBorderRadius: true,
+                            borderRadius: 6,
+                            padding: 10,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            font: {
+                                size: 10
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 10
+                            }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Filter employees
+    function filterEmployees() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const teamFilter = document.getElementById('teamFilter').value.toLowerCase();
+        
+        const filtered = allEmployeesData.filter(emp => {
+            const matchesSearch = emp.name.toLowerCase().includes(searchTerm) || 
+                                emp.email.toLowerCase().includes(searchTerm);
+            
+            // Handle team filtering
+            let matchesTeam = true;
+            if (teamFilter) {
+                if (teamFilter === 'unassigned') {
+                    // Match employees with no team (null, empty, or undefined)
+                    matchesTeam = !emp.team || emp.team.trim() === '';
+                } else {
+                    // Match employees with the specific team
+                    matchesTeam = emp.team && emp.team.toLowerCase() === teamFilter;
+                }
+            }
+            
+            return matchesSearch && matchesTeam;
+        });
+        
+        renderEmployees(filtered);
+    }
+
+    // Sort employees
+    function sortEmployees() {
+        const sortBy = document.getElementById('sortSelect').value;
+        let sorted = [...allEmployeesData];
+        
+        switch(sortBy) {
+            case 'name_asc':
+                sorted.sort((a, b) => a.name.localeCompare(b.name));
+                break;
+            case 'name_desc':
+                sorted.sort((a, b) => b.name.localeCompare(a.name));
+                break;
+            case 'score_desc':
+                sorted.sort((a, b) => b.performance_score - a.performance_score);
+                break;
+            case 'score_asc':
+                sorted.sort((a, b) => a.performance_score - b.performance_score);
+                break;
+            case 'completion_desc':
+                sorted.sort((a, b) => b.completion_rate - a.completion_rate);
+                break;
+            case 'rating_desc':
+                sorted.sort((a, b) => (b.current_rating || 0) - (a.current_rating || 0));
+                break;
+        }
+        
+        allEmployeesData = sorted;
+        filterEmployees(); // Re-apply filters after sorting
+    }
+</script>
+{% endblock %}
+

@@ -1,0 +1,1020 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis Report - {{ tender.title }} - TenderHub{% endblock %}
+
+{% block extra_head %}
+<!-- Quill.js Rich Text Editor -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+<style>
+/* Back Button */
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.back-button:hover {
+    background: #f5f5f5;
+    border-color: #0066cc;
+    color: #0066cc;
+    transform: translateX(-2px);
+}
+
+.back-button svg {
+    flex-shrink: 0;
+}
+
+/* Analysis Page Layout */
+.analysis-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr 300px;
+    gap: 1.5rem;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+@media (max-width: 1400px) {
+    .analysis-layout {
+        grid-template-columns: 280px 1fr;
+    }
+    .analysis-attachments-sidebar {
+        grid-column: 1 / -1;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 900px) {
+    .analysis-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Left Sidebar - Tender Info */
+.analysis-sidebar {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    height: fit-content;
+    position: sticky;
+    top: 1rem;
+}
+
+.analysis-sidebar__title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 1rem;
+}
+
+.tender-info-item {
+    margin-bottom: 1rem;
+}
+
+.tender-info-item__label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+}
+
+.tender-info-item__value {
+    font-size: 0.95rem;
+    color: #1a1a1a;
+}
+
+.documents-list {
+    margin-top: 1.5rem;
+}
+
+.document-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.document-item:hover {
+    background: #f5f5f5;
+    border-color: #0066cc;
+}
+
+.document-icon {
+    width: 32px;
+    height: 32px;
+    background: #e3f2fd;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0066cc;
+    font-size: 1rem;
+}
+
+.document-details {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.document-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #1a1a1a;
+    margin-bottom: 0.2rem;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.4;
+}
+
+.document-meta {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+/* Main Area - Report Form */
+.analysis-main {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.analysis-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.analysis-header__title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 0.5rem;
+}
+
+.analysis-header__meta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.meta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #f5f5f5;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.meta-badge--status {
+    background: #e3f2fd;
+    color: #0066cc;
+    font-weight: 600;
+}
+
+.meta-badge--readonly {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+/* Report Sections */
+.report-section {
+    margin-bottom: 2rem;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.section-number {
+    width: 32px;
+    height: 32px;
+    background: #0066cc;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.section-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.section-description {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 0.75rem;
+    font-style: italic;
+}
+
+/* Quill Editor Customization */
+.ql-container {
+    min-height: 150px;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.ql-editor {
+    min-height: 150px;
+}
+
+.ql-toolbar {
+    background: #f9f9f9;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+/* Action Buttons */
+.analysis-actions {
+    display: flex;
+    gap: 1rem;
+    padding-top: 2rem;
+    border-top: 2px solid #f0f0f0;
+    margin-top: 2rem;
+}
+
+.btn-analysis-save {
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    background: #0066cc;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-analysis-save:hover:not(:disabled) {
+    background: #0052a3;
+    transform: translateY(-1px);
+}
+
+.btn-analysis-save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-analysis-draft {
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    background: white;
+    color: #0066cc;
+    border: 2px solid #0066cc;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-analysis-draft:hover:not(:disabled) {
+    background: #e3f2fd;
+}
+
+.btn-analysis-back {
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    background: #f5f5f5;
+    color: #666;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-analysis-back:hover {
+    background: #e0e0e0;
+}
+
+.save-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+    margin-left: auto;
+}
+
+.save-status--saving {
+    color: #ff9800;
+}
+
+.save-status--saved {
+    color: #4caf50;
+}
+
+/* Right Sidebar - Attachments */
+.analysis-attachments-sidebar {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    height: fit-content;
+    position: sticky;
+    top: 1rem;
+}
+
+.attachments-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 1rem;
+}
+
+.upload-area {
+    border: 2px dashed #ccc;
+    border-radius: 12px;
+    padding: 2rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 1.5rem;
+}
+
+.upload-area:hover {
+    border-color: #0066cc;
+    background: #f5f9ff;
+}
+
+.upload-area__icon {
+    font-size: 2.5rem;
+    color: #0066cc;
+    margin-bottom: 0.5rem;
+}
+
+.upload-area__text {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.upload-area__hint {
+    font-size: 0.75rem;
+    color: #999;
+}
+
+.attachment-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.attachment-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    margin-bottom: 0.5rem;
+}
+
+.attachment-item__icon {
+    width: 32px;
+    height: 32px;
+    background: #e8f5e9;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4caf50;
+    flex-shrink: 0;
+}
+
+.attachment-item__details {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.attachment-item__name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #1a1a1a;
+    margin-bottom: 0.2rem;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.4;
+}
+
+.attachment-item__size {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.attachment-item__actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-attachment-download,
+.btn-attachment-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    color: #666;
+    transition: color 0.2s;
+}
+
+.btn-attachment-download:hover {
+    color: #0066cc;
+}
+
+.btn-attachment-delete:hover {
+    color: #f44336;
+}
+
+/* Loading Spinner */
+.spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Read-only Mode */
+.analysis-main--readonly .ql-toolbar {
+    display: none;
+}
+
+.analysis-main--readonly .ql-editor {
+    background: #f9f9f9;
+    cursor: default;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="padding: 1rem;">
+    <button onclick="goBack()" class="back-button" title="Back to dashboard">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Back to Dashboard
+    </button>
+</div>
+<div class="analysis-layout">
+    <!-- Left Sidebar: Tender Info & Documents -->
+    <aside class="analysis-sidebar">
+        <h2 class="analysis-sidebar__title">Tender Information</h2>
+
+        <div class="tender-info-item">
+            <div class="tender-info-item__label">Tender ID</div>
+            <div class="tender-info-item__value">{{ tender.id }}</div>
+        </div>
+
+        <div class="tender-info-item">
+            <div class="tender-info-item__label">Authority</div>
+            <div class="tender-info-item__value">{{ tender.authority or 'N/A' }}</div>
+        </div>
+
+        <div class="tender-info-item">
+            <div class="tender-info-item__label">State</div>
+            <div class="tender-info-item__value">{{ tender.state or 'N/A' }}</div>
+        </div>
+
+        <div class="tender-info-item">
+            <div class="tender-info-item__label">Category</div>
+            <div class="tender-info-item__value">{{ tender.category or 'N/A' }}</div>
+        </div>
+
+        <div class="tender-info-item">
+            <div class="tender-info-item__label">Deadline</div>
+            <div class="tender-info-item__value">
+                {% if tender.deadline %}
+                {{ tender.deadline.strftime('%d %b %Y') }}
+                {% else %}
+                N/A
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="tender-info-item">
+            <div class="tender-info-item__label">Your Role</div>
+            <div class="tender-info-item__value">{{ assignment.role }}</div>
+        </div>
+
+        <div class="documents-list">
+            <h3 class="analysis-sidebar__title">Tender Documents</h3>
+            {% if tender_documents %}
+                {% for doc in tender_documents %}
+                <div class="document-item" onclick="downloadTenderDocument('{{ doc.id }}')">
+                    <div class="document-icon">📄</div>
+                    <div class="document-details">
+                        <div class="document-name">{{ doc.filename }}</div>
+                        <div class="document-meta">{{ doc.document_type }} • {{ (doc.file_size / 1024) | round(1) }} KB</div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="font-size: 0.85rem; color: #666; font-style: italic;">No documents available</p>
+            {% endif %}
+        </div>
+    </aside>
+
+    <!-- Main Area: Report Form -->
+    <main class="analysis-main {% if not is_owner %}analysis-main--readonly{% endif %}">
+        <div class="analysis-header">
+            <h1 class="analysis-header__title">{{ tender.title }}</h1>
+            <div class="analysis-header__meta">
+                {% if report %}
+                    <span class="meta-badge meta-badge--status">
+                        Status: {{ report.status|capitalize }}
+                    </span>
+                    <span class="meta-badge">
+                        Version: {{ report.version }}
+                    </span>
+                    <span class="meta-badge">
+                        Edits: {{ report.edit_count }}
+                    </span>
+                    {% if report.last_edited_at %}
+                    <span class="meta-badge">
+                        Last edited: {{ report.last_edited_at.strftime('%d %b %Y, %H:%M') }}
+                    </span>
+                    {% endif %}
+                {% else %}
+                    <span class="meta-badge meta-badge--status">New Report</span>
+                {% endif %}
+
+                {% if not is_owner %}
+                    <span class="meta-badge meta-badge--readonly">
+                        🔒 Read-only (Owned by {{ report.owner.name if report and report.owner else 'another employee' }})
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <form id="analysisForm">
+            <!-- Section 1: Executive Summary -->
+            <div class="report-section">
+                <div class="section-header">
+                    <div class="section-number">1</div>
+                    <h2 class="section-title">Executive Summary</h2>
+                </div>
+                <p class="section-description">Provide a high-level overview of the tender and your key findings</p>
+                <div id="editor-executive-summary"></div>
+            </div>
+
+            <!-- Section 2: Eligibility Analysis -->
+            <div class="report-section">
+                <div class="section-header">
+                    <div class="section-number">2</div>
+                    <h2 class="section-title">Eligibility Analysis</h2>
+                </div>
+                <p class="section-description">Assess company qualifications, certifications, and eligibility criteria</p>
+                <div id="editor-eligibility-analysis"></div>
+            </div>
+
+            <!-- Section 3: Technical Requirements -->
+            <div class="report-section">
+                <div class="section-header">
+                    <div class="section-number">3</div>
+                    <h2 class="section-title">Technical Requirements</h2>
+                </div>
+                <p class="section-description">Analyze technical specifications, standards, and compliance needs</p>
+                <div id="editor-technical-requirements"></div>
+            </div>
+
+            <!-- Section 4: Financial Assessment -->
+            <div class="report-section">
+                <div class="section-header">
+                    <div class="section-number">4</div>
+                    <h2 class="section-title">Financial Assessment</h2>
+                </div>
+                <p class="section-description">Evaluate cost estimates, budget requirements, and financial viability</p>
+                <div id="editor-financial-assessment"></div>
+            </div>
+
+            <!-- Section 5: Risk Assessment -->
+            <div class="report-section">
+                <div class="section-header">
+                    <div class="section-number">5</div>
+                    <h2 class="section-title">Risk Assessment</h2>
+                </div>
+                <p class="section-description">Identify potential risks, challenges, and mitigation strategies</p>
+                <div id="editor-risk-assessment"></div>
+            </div>
+
+            <!-- Section 6: Compliance Review -->
+            <div class="report-section">
+                <div class="section-header">
+                    <div class="section-number">6</div>
+                    <h2 class="section-title">Compliance Review</h2>
+                </div>
+                <p class="section-description">Review legal, regulatory, and contractual compliance requirements</p>
+                <div id="editor-compliance-review"></div>
+            </div>
+
+            <!-- Section 7: Recommendations -->
+            <div class="report-section">
+                <div class="section-header">
+                    <div class="section-number">7</div>
+                    <h2 class="section-title">Recommendations</h2>
+                </div>
+                <p class="section-description">Provide your final recommendation (bid/no-bid) with justification</p>
+                <div id="editor-recommendations"></div>
+            </div>
+
+            <!-- Section 8: Additional Notes -->
+            <div class="report-section">
+                <div class="section-header">
+                    <div class="section-number">8</div>
+                    <h2 class="section-title">Additional Notes</h2>
+                </div>
+                <p class="section-description">Include any other observations, concerns, or insights</p>
+                <div id="editor-additional-notes"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            {% if is_owner %}
+            <div class="analysis-actions">
+                <button type="button" class="btn-analysis-save" onclick="submitReport()">
+                    <span id="submitBtnText">Submit Report</span>
+                </button>
+                <button type="button" class="btn-analysis-draft" onclick="saveDraft()">
+                    Save Draft
+                </button>
+                <div class="save-status" id="saveStatus"></div>
+            </div>
+            {% endif %}
+        </form>
+    </main>
+
+    <!-- Right Sidebar: File Attachments -->
+    <aside class="analysis-attachments-sidebar">
+        <h2 class="attachments-title">Supporting Documents</h2>
+
+        {% if is_owner %}
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-area__icon">📤</div>
+            <div class="upload-area__text">Click to upload files</div>
+            <div class="upload-area__hint">PDF, Excel, Word, PPT, Images<br>Max 10MB per file</div>
+        </div>
+        <input type="file" id="fileInput" style="display: none" onchange="uploadFile(this)" accept=".pdf,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg">
+        {% endif %}
+
+        <div class="attachment-list" id="attachmentList">
+            {% if attachments %}
+                {% for att in attachments %}
+                <div class="attachment-item" id="attachment-{{ att.id }}">
+                    <div class="attachment-item__icon">📎</div>
+                    <div class="attachment-item__details">
+                        <div class="attachment-item__name" title="{{ att.filename }}">{{ att.filename }}</div>
+                        <div class="attachment-item__size">{{ (att.file_size / 1024) | round(1) }} KB</div>
+                    </div>
+                    <div class="attachment-item__actions">
+                        <button type="button" class="btn-attachment-download" onclick="downloadAttachment({{ att.id }})" title="Download">
+                            ⬇️
+                        </button>
+                        {% if is_owner %}
+                        <button type="button" class="btn-attachment-delete" onclick="deleteAttachment({{ att.id }})" title="Delete">
+                            🗑️
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="font-size: 0.85rem; color: #666; font-style: italic; text-align: center;">No attachments yet</p>
+            {% endif %}
+        </div>
+    </aside>
+</div>
+
+<script>
+// Quill editor instances
+const editors = {};
+const sections = [
+    'executive-summary',
+    'eligibility-analysis',
+    'technical-requirements',
+    'financial-assessment',
+    'risk-assessment',
+    'compliance-review',
+    'recommendations',
+    'additional-notes'
+];
+
+const isReadOnly = {{ 'true' if not is_owner else 'false' }};
+const tenderId = '{{ tender.id }}';
+let autoSaveTimer = null;
+let hasUnsavedChanges = false;
+
+// Initialize Quill editors
+sections.forEach(section => {
+    const editorId = `editor-${section}`;
+    const fieldName = section.replace(/-/g, '_');
+
+    editors[fieldName] = new Quill(`#${editorId}`, {
+        theme: 'snow',
+        readOnly: isReadOnly,
+        modules: {
+            toolbar: isReadOnly ? false : [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'indent': '-1'}, { 'indent': '+1' }],
+                ['link'],
+                ['clean']
+            ]
+        }
+    });
+
+    // Load existing content
+    {% if report %}
+    if (fieldName === 'executive_summary' && {{ report.executive_summary | tojson }}) {
+        editors[fieldName].root.innerHTML = {{ report.executive_summary | tojson }};
+    } else if (fieldName === 'eligibility_analysis' && {{ report.eligibility_analysis | tojson }}) {
+        editors[fieldName].root.innerHTML = {{ report.eligibility_analysis | tojson }};
+    } else if (fieldName === 'technical_requirements' && {{ report.technical_requirements | tojson }}) {
+        editors[fieldName].root.innerHTML = {{ report.technical_requirements | tojson }};
+    } else if (fieldName === 'financial_assessment' && {{ report.financial_assessment | tojson }}) {
+        editors[fieldName].root.innerHTML = {{ report.financial_assessment | tojson }};
+    } else if (fieldName === 'risk_assessment' && {{ report.risk_assessment | tojson }}) {
+        editors[fieldName].root.innerHTML = {{ report.risk_assessment | tojson }};
+    } else if (fieldName === 'compliance_review' && {{ report.compliance_review | tojson }}) {
+        editors[fieldName].root.innerHTML = {{ report.compliance_review | tojson }};
+    } else if (fieldName === 'recommendations' && {{ report.recommendations | tojson }}) {
+        editors[fieldName].root.innerHTML = {{ report.recommendations | tojson }};
+    } else if (fieldName === 'additional_notes' && {{ report.additional_notes | tojson }}) {
+        editors[fieldName].root.innerHTML = {{ report.additional_notes | tojson }};
+    }
+    {% endif %}
+
+    // Track changes
+    if (!isReadOnly) {
+        editors[fieldName].on('text-change', function() {
+            hasUnsavedChanges = true;
+            scheduleAutoSave();
+        });
+    }
+});
+
+// Auto-save functionality
+function scheduleAutoSave() {
+    if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+    }
+    autoSaveTimer = setTimeout(() => {
+        saveDraft(true); // Silent auto-save
+    }, 30000); // 30 seconds
+}
+
+// Save draft
+async function saveDraft(silent = false) {
+    if (isReadOnly) return;
+
+    if (!silent) {
+        updateSaveStatus('Saving draft...', 'saving');
+    }
+
+    const reportData = {
+        status: 'draft'
+    };
+
+    sections.forEach(section => {
+        const fieldName = section.replace(/-/g, '_');
+        reportData[fieldName] = editors[fieldName].root.innerHTML;
+    });
+
+    try {
+        const response = await fetch(`/api/employee/analysis/${tenderId}/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reportData)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            hasUnsavedChanges = false;
+            if (!silent) {
+                updateSaveStatus('Draft saved successfully', 'saved');
+                setTimeout(() => updateSaveStatus('', ''), 3000);
+            }
+        } else {
+            if (!silent) {
+                updateSaveStatus('Failed to save: ' + (data.error || 'Unknown error'), 'error');
+            }
+        }
+    } catch (error) {
+        if (!silent) {
+            updateSaveStatus('Network error while saving', 'error');
+        }
+    }
+}
+
+// Submit report
+async function submitReport() {
+    if (isReadOnly) return;
+
+    // Validate at least 3 sections filled
+    let filledSections = 0;
+    sections.forEach(section => {
+        const fieldName = section.replace(/-/g, '_');
+        const content = editors[fieldName].getText().trim();
+        if (content.length > 10) {
+            filledSections++;
+        }
+    });
+
+    if (filledSections < 3) {
+        alert('Please fill at least 3 sections before submitting.');
+        return;
+    }
+
+    if (!confirm('Submit this analysis report? You can still edit it after submission.')) {
+        return;
+    }
+
+    updateSaveStatus('Submitting report...', 'saving');
+
+    const reportData = {
+        status: 'submitted'
+    };
+
+    sections.forEach(section => {
+        const fieldName = section.replace(/-/g, '_');
+        reportData[fieldName] = editors[fieldName].root.innerHTML;
+    });
+
+    try {
+        const response = await fetch(`/api/employee/analysis/${tenderId}/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reportData)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            hasUnsavedChanges = false;
+            updateSaveStatus('Report submitted successfully!', 'saved');
+            setTimeout(() => {
+                window.location.href = '/employee/dashboard';
+            }, 2000);
+        } else {
+            updateSaveStatus('Failed to submit: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        updateSaveStatus('Network error while submitting', 'error');
+    }
+}
+
+// Update save status message
+function updateSaveStatus(message, type) {
+    const statusEl = document.getElementById('saveStatus');
+    if (!statusEl) return;
+
+    statusEl.textContent = message;
+    statusEl.className = 'save-status';
+    if (type) {
+        statusEl.classList.add(`save-status--${type}`);
+    }
+}
+
+// Upload file
+async function uploadFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+        alert('File too large. Maximum size is 10MB.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch(`/api/employee/analysis/${tenderId}/upload-attachment`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Add to list
+            addAttachmentToList(data.attachment);
+            alert('File uploaded successfully!');
+        } else {
+            alert('Upload failed: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Network error during upload');
+    }
+
+    input.value = ''; // Reset input
+}
+
+// Add attachment to list
+function addAttachmentToList(attachment) {
+    const listEl = document.getElementById('attachmentList');
+    const itemHtml = `
+        <div class="attachment-item" id="attachment-${attachment.id}">
+            <div class="attachment-item__icon">📎</div>
+            <div class="attachment-item__details">
+                <div class="attachment-item__name" title="${attachment.filename}">${attachment.filename}</div>
+                <div class="attachment-item__size">${(attachment.file_size / 1024).toFixed(1)} KB</div>
+            </div>
+            <div class="attachment-item__actions">
+                <button type="button" class="btn-attachment-download" onclick="downloadAttachment(${attachment.id})" title="Download">⬇️</button>
+                ${isReadOnly ? '' : `<button type="button" class="btn-attachment-delete" onclick="deleteAttachment(${attachment.id})" title="Delete">🗑️</button>`}
+            </div>
+        </div>
+    `;
+    listEl.insertAdjacentHTML('beforeend', itemHtml);
+}
+
+// Download attachment
+function downloadAttachment(attachmentId) {
+    window.open(`/api/employee/analysis/attachment/${attachmentId}/download`, '_blank');
+}
+
+// Delete attachment
+async function deleteAttachment(attachmentId) {
+    if (!confirm('Delete this attachment?')) return;
+
+    try {
+        const response = await fetch(`/api/employee/analysis/attachment/${attachmentId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            document.getElementById(`attachment-${attachmentId}`).remove();
+        } else {
+            alert('Delete failed: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Network error during delete');
+    }
+}
+
+// Download tender document
+function downloadTenderDocument(docId) {
+    window.open(`/api/tender/document/${docId}`, '_blank');
+}
+
+// Go back
+function goBack() {
+    if (hasUnsavedChanges && !isReadOnly) {
+        if (!confirm('You have unsaved changes. Are you sure you want to leave?')) {
+            return;
+        }
+    }
+    window.location.href = '/employee/dashboard';
+}
+
+// Warn on page unload
+window.addEventListener('beforeunload', function(e) {
+    if (hasUnsavedChanges && !isReadOnly) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+    }
+});
+</script>
+{% endblock %}

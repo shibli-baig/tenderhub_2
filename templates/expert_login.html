@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Expert Login - TenderHub Expert-Verse{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="auth-layout">
+        <div class="auth-info">
+            <h3 class="surface-card__title">Join TenderHub Expert-Verse</h3>
+            <p class="text-muted">Connect with companies seeking tender consultancy expertise. Build your professional reputation while helping organizations win contracts.</p>
+            <ul>
+                <li>Showcase your expertise in government tenders, compliance, and bid writing.</li>
+                <li>Receive service requests from companies for active tender opportunities.</li>
+                <li>Apply proactively to tenders that match your skill set.</li>
+                <li>Collaborate with other experts on complex projects.</li>
+                <li>Build your brand through Expert Wall - publish articles and case studies.</li>
+                <li>Get paid securely through our integrated payment system.</li>
+            </ul>
+            <p class="panel-subtitle mt-4">Looking to hire experts? <a href="/login">Sign in as a company</a>.</p>
+        </div>
+
+        <div class="auth-panels">
+            <!-- Expert Login Form -->
+            <form id="loginForm" method="post" action="/api/expert/auth/login" class="auth-card">
+                <h2 class="surface-card__title">Expert Login</h2>
+                <p class="panel-subtitle mb-4">Access your Expert-Verse dashboard and continue your consulting journey.</p>
+
+                {% if error %}
+                    <div class="alert alert-error">{{ error }}</div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label for="login_email" class="form-label">Email address</label>
+                    <input type="email" id="login_email" name="email" required placeholder="your.email@example.com" value="{{ request.query_params.get('email', '') }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="login_password" class="form-label">Password</label>
+                    <input type="password" id="login_password" name="password" required placeholder="Enter your password">
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Login to Expert-Verse</button>
+            </form>
+
+            <!-- Expert Signup Form -->
+            <form id="signupForm" method="post" action="/api/expert/auth/signup" class="auth-card hidden">
+                <h2 class="surface-card__title">Become an Expert</h2>
+                <p class="panel-subtitle mb-4">Create your expert account and start offering your consultancy services.</p>
+
+                {% if signup_error %}
+                    <div class="alert alert-error">{{ signup_error }}</div>
+                {% endif %}
+
+                <div class="alert alert-info mb-4">
+                    <svg class="alert-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <strong>Quick signup process:</strong> Provide basic details now, complete your professional profile in the next step (expertise, certifications, experience, etc.).
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="signup_name" class="form-label">Full name *</label>
+                    <input type="text" id="signup_name" name="name" required placeholder="Enter your full name">
+                </div>
+
+                <div class="form-group">
+                    <label for="signup_email" class="form-label">Email address *</label>
+                    <input type="email" id="signup_email" name="email" required placeholder="your.email@example.com">
+                    <small class="form-help">Use a professional email address</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="signup_password" class="form-label">Password *</label>
+                    <input type="password" id="signup_password" name="password" minlength="8" required placeholder="Minimum 8 characters">
+                    <small class="form-help">Use a strong password with letters, numbers, and symbols</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_password" class="form-label">Confirm password *</label>
+                    <input type="password" id="confirm_password" name="confirm_password" minlength="8" required placeholder="Re-enter password">
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="terms_accepted" required>
+                        <span>I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a></span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Create Expert Account</button>
+
+                <div class="alert alert-info mt-3" style="font-size: 0.875rem;">
+                    <svg class="alert-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    After signup, you'll complete your profile with expertise areas, services, qualifications, and certifications.
+                </div>
+            </form>
+
+            <div class="auth-toggle">
+                <span id="authToggleText">Don't have an expert account? <a href="#" id="authToggleLink">Sign up here</a></span>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const loginForm = document.getElementById('loginForm');
+const signupForm = document.getElementById('signupForm');
+const toggleText = document.getElementById('authToggleText');
+
+function bindToggleLink(handler) {
+    const anchor = toggleText.querySelector('a');
+    if (anchor) {
+        // Remove old event listeners by replacing the element
+        const newAnchor = anchor.cloneNode(true);
+        anchor.parentNode.replaceChild(newAnchor, anchor);
+
+        newAnchor.addEventListener('click', (event) => {
+            event.preventDefault();
+            handler();
+        });
+    }
+}
+
+function showSignup() {
+    loginForm.classList.add('hidden');
+    signupForm.classList.remove('hidden');
+    toggleText.innerHTML = 'Already have an expert account? <a href="#">Back to login</a>';
+    bindToggleLink(showLogin);
+    document.getElementById('signup_name').focus();
+}
+
+function showLogin() {
+    signupForm.classList.add('hidden');
+    loginForm.classList.remove('hidden');
+    toggleText.innerHTML = 'Don\'t have an expert account? <a href="#">Sign up here</a>';
+    bindToggleLink(showSignup);
+    document.getElementById('login_email').focus();
+}
+
+// Initial binding
+bindToggleLink(showSignup);
+
+// Password validation
+const signupPassword = document.getElementById('signup_password');
+const confirmPassword = document.getElementById('confirm_password');
+
+function validatePasswordMatch() {
+    const password = signupPassword.value;
+    const confirm = confirmPassword.value;
+
+    confirmPassword.classList.remove('is-invalid', 'is-valid');
+    signupPassword.classList.remove('is-invalid', 'is-valid');
+
+    if (!confirm) return;
+
+    if (password !== confirm) {
+        confirmPassword.classList.add('is-invalid');
+        confirmPassword.setCustomValidity('Passwords do not match');
+    } else {
+        confirmPassword.classList.add('is-valid');
+        signupPassword.classList.add('is-valid');
+        confirmPassword.setCustomValidity('');
+    }
+}
+
+if (signupPassword && confirmPassword) {
+    signupPassword.addEventListener('input', validatePasswordMatch);
+    confirmPassword.addEventListener('input', validatePasswordMatch);
+}
+
+// Form submission handling
+signupForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const password = signupPassword.value;
+    const confirm = confirmPassword.value;
+
+    if (password !== confirm) {
+        alert('Passwords do not match');
+        return;
+    }
+
+    const formData = new FormData(signupForm);
+
+    try {
+        const response = await fetch('/api/expert/auth/signup', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Redirect to profile setup
+            window.location.href = data.redirect || '/expert/profile-setup';
+        } else {
+            alert(data.detail || 'Signup failed. Please try again.');
+        }
+    } catch (error) {
+        console.error('Signup error:', error);
+        alert('An error occurred. Please try again.');
+    }
+});
+
+loginForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(loginForm);
+
+    try {
+        const response = await fetch('/api/expert/auth/login', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Redirect to dashboard or profile setup
+            window.location.href = data.redirect || '/expert/dashboard';
+        } else {
+            alert(data.detail || 'Login failed. Please check your credentials.');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        alert('An error occurred. Please try again.');
+    }
+});
+</script>
+{% endblock %}

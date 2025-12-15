@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Deliverable Sync - TenderHub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 2rem;
+        }
+        
+        .section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f9f9f9;
+            border-radius: 12px;
+        }
+        
+        .section h2 {
+            color: #555;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        input, button {
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+        }
+        
+        input {
+            width: 100%;
+            max-width: 500px;
+            margin-right: 1rem;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .error {
+            border-left-color: #ef4444;
+            color: #ef4444;
+        }
+        
+        .success {
+            border-left-color: #10b981;
+            color: #10b981;
+        }
+        
+        .warning {
+            border-left-color: #f59e0b;
+            color: #f59e0b;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #111827;
+        }
+        
+        .file-list {
+            margin-top: 1rem;
+        }
+        
+        .file-item {
+            padding: 0.75rem;
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid #667eea;
+        }
+        
+        .file-item.missing {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Deliverable Sync</h1>
+        
+        <div class="section">
+            <h2>Find Tender by Title</h2>
+            <input type="text" id="searchInput" placeholder="Enter tender title (e.g., JABRAPURA)" value="JABRAPURA">
+            <button onclick="searchTender()">Search</button>
+            <div id="searchResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Check Sync Status</h2>
+            <input type="text" id="tenderIdInput" placeholder="Enter Tender ID">
+            <button onclick="checkStatus()">Check Status</button>
+            <div id="statusResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Force Sync Deliverables</h2>
+            <input type="text" id="syncTenderIdInput" placeholder="Enter Tender ID">
+            <button onclick="forceSync()">Force Sync Now</button>
+            <div id="syncResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Clean Up Duplicate Deliverables</h2>
+            <p style="color: #6b7280; margin-bottom: 1rem; font-size: 0.95rem;">
+                💡 <strong>Tip:</strong> Run "Check Sync Status" above first - the Project ID will be auto-filled here.
+            </p>
+            <input type="text" id="projectIdInput" placeholder="Project ID (will auto-fill from Check Status)">
+            <button onclick="cleanupDuplicates()">Remove Duplicates</button>
+            <div id="cleanupResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <script>
+        async function searchTender() {
+            const searchInput = document.getElementById('searchInput');
+            const resultDiv = document.getElementById('searchResult');
+            const query = searchInput.value.trim();
+            
+            if (!query) {
+                alert('Please enter a search term');
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = 'Searching...';
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await fetch(`/api/tenders/search?query=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                if (data.tenders && data.tenders.length > 0) {
+                    const tender = data.tenders[0];
+                    document.getElementById('tenderIdInput').value = tender.id;
+                    document.getElementById('syncTenderIdInput').value = tender.id;
+                    
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✓ Found Tender:\n\nID: ${tender.id}\nTitle: ${tender.title}\nAwarded: ${tender.awarded || 'No'}\n\nTender ID has been filled in below. Click "Check Status" to continue.`;
+                } else {
+                    resultDiv.className = 'result warning';
+                    resultDiv.textContent = '⚠ No tenders found matching that search.';
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `✗ Error: ${error.message}`;
+            }
+        }
+        
+        async function checkStatus() {
+            const tenderIdInput = document.getElementById('tenderIdInput');
+            const resultDiv = document.getElementById('statusResult');
+            const tenderId = tenderIdInput.value.trim();
+            
+            if (!tenderId) {
+                alert('Please enter a Tender ID');
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = 'Checking status...';
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await fetch(`/api/debug/tender/${tenderId}/sync-status`);
+                const data = await response.json();
+                
+                // Auto-fill project ID if it exists
+                if (data.project.exists && data.project.id) {
+                    const projectInput = document.getElementById('projectIdInput');
+                    projectInput.value = data.project.id;
+                    projectInput.style.borderColor = '#10b981';
+                    projectInput.style.borderWidth = '2px';
+                    
+                    // Show notification that project ID was filled
+                    const cleanupSection = projectInput.parentElement;
+                    let notification = cleanupSection.querySelector('.auto-fill-notice');
+                    if (!notification) {
+                        notification = document.createElement('div');
+                        notification.className = 'auto-fill-notice';
+                        notification.style.cssText = 'margin-top: 0.5rem; padding: 0.5rem; background: #d1fae5; border-left: 3px solid #10b981; border-radius: 12px; font-size: 0.9rem; color: #065f46;';
+                        cleanupSection.insertBefore(notification, projectInput.nextSibling);
+                    }
+                    notification.textContent = `✓ Project ID ${data.project.id} auto-filled. You can now click "Remove Duplicates" below.`;
+                }
+                
+                let html = '<div class="stats">';
+                html += `<div class="stat-card"><div class="stat-label">Tender Status</div><div class="stat-value">${data.tender.awarded ? '✓ Awarded' : '✗ Not Awarded'}</div></div>`;
+                html += `<div class="stat-card"><div class="stat-label">Project</div><div class="stat-value">${data.project.exists ? '✓ Exists' : '✗ Missing'}</div></div>`;
+                html += `<div class="stat-card" style="background: #eff6ff; border: 2px solid #3b82f6;"><div class="stat-label" style="color: #1e40af;">Project ID</div><div class="stat-value" style="color: #1e40af;">${data.project.id || 'N/A'}</div></div>`;
+                html += `<div class="stat-card"><div class="stat-label">Task Files</div><div class="stat-value">${data.task_files_count}</div></div>`;
+                html += `<div class="stat-card"><div class="stat-label">Synced Files</div><div class="stat-value">${data.project_deliverables_count}</div></div>`;
+                html += `<div class="stat-card"><div class="stat-label">Missing Files</div><div class="stat-value" style="color: ${data.missing_files_count > 0 ? '#ef4444' : '#10b981'}">${data.missing_files_count}</div></div>`;
+                html += '</div>';
+                
+                if (data.project.exists && !data.project.source_tender_id) {
+                    html += '<div style="margin-top: 1rem; padding: 1rem; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 12px;">⚠ Project exists but is not linked (source_tender_id is null). Force sync will fix this.</div>';
+                }
+                
+                if (data.missing_files_count > 0) {
+                    html += '<div style="margin-top: 1rem; padding: 1rem; background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 12px;">✗ Some deliverables are not synced to the project!</div>';
+                    html += '<div class="file-list"><strong>Missing Files:</strong>';
+                    data.missing_files.forEach(file => {
+                        html += `<div class="file-item missing"><strong>${file.filename}</strong><br>Task: ${file.task_title}<br>Uploaded by: ${file.uploaded_by}</div>`;
+                    });
+                    html += '</div>';
+                    html += '<div style="margin-top: 1rem;"><button onclick="document.getElementById(\'syncTenderIdInput\').value = \'' + tenderId + '\'; forceSync()">🔧 Fix by Force Syncing</button></div>';
+                } else if (data.task_files_count > 0) {
+                    html += '<div style="margin-top: 1rem; padding: 1rem; background: #d1fae5; border-left: 4px solid #10b981; border-radius: 12px;">✓ All deliverables are synced!</div>';
+                }
+                
+                resultDiv.innerHTML = html;
+                resultDiv.className = 'result';
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `✗ Error: ${error.message}`;
+            }
+        }
+        
+        async function forceSync() {
+            const syncTenderIdInput = document.getElementById('syncTenderIdInput');
+            const resultDiv = document.getElementById('syncResult');
+            const tenderId = syncTenderIdInput.value.trim();
+            
+            if (!tenderId) {
+                alert('Please enter a Tender ID');
+                return;
+            }
+            
+            if (!confirm('This will force sync all deliverables to the project. Continue?')) {
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = 'Syncing deliverables...';
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await fetch(`/api/debug/tender/${tenderId}/force-sync`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                
+                // Also auto-fill the project ID for cleanup
+                if (data.project_id) {
+                    const projectInput = document.getElementById('projectIdInput');
+                    projectInput.value = data.project_id;
+                    projectInput.style.borderColor = '#10b981';
+                    projectInput.style.borderWidth = '2px';
+                    
+                    // Show notification that project ID was filled
+                    const cleanupSection = projectInput.parentElement;
+                    let notification = cleanupSection.querySelector('.auto-fill-notice');
+                    if (!notification) {
+                        notification = document.createElement('div');
+                        notification.className = 'auto-fill-notice';
+                        notification.style.cssText = 'margin-top: 0.5rem; padding: 0.5rem; background: #d1fae5; border-left: 3px solid #10b981; border-radius: 12px; font-size: 0.9rem; color: #065f46;';
+                        cleanupSection.insertBefore(notification, projectInput.nextSibling);
+                    }
+                    notification.textContent = `✓ Project ID ${data.project_id} auto-filled. Scroll down to "Remove Duplicates" if needed.`;
+                }
+                
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    ✓ Sync Completed!<br><br>
+                    Tender ID: ${data.tender_id}<br>
+                    Project ID: ${data.project_id}<br>
+                    Synced: ${data.synced_count} file(s)<br>
+                    Skipped (already synced): ${data.skipped_count} file(s)<br>
+                    Total Deliverables in Project: ${data.total_deliverables}<br><br>
+                    <strong>✓ The deliverables should now appear in project_detail.html!</strong><br><br>
+                    <a href="/project/${data.project_id}" target="_blank" style="color: #667eea; text-decoration: underline;">→ Open Project Detail Page</a>
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `✗ Error: ${error.message}`;
+            }
+        }
+        
+        async function cleanupDuplicates() {
+            const projectIdInput = document.getElementById('projectIdInput');
+            const resultDiv = document.getElementById('cleanupResult');
+            const projectId = projectIdInput ? projectIdInput.value.trim() : '';
+            
+            console.log('Project ID Input Element:', projectIdInput);
+            console.log('Project ID Value:', projectId);
+            
+            if (!projectId || projectId === '') {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `✗ Please enter a Project ID. Current value: "${projectId}"`;
+                return;
+            }
+            
+            if (!confirm(`This will remove duplicate deliverables from project ${projectId}. Continue?`)) {
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = `Cleaning up duplicates for project ${projectId}...`;
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await fetch(`/api/debug/project/${projectId}/cleanup-duplicates`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.removed_items && data.removed_items.length > 0) {
+                    let html = `✓ Cleanup Completed!<br><br>`;
+                    html += `Project ID: ${projectId}<br>`;
+                    html += `Original Count: ${data.original_count}<br>`;
+                    html += `New Count: ${data.new_count}<br>`;
+                    html += `Removed: ${data.removed_items.length} duplicate(s)<br><br>`;
+                    html += `<strong>Removed Items:</strong><br>`;
+                    data.removed_items.forEach(item => {
+                        html += `• ${item.filename} (${item.reason})<br>`;
+                    });
+                    html += `<br><a href="/project/${projectId}" target="_blank" style="color: #667eea; text-decoration: underline;">→ Open Project Detail Page</a>`;
+                    
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✓ ${data.message}`;
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `✗ Error: ${error.message}`;
+            }
+        }
+        
+        // Auto-fill JABRAPURA on load
+        window.addEventListener('load', () => {
+            searchTender();
+        });
+    </script>
+</body>
+</html>
+

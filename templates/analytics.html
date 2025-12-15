@@ -1,0 +1,2033 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Dashboard - TenderHub{% endblock %}
+
+{% block extra_head %}
+<!-- ApexCharts Library -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.1/dist/apexcharts.min.js"></script>
+
+<style>
+    /* ============================================================================
+       ANALYTICS DASHBOARD - MODERN PROFESSIONAL DESIGN
+       ============================================================================ */
+    
+    /* Container */
+    .analytics-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    /* Section Header - Matching app aesthetic */
+    .section {
+        margin-bottom: 2.5rem;
+    }
+
+    .section-header {
+        margin-bottom: 2rem;
+    }
+
+    .section-header .chip {
+        display: inline-block;
+        padding: 0.375rem 0.875rem;
+        background: rgba(99, 102, 241, 0.1);
+        color: #6366f1;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+    }
+
+    .section-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #111827;
+        margin: 0 0 0.5rem 0;
+        line-height: 1.2;
+    }
+
+    .section-subtitle {
+        font-size: 1rem;
+        color: #6b7280;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    /* Stats Grid - ALWAYS 3 COLUMNS IN A ROW */
+    .stats-grid {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+        width: 100%;
+    }
+
+    .stats-grid > .stat-card {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+    }
+
+    /* Stat Card - Modern Professional Design */
+    .stat-card {
+        position: relative;
+        display: flex;
+        align-items: flex-start;
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 2rem 2.25rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 2px solid transparent;
+        overflow: hidden;
+        min-height: 160px;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #6366f1, #8b5cf6);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .stat-card--clickable {
+        cursor: pointer;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12), 0 6px 12px rgba(0, 0, 0, 0.08);
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .stat-card:hover::before {
+        opacity: 1;
+    }
+
+    .stat-card.active {
+        border-color: #6366f1;
+        box-shadow: 0 10px 25px rgba(99, 102, 241, 0.15), 0 4px 10px rgba(99, 102, 241, 0.1);
+        background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
+    }
+
+    .stat-card.active::before {
+        opacity: 1;
+    }
+
+    .stat-card__body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        flex: 1;
+    }
+
+    .stat-card__heading {
+        font-size: 1.125rem;
+        color: #111827;
+        font-weight: 700;
+        line-height: 1.3;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-card__value {
+        font-size: 3.5rem;
+        font-weight: 800;
+        color: #111827;
+        line-height: 1;
+        letter-spacing: -0.03em;
+        transition: transform 0.3s ease, color 0.3s ease;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-card.active .stat-card__value {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .stat-card__description {
+        font-size: 0.875rem;
+        color: #6b7280;
+        font-weight: 400;
+        line-height: 1.5;
+    }
+
+    .stat-card__icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        flex-shrink: 0;
+        margin-left: 1.5rem;
+        transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover .stat-card__icon {
+        transform: scale(1.1);
+    }
+
+    .stat-card__icon--primary {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    }
+
+    .stat-card__icon--success {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+    }
+
+    .stat-card__icon--accent {
+        background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+        box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15);
+    }
+
+    /* Section Container */
+    .analytics-section {
+        display: none;
+        animation: fadeInUp 0.4s ease-out;
+    }
+
+    .analytics-section.active {
+        display: block;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Panel Styling - Modern Cards */
+    .analytics-panel {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 2rem;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+        transition: box-shadow 0.3s ease;
+    }
+
+    .analytics-panel:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .panel-header h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #111827;
+        margin: 0;
+    }
+
+    /* Grid Layouts */
+    .two-column-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+
+    .three-column-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+    }
+
+    /* Deadline Timeline */
+    .deadline-timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .deadline-group {
+        margin-bottom: 2rem;
+    }
+
+    .deadline-group-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .urgency-badge {
+        padding: 0.375rem 0.875rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .urgency-badge.overdue {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .urgency-badge.today {
+        background: #fed7aa;
+        color: #ea580c;
+    }
+
+    .urgency-badge.this-week {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .urgency-badge.next-two-weeks {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .urgency-badge.later {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .deadline-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .deadline-card:hover {
+        border-color: #6366f1;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+        transform: translateX(4px);
+    }
+
+    .deadline-card__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 0.75rem;
+    }
+
+    .deadline-card__title {
+        font-weight: 600;
+        color: #111827;
+        flex: 1;
+        font-size: 0.9375rem;
+    }
+
+    .deadline-card__date {
+        font-size: 0.875rem;
+        color: #6b7280;
+        white-space: nowrap;
+        margin-left: 1rem;
+    }
+
+    .deadline-card__type {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-bottom: 0.5rem;
+    }
+
+    .deadline-card__employees {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .employee-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.75rem;
+        background: #6366f1;
+        color: white;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    /* Reminder Card */
+    .reminder-card {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(67, 56, 202, 0.02));
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .reminder-card__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 0.75rem;
+    }
+
+    .reminder-card__title {
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .reminder-card__datetime {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    .reminder-card__note {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-bottom: 0.75rem;
+        font-style: italic;
+    }
+
+    .reminder-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+        border-radius: 12px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+
+    .btn-dismiss {
+        background: #f3f4f6;
+        color: #374151;
+    }
+
+    .btn-dismiss:hover {
+        background: #e5e7eb;
+    }
+
+    /* KPI Cards */
+    .kpi-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .kpi-card__label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    .kpi-card__value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #6366f1;
+    }
+
+    .kpi-card__subtitle {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        margin-top: 0.25rem;
+    }
+
+    /* Chart Container */
+    .chart-container {
+        min-height: 350px;
+        position: relative;
+    }
+
+    /* Time Period Selector */
+    .time-period-selector {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .time-period-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        color: #374151;
+    }
+
+    .time-period-btn:hover {
+        border-color: #6366f1;
+        background: rgba(99, 102, 241, 0.05);
+        color: #6366f1;
+    }
+
+    .time-period-btn.active {
+        background: #6366f1;
+        color: white;
+        border-color: #6366f1;
+    }
+
+    /* View Toggle */
+    .view-toggle {
+        display: inline-flex;
+        background: #f3f4f6;
+        border-radius: 12px;
+        padding: 0.25rem;
+    }
+
+    .view-toggle-btn {
+        padding: 0.5rem 1.25rem;
+        border: none;
+        background: transparent;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #6b7280;
+        transition: all 0.2s ease;
+    }
+
+    .view-toggle-btn.active {
+        background: white;
+        color: #6366f1;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Accordion */
+    .accordion {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .accordion-header {
+        background: #ffffff;
+        padding: 1.25rem 1.5rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #e5e7eb;
+        transition: background 0.2s ease;
+    }
+
+    .accordion-header:hover {
+        background: #f9fafb;
+    }
+
+    .accordion-header.active {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(67, 56, 202, 0.02));
+    }
+
+    .accordion-title {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .accordion-title h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .accordion-stats {
+        display: flex;
+        gap: 2rem;
+        font-size: 0.875rem;
+    }
+
+    .accordion-stat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .accordion-stat__label {
+        color: #9ca3af;
+        font-size: 0.75rem;
+    }
+
+    .accordion-stat__value {
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .accordion-content {
+        display: none;
+        background: #ffffff;
+        padding: 1.5rem;
+    }
+
+    .accordion-content.active {
+        display: block;
+    }
+
+    /* Employee Workload Grid */
+    .employee-workload-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+    }
+
+    .employee-workload-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.25rem;
+    }
+
+    .employee-workload-card__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1rem;
+    }
+
+    .employee-workload-card__name {
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .workload-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .workload-badge.none {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .workload-badge.light {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .workload-badge.medium {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .workload-badge.heavy {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .employee-stage-breakdown {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    /* Empty States */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6b7280;
+    }
+
+    .empty-state__icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    .empty-state__title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #374151;
+    }
+
+    .empty-state__description {
+        font-size: 0.875rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+        .two-column-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .three-column-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 1200px) {
+        .stats-grid {
+            gap: 1rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .analytics-container {
+            padding: 1rem;
+        }
+
+        .stats-grid {
+            gap: 0.75rem;
+        }
+
+        .stat-card {
+            padding: 1.25rem 1rem;
+            min-height: 120px;
+        }
+
+        .stat-card__heading {
+            font-size: 0.9375rem;
+        }
+
+        .stat-card__value {
+            font-size: 2.25rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-card__description {
+            font-size: 0.75rem;
+        }
+
+        .stat-card__icon {
+            width: 56px;
+            height: 56px;
+            font-size: 1.5rem;
+            margin-left: 0.75rem;
+        }
+
+        .three-column-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .accordion-stats {
+            gap: 1rem;
+            font-size: 0.75rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            gap: 0.5rem;
+        }
+
+        .stat-card {
+            padding: 1rem 0.75rem;
+            min-height: 100px;
+        }
+
+        .stat-card__heading {
+            font-size: 0.8125rem;
+        }
+
+        .stat-card__value {
+            font-size: 1.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-card__description {
+            font-size: 0.6875rem;
+        }
+
+        .stat-card__icon {
+            width: 48px;
+            height: 48px;
+            font-size: 1.25rem;
+            margin-left: 0.5rem;
+        }
+    }
+
+    /* Dark Mode Support */
+    body.dark-mode .analytics-panel,
+    body.dark-mode .stat-card,
+    body.dark-mode .deadline-card,
+    body.dark-mode .kpi-card,
+    body.dark-mode .employee-workload-card,
+    body.dark-mode .accordion-header {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    body.dark-mode .stat-card.active {
+        background: linear-gradient(135deg, #1f2937 0%, #2d3748 100%);
+        border-color: #6366f1;
+    }
+
+    body.dark-mode .stat-card__value,
+    body.dark-mode .deadline-card__title,
+    body.dark-mode .reminder-card__title,
+    body.dark-mode .kpi-card__value,
+    body.dark-mode .accordion-title h3 {
+        color: #f9fafb;
+    }
+
+    body.dark-mode .stat-card.active .stat-card__value {
+        background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    body.dark-mode .stat-card__heading {
+        color: #f9fafb;
+    }
+
+    body.dark-mode .stat-card__description {
+        color: #9ca3af;
+    }
+
+    body.dark-mode .section-title {
+        color: #f9fafb;
+    }
+
+    body.dark-mode .section-subtitle {
+        color: #9ca3af;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-container">
+    <!-- Section Header -->
+    <section class="section">
+        <div class="section-header">
+            <span class="chip">Analytics</span>
+            <h1 class="section-title">Analytics Dashboard</h1>
+            <p class="section-subtitle">Track your tender pipeline performance and upcoming deadlines</p>
+        </div>
+    </section>
+
+    <!-- Stats Cards - 3 IN A SINGLE ROW -->
+    <div class="stats-grid" style="display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 1.5rem; width: 100%;">
+        <article class="stat-card stat-card--clickable active" id="deadlinesCard" data-section="deadlines" style="flex: 1 1 0; min-width: 0;">
+            <div class="stat-card__body">
+                <h3 class="stat-card__heading">Dates & Deadlines</h3>
+                <div class="stat-card__value">{{ urgent_deadlines }}</div>
+                <p class="stat-card__description">Upcoming critical dates requiring attention</p>
+            </div>
+        </article>
+
+        <article class="stat-card stat-card--clickable" id="tendersCard" data-section="tenders" style="flex: 1 1 0; min-width: 0;">
+            <div class="stat-card__body">
+                <h3 class="stat-card__heading">Tenders Analytics</h3>
+                <div class="stat-card__value">{{ total_tenders }}</div>
+                <p class="stat-card__description">Total tenders tracked across all statuses</p>
+            </div>
+        </article>
+
+        <article class="stat-card stat-card--clickable" id="stagesCard" data-section="stages" style="flex: 1 1 0; min-width: 0;">
+            <div class="stat-card__body">
+                <h3 class="stat-card__heading">Stage Analytics</h3>
+                <div class="stat-card__value">{{ shortlisted_count }}</div>
+                <p class="stat-card__description">Active tenders in workflow pipeline</p>
+            </div>
+        </article>
+    </div>
+
+    <!-- SECTION 1: DATES & DEADLINES -->
+    <div class="analytics-section active" id="deadlinesSection" style="display: block; margin-top: 30px;">
+        <div class="two-column-grid">
+            <!-- Left: Upcoming Deadlines -->
+            <div>
+                <div class="analytics-panel">
+                    <div class="panel-header">
+                        <h2>Upcoming Deadlines</h2>
+                    </div>
+
+                    <div class="deadline-timeline">
+                        <!-- Overdue -->
+                        {% if overdue_deadlines %}
+                        <div class="deadline-group">
+                            <div class="deadline-group-header">
+                                <span class="urgency-badge overdue">🔴 Overdue</span>
+                                <span style="color: #dc2626; font-weight: 600;">{{ overdue_deadlines|length }} deadline(s)</span>
+                            </div>
+                            {% for deadline in overdue_deadlines %}
+                            <div class="deadline-card" onclick="location.href='/tender-management#shortlistedSection'">
+                                <div class="deadline-card__header">
+                                    <div class="deadline-card__title">{{ deadline.tender_title }}</div>
+                                    <div class="deadline-card__date">{{ deadline.deadline_date.strftime('%b %d, %Y') }} ({{ deadline.days_remaining }} days)</div>
+                                </div>
+                                <div class="deadline-card__type">{{ deadline.deadline_type }}</div>
+                                {% if deadline.assigned_employees %}
+                                <div class="deadline-card__employees">
+                                    {% for emp in deadline.assigned_employees %}
+                                    <span class="employee-chip">👤 {{ emp.name }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Today -->
+                        {% if today_deadlines %}
+                        <div class="deadline-group">
+                            <div class="deadline-group-header">
+                                <span class="urgency-badge today">🟠 Today</span>
+                                <span style="color: #ea580c; font-weight: 600;">{{ today_deadlines|length }} deadline(s)</span>
+                            </div>
+                            {% for deadline in today_deadlines %}
+                            <div class="deadline-card" onclick="location.href='/tender-management#shortlistedSection'">
+                                <div class="deadline-card__header">
+                                    <div class="deadline-card__title">{{ deadline.tender_title }}</div>
+                                    <div class="deadline-card__date">{{ deadline.deadline_date.strftime('%b %d, %Y') }}</div>
+                                </div>
+                                <div class="deadline-card__type">{{ deadline.deadline_type }}</div>
+                                {% if deadline.assigned_employees %}
+                                <div class="deadline-card__employees">
+                                    {% for emp in deadline.assigned_employees %}
+                                    <span class="employee-chip">👤 {{ emp.name }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- This Week -->
+                        {% if this_week_deadlines %}
+                        <div class="deadline-group">
+                            <div class="deadline-group-header">
+                                <span class="urgency-badge this-week">🟡 This Week</span>
+                                <span style="color: #d97706; font-weight: 600;">{{ this_week_deadlines|length }} deadline(s)</span>
+                            </div>
+                            {% for deadline in this_week_deadlines %}
+                            <div class="deadline-card" onclick="location.href='/tender-management#shortlistedSection'">
+                                <div class="deadline-card__header">
+                                    <div class="deadline-card__title">{{ deadline.tender_title }}</div>
+                                    <div class="deadline-card__date">{{ deadline.deadline_date.strftime('%b %d, %Y') }} (in {{ deadline.days_remaining }} days)</div>
+                                </div>
+                                <div class="deadline-card__type">{{ deadline.deadline_type }}</div>
+                                {% if deadline.assigned_employees %}
+                                <div class="deadline-card__employees">
+                                    {% for emp in deadline.assigned_employees %}
+                                    <span class="employee-chip">👤 {{ emp.name }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Next Two Weeks -->
+                        {% if next_two_weeks_deadlines %}
+                        <div class="deadline-group">
+                            <div class="deadline-group-header">
+                                <span class="urgency-badge next-two-weeks">🟢 Next 2 Weeks</span>
+                                <span style="color: #16a34a; font-weight: 600;">{{ next_two_weeks_deadlines|length }} deadline(s)</span>
+                            </div>
+                            {% for deadline in next_two_weeks_deadlines %}
+                            <div class="deadline-card" onclick="location.href='/tender-management#shortlistedSection'">
+                                <div class="deadline-card__header">
+                                    <div class="deadline-card__title">{{ deadline.tender_title }}</div>
+                                    <div class="deadline-card__date">{{ deadline.deadline_date.strftime('%b %d, %Y') }} (in {{ deadline.days_remaining }} days)</div>
+                                </div>
+                                <div class="deadline-card__type">{{ deadline.deadline_type }}</div>
+                                {% if deadline.assigned_employees %}
+                                <div class="deadline-card__employees">
+                                    {% for emp in deadline.assigned_employees %}
+                                    <span class="employee-chip">👤 {{ emp.name }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Later -->
+                        {% if later_deadlines %}
+                        <div class="deadline-group">
+                            <div class="deadline-group-header">
+                                <span class="urgency-badge later">⚪ Later</span>
+                                <span style="color: #6b7280; font-weight: 600;">{{ later_deadlines|length }} deadline(s)</span>
+                            </div>
+                            {% for deadline in later_deadlines[:5] %}
+                            <div class="deadline-card" onclick="location.href='/tender-management#shortlistedSection'">
+                                <div class="deadline-card__header">
+                                    <div class="deadline-card__title">{{ deadline.tender_title }}</div>
+                                    <div class="deadline-card__date">{{ deadline.deadline_date.strftime('%b %d, %Y') }} (in {{ deadline.days_remaining }} days)</div>
+                                </div>
+                                <div class="deadline-card__type">{{ deadline.deadline_type }}</div>
+                                {% if deadline.assigned_employees %}
+                                <div class="deadline-card__employees">
+                                    {% for emp in deadline.assigned_employees %}
+                                    <span class="employee-chip">👤 {{ emp.name }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                            {% if later_deadlines|length > 5 %}
+                            <div style="text-align: center; padding: 1rem; color: #6b7280; font-size: 0.875rem;">
+                                + {{ later_deadlines|length - 5 }} more deadline(s)
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        {% if not overdue_deadlines and not today_deadlines and not this_week_deadlines and not next_two_weeks_deadlines and not later_deadlines %}
+                        <div class="empty-state">
+                            <div class="empty-state__icon">📅</div>
+                            <div class="empty-state__title">No Upcoming Deadlines</div>
+                            <div class="empty-state__description">All caught up! No pending deadlines for your shortlisted tenders.</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Active Reminders -->
+            <div>
+                <div class="analytics-panel">
+                    <div class="panel-header">
+                        <h2>Active Reminders</h2>
+                    </div>
+
+                    {% if active_reminders %}
+                    {% for reminder in active_reminders %}
+                    <div class="reminder-card" data-reminder-id="{{ reminder.id }}">
+                        <div class="reminder-card__header">
+                            <div class="reminder-card__title">{{ reminder.tender_title }}</div>
+                            <div class="reminder-card__datetime">
+                                {{ reminder.reminder_datetime.strftime('%b %d, %Y at %I:%M %p') }}
+                                <br>
+                                <small>(in {{ reminder.days_until }} day{% if reminder.days_until != 1 %}s{% endif %})</small>
+                            </div>
+                        </div>
+                        {% if reminder.note %}
+                        <div class="reminder-card__note">{{ reminder.note }}</div>
+                        {% endif %}
+                        <div class="reminder-actions">
+                            <button class="btn-sm btn-dismiss" onclick="dismissReminder({{ reminder.id }})">Dismiss</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state__icon">🔔</div>
+                        <div class="empty-state__title">No Active Reminders</div>
+                        <div class="empty-state__description">Set reminders for important tender milestones.</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Calendar -->
+        <div class="analytics-panel" style="margin-top: 2rem;">
+            <div class="panel-header">
+                <h2>Activity Calendar</h2>
+            </div>
+
+            <table class="calendar-activity-table" style="width: 100%; table-layout: fixed; border-collapse: collapse;">
+                <tr>
+                    <!-- Calendar Cell (60% width) -->
+                    <td class="calendar-cell" style="width: 60%; vertical-align: top; padding-right: 1rem;">
+                        <div class="calendar-section">
+                            <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                                <h3 class="calendar-title" id="calendarTitle" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #111827;">
+                                    <span id="currentMonthYear">Loading...</span>
+                                </h3>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="calendar-nav-btn" id="prevMonth" onclick="changeMonth(-1)" style="width: 36px; height: 36px; border-radius: 12px; border: 1px solid #e5e7eb; background: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                                            <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </button>
+                                    <button class="calendar-nav-btn" id="nextMonth" onclick="changeMonth(1)" style="width: 36px; height: 36px; border-radius: 12px; border: 1px solid #e5e7eb; background: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                                            <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="calendar-grid">
+                                <div class="calendar-weekdays" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; margin-bottom: 0.5rem;">
+                                    <div class="calendar-weekday sunday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Sun</div>
+                                    <div class="calendar-weekday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Mon</div>
+                                    <div class="calendar-weekday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Tue</div>
+                                    <div class="calendar-weekday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Wed</div>
+                                    <div class="calendar-weekday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Thu</div>
+                                    <div class="calendar-weekday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Fri</div>
+                                    <div class="calendar-weekday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Sat</div>
+                                </div>
+                                <div class="calendar-days" id="calendarDays" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0;">
+                                    <!-- Calendar days will be generated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Activity Panel Cell (40% width) -->
+                    <td class="activity-cell" style="width: 40%; vertical-align: top; padding-left: 1rem; border-left: 1px solid #e5e7eb;">
+                        <div class="activity-panel">
+                            <div class="activity-panel-header" style="margin-bottom: 1.5rem;">
+                                <h3 class="activity-panel-title" style="margin: 0 0 0.5rem 0; font-size: 1.1rem; font-weight: 700; color: #111827;">Activities</h3>
+                                <p class="activity-panel-subtitle" id="selectedDateText" style="margin: 0; font-size: 0.875rem; color: #6b7280;">Select a date</p>
+                            </div>
+
+                            <div class="activity-list" id="activityList">
+                                <div class="activity-empty-state" style="text-align: center; padding: 2rem 1rem; color: #6b7280;">
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style="margin: 0 auto 1rem; color: #9ca3af; display: block;">
+                                        <path d="M8 2v4M16 2v4M3 9h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <p class="empty-state-text" style="margin: 0; font-size: 0.875rem;">Click on a date to view activities</p>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- SECTION 2: TENDERS ANALYTICS -->
+    <div class="analytics-section" id="tendersSection" style="display: none; margin-top: 30px;">
+        <!-- Time Period Selector -->
+        <div class="analytics-panel" style="margin-bottom: 1.5rem;">
+            <div class="panel-header">
+                <h2 style="margin: 0;">Filter by Time Period</h2>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                <div class="time-period-selector">
+                    <button class="btn btn-secondary" data-period="7">Last 7 Days</button>
+                    <button class="btn btn-primary" data-period="30">Last 30 Days</button>
+                    <button class="btn btn-secondary" data-period="365">Last 12 Months</button>
+                    <button class="btn btn-secondary" data-period="all">All Time</button>
+                    <button class="btn btn-secondary" data-period="custom">Custom Range</button>
+                </div>
+                <button class="btn btn-primary" onclick="exportCharts()">📥 Export</button>
+            </div>
+        </div>
+
+        <!-- Row 1: Status Distribution Charts -->
+        <div class="three-column-grid">
+            <div class="analytics-panel">
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 700; color: #111827;">Tender Status Breakdown</h3>
+                <p style="margin: 0 0 1.5rem 0; font-size: 0.875rem; color: #6b7280;">Distribution of tenders across all statuses</p>
+                <div class="chart-container" id="statusDonutChart">
+                    <div class="chart-loading" style="display: flex; align-items: center; justify-content: center; height: 350px; color: #6b7280;">
+                        <div>Loading chart...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analytics-panel">
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 700; color: #111827;">Status Over Time</h3>
+                <p style="margin: 0 0 1.5rem 0; font-size: 0.875rem; color: #6b7280;">Tender activity trends for the selected period</p>
+                <div class="chart-container" id="statusTimelineChart">
+                    <div class="chart-loading" style="display: flex; align-items: center; justify-content: center; height: 350px; color: #6b7280;">
+                        <div>Loading chart...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analytics-panel">
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 700; color: #111827;">Value Analysis</h3>
+                <p style="margin: 0 0 1.5rem 0; font-size: 0.875rem; color: #6b7280;">Estimated value breakdown by tender status</p>
+                <div class="chart-container" id="valueBarChart">
+                    <div class="chart-loading" style="display: flex; align-items: center; justify-content: center; height: 350px; color: #6b7280;">
+                        <div>Loading chart...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Performance Metrics -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+            <div class="analytics-panel">
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 700; color: #111827;">Conversion Funnel</h3>
+                <p style="margin: 0 0 1.5rem 0; font-size: 0.875rem; color: #6b7280;">Track tender progression from favorites to awards</p>
+                <div class="chart-container" id="conversionFunnelChart">
+                    <div class="chart-loading" style="display: flex; align-items: center; justify-content: center; height: 350px; color: #6b7280;">
+                        <div>Loading chart...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                <div class="kpi-card">
+                    <div class="kpi-card__label">Win Rate</div>
+                    <div class="kpi-card__value">{{ win_rate }}%</div>
+                    <div class="kpi-card__subtitle">Awarded / Ever Shortlisted</div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-card__label">Rejection Rate</div>
+                    <div class="kpi-card__value">{{ rejection_rate }}%</div>
+                    <div class="kpi-card__subtitle">Rejected / Favorited</div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-card__label">Active Pipeline</div>
+                    <div class="kpi-card__value">₹{{ "%.1f"|format(shortlisted_value / 10000000) }}Cr</div>
+                    <div class="kpi-card__subtitle">Shortlisted Value</div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-card__label">Won Value</div>
+                    <div class="kpi-card__value">₹{{ "%.1f"|format(awarded_value / 10000000) }}Cr</div>
+                    <div class="kpi-card__subtitle">Awarded Tenders</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 3: STAGE ANALYTICS -->
+    <div class="analytics-section" id="stagesSection" style="display: none; margin-top: 30px;">
+        <!-- View Toggle -->
+        <div class="analytics-panel" style="margin-bottom: 1.5rem;">
+            <div class="view-toggle">
+                <button class="view-toggle-btn active" data-view="detailed">🔍 Detailed View</button>
+                <button class="view-toggle-btn" data-view="overview">📈 Overview</button>
+            </div>
+        </div>
+
+        <!-- Detailed View -->
+        <div id="detailedView">
+            {% for step_num in range(1, 7) %}
+            {% set step_key = 'step' ~ step_num %}
+            {% set step_names = {
+                'step1': 'Pre-Bid Meeting',
+                'step2': 'Proposal Submission',
+                'step3': 'Technical Proposal Opening',
+                'step4': 'Financial Proposal',
+                'step5': 'Further Negotiations',
+                'step6': 'Tender Awarded'
+            } %}
+            {% set total_tenders = stage_tenders[step_key]|length %}
+
+            <div class="accordion">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-title">
+                        <h3>Step {{ step_num }}: {{ step_names[step_key] }}</h3>
+                        <span class="urgency-badge" style="background: #dbeafe; color: #1e40af;">{{ total_tenders }} tenders</span>
+                    </div>
+                    <div class="accordion-stats">
+                        {% for status, count in stage_breakdown[step_key].items() %}
+                        {% if count > 0 %}
+                        <div class="accordion-stat">
+                            <span class="accordion-stat__label">{{ status }}</span>
+                            <span class="accordion-stat__value">{{ count }}</span>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="accordion-content">
+                    {% if stage_tenders[step_key] %}
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #e5e7eb;">
+                                <th style="text-align: left; padding: 0.75rem; font-size: 0.875rem; color: #6b7280;">Tender Title</th>
+                                <th style="text-align: left; padding: 0.75rem; font-size: 0.875rem; color: #6b7280;">Status</th>
+                                <th style="text-align: left; padding: 0.75rem; font-size: 0.875rem; color: #6b7280;">Assigned To</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tender in stage_tenders[step_key] %}
+                            <tr style="border-bottom: 1px solid #e5e7eb;">
+                                <td style="padding: 0.75rem; font-size: 0.875rem;">{{ tender.title }}</td>
+                                <td style="padding: 0.75rem; font-size: 0.875rem;">
+                                    <span class="urgency-badge" style="background: #f3f4f6; color: #374151;">{{ tender.status }}</span>
+                                </td>
+                                <td style="padding: 0.75rem; font-size: 0.875rem;">
+                                    {% if tender.assigned_employees %}
+                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                        {% for emp in tender.assigned_employees %}
+                                        <span class="employee-chip">👤 {{ emp.name }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% else %}
+                                    <span style="color: #9ca3af;">Not assigned</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state__icon">📋</div>
+                        <div class="empty-state__title">No Tenders at This Stage</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Employee Workload -->
+            <div class="analytics-panel" style="margin-top: 2rem;">
+                <div class="panel-header">
+                    <h2>Employee Workload Distribution</h2>
+                </div>
+
+                {% if employee_workload %}
+                <div class="employee-workload-grid">
+                    {% for emp in employee_workload %}
+                    <div class="employee-workload-card">
+                        <div class="employee-workload-card__header">
+                            <div>
+                                <div class="employee-workload-card__name">{{ emp.name }}</div>
+                                <div style="font-size: 0.75rem; color: #9ca3af;">{{ emp.email }}</div>
+                            </div>
+                            <span class="workload-badge {{ emp.workload_level }}">
+                                {% if emp.workload_level == 'none' %}⚪ None
+                                {% elif emp.workload_level == 'light' %}🟢 Light
+                                {% elif emp.workload_level == 'medium' %}🟡 Medium
+                                {% elif emp.workload_level == 'heavy' %}🔴 Heavy
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                            <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">
+                                Total Tenders: <strong>{{ emp.total_tenders }}</strong>
+                            </div>
+                            <div class="employee-stage-breakdown">
+                                {% for step_num in range(1, 7) %}
+                                {% set step_key = 'step' ~ step_num %}
+                                {% if emp.stage_distribution[step_key] > 0 %}
+                                <div style="display: flex; justify-content: space-between; padding: 0.25rem 0;">
+                                    <span>Step {{ step_num }}:</span>
+                                    <strong>{{ emp.stage_distribution[step_key] }}</strong>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-state__icon">👥</div>
+                    <div class="empty-state__title">No Employee Data</div>
+                    <div class="empty-state__description">Add employees to track workload distribution.</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Overview View (Hidden by default) -->
+        <div id="overviewView" style="display: none;">
+            <div class="analytics-panel">
+                <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Stage Funnel Visualization</h3>
+                <div class="chart-container" id="stageFunnelChart" style="min-height: 400px;"></div>
+            </div>
+
+            <div class="analytics-panel" style="margin-top: 1.5rem;">
+                <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Stage Distribution Matrix</h3>
+                <div class="chart-container" id="stageHeatmapChart" style="min-height: 500px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+    // Chart initialization flags
+    window.tendersChartsInitialized = false;
+    window.stageChartsInitialized = false;
+
+    // Stat Card Navigation
+    document.querySelectorAll('.stat-card--clickable').forEach(card => {
+        card.addEventListener('click', function() {
+            const section = this.dataset.section;
+
+            // Update active card
+            document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+
+            // Update active section with smooth transition
+            document.querySelectorAll('.analytics-section').forEach(s => {
+                s.classList.remove('active');
+                s.style.display = 'none';
+            });
+
+            const targetSection = document.getElementById(section + 'Section');
+            if (targetSection) {
+                targetSection.style.display = 'block';
+                setTimeout(() => {
+                    targetSection.classList.add('active');
+                }, 10);
+
+                // Lazy load charts when Tenders Analytics section becomes visible
+                if (section === 'tenders' && !window.tendersChartsInitialized) {
+                    // Poll for ApexCharts availability (max 5 seconds)
+                    const waitForApexCharts = (callback, maxAttempts = 100) => {
+                        let attempts = 0;
+                        const checkInterval = setInterval(() => {
+                            attempts++;
+                            if (typeof ApexCharts !== 'undefined') {
+                                clearInterval(checkInterval);
+                                console.log('✅ ApexCharts loaded, rendering charts...');
+                                callback();
+                            } else if (attempts >= maxAttempts) {
+                                clearInterval(checkInterval);
+                                console.error('❌ ApexCharts failed to load after 5 seconds');
+                                // Show error in chart containers
+                                ['statusDonutChart', 'statusTimelineChart', 'valueBarChart', 'conversionFunnelChart'].forEach(id => {
+                                    const container = document.getElementById(id);
+                                    if (container) {
+                                        container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 350px; color: #ef4444; text-align: center;"><div><div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div><div>Chart library failed to load</div><div style="font-size: 0.875rem; margin-top: 0.5rem;">Please check your internet connection</div></div></div>';
+                                    }
+                                });
+                            }
+                        }, 50); // Check every 50ms
+                    };
+
+                    waitForApexCharts(() => {
+                        if (typeof renderStatusDonutChart === 'function' && window.analyticsData) {
+                            // Wait a bit more for DOM to be ready
+                            setTimeout(() => {
+                                renderStatusDonutChart(window.analyticsData);
+                                renderStatusTimelineChart(window.analyticsData);
+                                renderValueBarChart(window.analyticsData);
+                                renderConversionFunnelChart(window.analyticsData);
+                                window.tendersChartsInitialized = true;
+                            }, 100);
+                        }
+                    });
+                }
+
+                // Lazy load overview charts when Stage Analytics section becomes visible
+                if (section === 'stages' && !window.stageChartsInitialized) {
+                    // Check if user switches to overview view
+                    const overviewView = document.getElementById('overviewView');
+                    if (overviewView && overviewView.style.display !== 'none') {
+                        setTimeout(() => {
+                            if (typeof renderOverviewCharts === 'function') {
+                                renderOverviewCharts();
+                                window.stageChartsInitialized = true;
+                            }
+                        }, 100);
+                    }
+                }
+            }
+        });
+    });
+
+    // Accordion Toggle
+    function toggleAccordion(header) {
+        const content = header.nextElementSibling;
+        const isActive = header.classList.contains('active');
+
+        // Toggle this accordion
+        header.classList.toggle('active');
+        content.classList.toggle('active');
+    }
+
+    // View Toggle (Detailed vs Overview)
+    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const view = this.dataset.view;
+
+            // Update active button
+            document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            // Toggle views
+            if (view === 'detailed') {
+                document.getElementById('detailedView').style.display = 'block';
+                document.getElementById('overviewView').style.display = 'none';
+            } else {
+                document.getElementById('detailedView').style.display = 'none';
+                document.getElementById('overviewView').style.display = 'block';
+                renderOverviewCharts(); // Render charts when switching to overview
+            }
+        });
+    });
+
+    // Dismiss Reminder
+    function dismissReminder(reminderId) {
+        if (confirm('Dismiss this reminder?')) {
+            fetch(`/api/reminders/${reminderId}/dismiss`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    }
+                });
+        }
+    }
+
+    // Export Charts
+    function exportCharts() {
+        alert('Export functionality coming soon!');
+    }
+
+    // Time Period Selection
+    document.querySelectorAll('.time-period-selector .btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Update active button styling
+            document.querySelectorAll('.time-period-selector .btn').forEach(b => {
+                b.classList.remove('btn-primary');
+                b.classList.add('btn-secondary');
+            });
+            this.classList.remove('btn-secondary');
+            this.classList.add('btn-primary');
+
+            const period = this.dataset.period;
+            if (period === 'custom') {
+                alert('Custom date range picker coming soon!');
+            } else {
+                console.log('Selected period:', period);
+                // TODO: Implement dynamic data loading
+            }
+        });
+    });
+
+    // Pass analytics data to window object for chart rendering
+    window.analyticsData = {
+        // Section 2: Tenders Analytics Data
+        favorites_count: {{ favorites_count }},
+        shortlisted_count: {{ shortlisted_count }},
+        rejected_count: {{ rejected_count }},
+        dumped_count: {{ dumped_count }},
+        awarded_count: {{ awarded_count }},
+        shortlisted_value: {{ shortlisted_value }},
+        awarded_value: {{ awarded_value }},
+        dumped_value: {{ dumped_value }},
+
+        // Timeline data for trend charts (last 30 days)
+        timeline_data: [
+            {% for day in timeline_data %}
+            {
+                date: '{{ day.date }}',
+                favorites: {{ day.favorites or 0 }},
+                shortlisted: {{ day.shortlisted or 0 }},
+                rejected: {{ day.rejected or 0 }},
+                dumped: {{ day.dumped or 0 }},
+                awarded: {{ day.awarded or 0 }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ],
+
+        // Section 3: Stage Analytics Data
+        stage_breakdown: {
+            step1: {{ stage_breakdown.step1 | tojson }},
+            step2: {{ stage_breakdown.step2 | tojson }},
+            step3: {{ stage_breakdown.step3 | tojson }},
+            step4: {{ stage_breakdown.step4 | tojson }},
+            step5: {{ stage_breakdown.step5 | tojson }},
+            step6: {{ stage_breakdown.step6 | tojson }}
+        }
+    };
+
+    // Load analytics.js ONLY after ApexCharts is ready
+    function loadAnalyticsScript() {
+        // Wait for ApexCharts library to be available (max 10 seconds)
+        let attempts = 0;
+        const maxAttempts = 200; // 200 * 50ms = 10 seconds
+
+        const checkApexCharts = setInterval(() => {
+            attempts++;
+
+            if (typeof ApexCharts !== 'undefined') {
+                // ApexCharts is loaded, now load analytics.js
+                clearInterval(checkApexCharts);
+                console.log('✅ ApexCharts detected, loading analytics.js...');
+
+                const script = document.createElement('script');
+                script.src = '/static/js/analytics.js';
+                script.onload = function() {
+                    console.log('✅ Analytics.js loaded - Charts ready for lazy initialization');
+                };
+                script.onerror = function() {
+                    console.error('❌ Failed to load analytics.js');
+                };
+                document.head.appendChild(script);
+
+            } else if (attempts >= maxAttempts) {
+                // Timeout: ApexCharts failed to load
+                clearInterval(checkApexCharts);
+                console.error('❌ ApexCharts library failed to load after 10 seconds');
+
+                // Show error message in chart containers if they exist
+                const errorMessage = '<div style="display: flex; align-items: center; justify-content: center; height: 350px; color: #ef4444; text-align: center;"><div><div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div><div>Chart library failed to load</div><div style="font-size: 0.875rem; margin-top: 0.5rem;">Please refresh the page or check your internet connection</div></div></div>';
+
+                ['statusDonutChart', 'statusTimelineChart', 'valueBarChart', 'conversionFunnelChart'].forEach(id => {
+                    const container = document.getElementById(id);
+                    if (container) {
+                        container.innerHTML = errorMessage;
+                    }
+                });
+            }
+        }, 50); // Check every 50ms
+    }
+
+    // Start loading analytics script after DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadAnalyticsScript);
+    } else {
+        loadAnalyticsScript();
+    }
+
+    // ==============================
+    // Calendar & Activity Timeline
+    // ==============================
+
+    // Calendar data from server
+    const calendarEvents = {{ calendar_events | tojson | safe }};
+    let currentCalendarYear = {{ current_year }};
+    let currentCalendarMonth = {{ current_month }} - 1; // JavaScript months are 0-indexed
+    let selectedDate = null;
+
+    // Month names
+    const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    // Initialize calendar after page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeCalendar();
+    });
+
+    // Initialize calendar
+    function initializeCalendar() {
+        // Force grid layout on weekdays header
+        const weekdaysHeader = document.querySelector('.calendar-weekdays');
+        if (weekdaysHeader) {
+            weekdaysHeader.style.display = 'grid';
+            weekdaysHeader.style.gridTemplateColumns = 'repeat(7, 1fr)';
+            weekdaysHeader.style.gap = '0';
+        }
+
+        console.log('Calendar Events:', calendarEvents);
+        console.log('Total events:', calendarEvents.length);
+
+        forceTableLayout();
+        renderCalendar();
+
+        // Listen for theme changes and re-render calendar
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    console.log('Theme changed, re-rendering calendar');
+                    renderCalendar();
+                }
+            });
+        });
+
+        observer.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+    }
+
+    // Force table layout and text wrapping
+    function forceTableLayout() {
+        const table = document.querySelector('.calendar-activity-table');
+        const calendarCell = document.querySelector('.calendar-cell');
+        const activityCell = document.querySelector('.activity-cell');
+        const activityPanel = document.querySelector('.activity-panel');
+        const activityList = document.querySelector('.activity-list');
+
+        if (table) {
+            table.style.tableLayout = 'fixed';
+            table.style.width = '100%';
+        }
+
+        if (calendarCell) {
+            calendarCell.style.width = '60%';
+            calendarCell.style.minWidth = '60%';
+            calendarCell.style.maxWidth = '60%';
+        }
+
+        if (activityCell) {
+            activityCell.style.width = '40%';
+            activityCell.style.minWidth = '40%';
+            activityCell.style.maxWidth = '40%';
+            activityCell.style.wordWrap = 'break-word';
+            activityCell.style.overflowWrap = 'break-word';
+            activityCell.style.wordBreak = 'break-word';
+        }
+
+        if (activityPanel) {
+            activityPanel.style.width = '100%';
+            activityPanel.style.maxWidth = '100%';
+            activityPanel.style.wordWrap = 'break-word';
+            activityPanel.style.overflowWrap = 'break-word';
+        }
+
+        if (activityList) {
+            activityList.style.wordWrap = 'break-word';
+            activityList.style.overflowWrap = 'break-word';
+            activityList.style.wordBreak = 'break-word';
+            activityList.style.whiteSpace = 'normal';
+        }
+
+        const nestedTables = document.querySelectorAll('.calendar-cell table, .activity-cell table');
+        nestedTables.forEach(nested => {
+            nested.style.width = '100%';
+            nested.style.borderCollapse = 'collapse';
+        });
+
+        const applyTextWrap = () => {
+            const activityItems = document.querySelectorAll('.activity-item-title, .activity-item-description');
+            activityItems.forEach(item => {
+                item.style.wordWrap = 'break-word';
+                item.style.overflowWrap = 'break-word';
+                item.style.wordBreak = 'break-word';
+                item.style.whiteSpace = 'normal';
+                item.style.maxWidth = '100%';
+            });
+        };
+
+        applyTextWrap();
+        setTimeout(applyTextWrap, 100);
+        setTimeout(applyTextWrap, 500);
+    }
+
+    // Render calendar for current month
+    function renderCalendar() {
+        const calendarDays = document.getElementById('calendarDays');
+        const currentMonthYear = document.getElementById('currentMonthYear');
+
+        if (!calendarDays || !currentMonthYear) return;
+
+        currentMonthYear.textContent = `${monthNames[currentCalendarMonth]} ${currentCalendarYear}`;
+
+        calendarDays.innerHTML = '';
+        calendarDays.style.display = 'grid';
+        calendarDays.style.gridTemplateColumns = 'repeat(7, 1fr)';
+        calendarDays.style.gap = '0';
+
+        const firstDay = new Date(currentCalendarYear, currentCalendarMonth, 1).getDay();
+        const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+        const daysInPrevMonth = new Date(currentCalendarYear, currentCalendarMonth, 0).getDate();
+
+        const today = new Date();
+        const isCurrentMonth = today.getMonth() === currentCalendarMonth && today.getFullYear() === currentCalendarYear;
+        const todayDate = today.getDate();
+
+        for (let i = 0; i < firstDay; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'calendar-day calendar-day-empty';
+            calendarDays.appendChild(emptyCell);
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const isToday = isCurrentMonth && day === todayDate;
+            const dayElement = createDayElement(day, false, currentCalendarMonth, isToday);
+            calendarDays.appendChild(dayElement);
+        }
+
+        const totalCells = calendarDays.children.length;
+        const remainingCells = 42 - totalCells;
+        for (let i = 0; i < remainingCells; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'calendar-day calendar-day-empty';
+            calendarDays.appendChild(emptyCell);
+        }
+    }
+
+    // Create a day element
+    function createDayElement(day, isOtherMonth, month, isToday = false) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        dayElement.style.display = 'flex';
+        dayElement.style.flexDirection = 'column';
+        dayElement.style.alignItems = 'center';
+        dayElement.style.justifyContent = 'flex-start';
+        dayElement.style.minHeight = '60px';
+        dayElement.style.padding = '0.5rem';
+        dayElement.style.border = '1px solid #e5e7eb';
+        dayElement.style.cursor = 'pointer';
+        dayElement.style.transition = 'all 0.2s';
+
+        if (isOtherMonth) {
+            dayElement.classList.add('other-month');
+        }
+
+        if (isToday) {
+            dayElement.classList.add('today');
+            dayElement.style.backgroundColor = '#dbeafe';
+        }
+
+        const year = currentCalendarYear;
+        let actualMonth = month;
+        let actualYear = year;
+
+        if (actualMonth < 0) {
+            actualMonth = 11;
+            actualYear = year - 1;
+        } else if (actualMonth > 11) {
+            actualMonth = 0;
+            actualYear = year + 1;
+        }
+
+        const dateStr = `${actualYear}-${String(actualMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+        const dateObj = new Date(actualYear, actualMonth, day);
+        const dayOfWeek = dateObj.getDay();
+        if (dayOfWeek === 0) {
+            dayElement.classList.add('sunday');
+        }
+
+        const dayNumber = document.createElement('span');
+        dayNumber.className = 'calendar-day-number';
+        dayNumber.textContent = day;
+        dayNumber.style.display = 'block';
+        dayNumber.style.width = '100%';
+        dayNumber.style.textAlign = 'center';
+        dayNumber.style.fontWeight = '700';
+        dayNumber.style.fontSize = '1.125rem';
+        dayNumber.style.marginBottom = '0.25rem';
+
+        dayElement.appendChild(dayNumber);
+
+        const dayEvents = calendarEvents.filter(event => event.date === dateStr);
+
+        if (dayEvents.length > 0 && !isOtherMonth) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const eventDate = new Date(actualYear, actualMonth, day);
+            eventDate.setHours(0, 0, 0, 0);
+
+            const isPastDate = eventDate < today;
+            const isDarkMode = document.body.classList.contains('dark-mode');
+
+            if (isPastDate) {
+                dayElement.classList.add('has-events-past');
+                if (isDarkMode) {
+                    dayElement.style.backgroundColor = '#7f1d1d';
+                } else {
+                    dayElement.style.backgroundColor = '#fecaca';
+                }
+            } else {
+                dayElement.classList.add('has-events');
+                if (isDarkMode) {
+                    dayElement.style.backgroundColor = '#064e3b';
+                } else {
+                    dayElement.style.backgroundColor = '#d1fae5';
+                }
+            }
+
+            const markersContainer = document.createElement('div');
+            markersContainer.className = 'calendar-day-markers';
+            markersContainer.style.display = 'flex';
+            markersContainer.style.gap = '0.25rem';
+            markersContainer.style.flexWrap = 'wrap';
+            markersContainer.style.justifyContent = 'center';
+
+            const eventTypes = new Set(dayEvents.map(e => e.type));
+
+            if (eventTypes.has('activity')) {
+                const marker = document.createElement('div');
+                marker.className = 'day-marker activity';
+                marker.style.width = '8px';
+                marker.style.height = '8px';
+                marker.style.borderRadius = '50%';
+                marker.style.backgroundColor = '#3b82f6';
+                markersContainer.appendChild(marker);
+            }
+            if (eventTypes.has('deadline')) {
+                const marker = document.createElement('div');
+                marker.className = 'day-marker deadline';
+                marker.style.width = '8px';
+                marker.style.height = '8px';
+                marker.style.borderRadius = '50%';
+                marker.style.backgroundColor = '#ef4444';
+                markersContainer.appendChild(marker);
+            }
+            if (eventTypes.has('task')) {
+                const marker = document.createElement('div');
+                marker.className = 'day-marker task';
+                marker.style.width = '8px';
+                marker.style.height = '8px';
+                marker.style.borderRadius = '50%';
+                marker.style.backgroundColor = '#f59e0b';
+                markersContainer.appendChild(marker);
+            }
+            if (eventTypes.has('reminder')) {
+                const marker = document.createElement('div');
+                marker.className = 'day-marker reminder';
+                marker.style.width = '8px';
+                marker.style.height = '8px';
+                marker.style.borderRadius = '50%';
+                marker.style.backgroundColor = '#8b5cf6';
+                markersContainer.appendChild(marker);
+            }
+
+            dayElement.appendChild(markersContainer);
+        }
+
+        if (!isOtherMonth) {
+            dayElement.dataset.date = dateStr;
+            dayElement.addEventListener('click', () => selectDate(dateStr, dayElement));
+            dayElement.addEventListener('mouseenter', () => {
+                if (!dayElement.classList.contains('selected')) {
+                    dayElement.style.backgroundColor = '#f3f4f6';
+                }
+            });
+            dayElement.addEventListener('mouseleave', () => {
+                if (!dayElement.classList.contains('selected')) {
+                    if (isToday) {
+                        dayElement.style.backgroundColor = '#dbeafe';
+                    } else if (dayEvents.length > 0) {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const eventDate = new Date(actualYear, actualMonth, day);
+                        eventDate.setHours(0, 0, 0, 0);
+                        const isPastDate = eventDate < today;
+                        const isDarkMode = document.body.classList.contains('dark-mode');
+                        if (isPastDate) {
+                            dayElement.style.backgroundColor = isDarkMode ? '#7f1d1d' : '#fecaca';
+                        } else {
+                            dayElement.style.backgroundColor = isDarkMode ? '#064e3b' : '#d1fae5';
+                        }
+                    } else {
+                        dayElement.style.backgroundColor = '';
+                    }
+                }
+            });
+        }
+
+        return dayElement;
+    }
+
+    // Select a date and show activities
+    function selectDate(dateStr, dayElement) {
+        document.querySelectorAll('.calendar-day.selected').forEach(el => {
+            el.classList.remove('selected');
+            el.style.border = '1px solid #e5e7eb';
+        });
+
+        if (dayElement) {
+            dayElement.classList.add('selected');
+            dayElement.style.border = '2px solid #6366f1';
+        }
+
+        selectedDate = dateStr;
+        displayActivities(dateStr);
+    }
+
+    // Display activities for selected date
+    function displayActivities(dateStr) {
+        const activityList = document.getElementById('activityList');
+        const selectedDateText = document.getElementById('selectedDateText');
+
+        if (!activityList || !selectedDateText) return;
+
+        const date = new Date(dateStr + 'T00:00:00');
+        const formattedDate = date.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        selectedDateText.textContent = formattedDate;
+
+        const dayEvents = calendarEvents.filter(event => event.date === dateStr);
+
+        if (dayEvents.length === 0) {
+            activityList.innerHTML = `
+                <div class="activity-empty-state" style="text-align: center; padding: 2rem 1rem; color: #6b7280;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style="margin: 0 auto 1rem; color: #9ca3af; display: block;">
+                        <path d="M8 2v4M16 2v4M3 9h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <p class="empty-state-text" style="margin: 0; font-size: 0.875rem;">No activities for this date</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        dayEvents.forEach(event => {
+            const badgeClass = `badge-${event.type}`;
+            const badgeText = event.type === 'activity' ? 'Activity' :
+                              event.type === 'deadline' ? 'Deadline' :
+                              event.type === 'reminder' ? 'Reminder' : 'Task';
+
+            const isHistorical = event.source_deleted === true;
+            const historicalClass = isHistorical ? 'activity-historical' : '';
+            const historicalBadge = isHistorical ? '<span class="activity-item-badge badge-historical" style="display: inline-block; padding: 0.25rem 0.75rem; background: #f3f4f6; color: #6b7280; border-radius: 999px; font-size: 0.75rem; font-weight: 500;">Historical</span>' : '';
+
+            const badgeColor = event.type === 'activity' ? '#3b82f6' :
+                                event.type === 'deadline' ? '#ef4444' :
+                                event.type === 'reminder' ? '#8b5cf6' : '#f59e0b';
+
+            html += `
+                <div class="activity-item type-${event.type} ${historicalClass}" style="padding: 1rem; margin-bottom: 0.75rem; border-radius: 12px; border: 1px solid #e5e7eb; background: #ffffff;">
+                    <h4 class="activity-item-title" style="margin: 0 0 0.5rem 0; font-size: 0.9375rem; font-weight: 600; color: #111827; word-wrap: break-word;">${event.title}</h4>
+                    <p class="activity-item-description" style="margin: 0 0 0.75rem 0; font-size: 0.875rem; color: #6b7280; word-wrap: break-word;">${event.description}</p>
+                    <div class="activity-badges" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <span class="activity-item-badge ${badgeClass}" style="display: inline-block; padding: 0.25rem 0.75rem; background: ${badgeColor}; color: white; border-radius: 999px; font-size: 0.75rem; font-weight: 500;">${badgeText}</span>
+                        ${historicalBadge}
+                    </div>
+                </div>
+            `;
+        });
+
+        activityList.innerHTML = html;
+
+        setTimeout(() => {
+            const activityItems = document.querySelectorAll('.activity-item-title, .activity-item-description');
+            activityItems.forEach(item => {
+                item.style.wordWrap = 'break-word';
+                item.style.overflowWrap = 'break-word';
+                item.style.wordBreak = 'break-word';
+                item.style.whiteSpace = 'normal';
+                item.style.maxWidth = '100%';
+            });
+        }, 10);
+    }
+
+    // Change month (previous/next)
+    function changeMonth(direction) {
+        currentCalendarMonth += direction;
+
+        if (currentCalendarMonth < 0) {
+            currentCalendarMonth = 11;
+            currentCalendarYear--;
+        } else if (currentCalendarMonth > 11) {
+            currentCalendarMonth = 0;
+            currentCalendarYear++;
+        }
+
+        renderCalendar();
+    }
+</script>
+{% endblock %}

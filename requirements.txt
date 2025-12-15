@@ -1,0 +1,48 @@
+# TenderHub Application Dependencies
+
+# FastAPI and web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+jinja2==3.1.2
+python-multipart==0.0.6
+
+# Database
+sqlalchemy==2.0.36
+psycopg[binary]>=3.2.2
+
+# Web scraping dependencies (for the scraper) - REMOVED: scraper runs separately
+requests==2.31.0
+
+# PDF processing (needed for certificate processing)
+pdf2image==1.17.0  # PDF to image conversion
+PyMuPDF==1.23.26  # PDF processing via fitz module
+
+# PDF generation
+reportlab==4.0.7
+
+# Utilities
+python-dotenv==1.0.0
+bcrypt==4.1.2
+tenacity==8.2.3
+openpyxl==3.1.5
+fuzzywuzzy==0.18.0
+python-Levenshtein==0.25.1
+
+# Optional: For production deployment
+gunicorn==21.2.0
+
+celery==5.5.3
+
+# Certificate processing dependencies (GPT + Claude fallback with Hindi support)
+openai==1.101.0
+anthropic==0.39.0  # Claude API for fallback extraction
+PyPDF2==3.0.1
+Pillow==11.1.0  # For image handling
+faiss-cpu==1.12.0  # Vector similarity search
+numpy==2.1.3
+redis==6.4.0
+
+# AWS S3 for file storage
+boto3==1.34.0
+
+# Development dependencies (optional) - REMOVED: not needed at runtime

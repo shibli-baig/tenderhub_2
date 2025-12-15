@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Details - TenderHub</title>
+
+    <style>
+        /* Complete CSS Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Light Mode Variables */
+        :root {
+            --bg-gradient-start: #f9fafb;
+            --bg-gradient-end: #e5e7eb;
+            --header-bg: rgba(255, 255, 255, 0.96);
+            --header-border: rgba(0, 0, 0, 0.05);
+            --header-shadow: rgba(0, 0, 0, 0.03);
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9ca3af;
+            --text-muted: #4b5563;
+            --card-bg: white;
+            --card-border: rgba(0, 0, 0, 0.05);
+            --card-shadow: rgba(0, 0, 0, 0.08);
+            --surface-bg: #f9fafb;
+            --surface-border: rgba(148, 163, 184, 0.15);
+            --icon-bg: rgba(99, 102, 241, 0.1);
+            --metadata-bg-start: rgba(99, 102, 241, 0.08);
+            --metadata-bg-end: rgba(14, 165, 233, 0.05);
+            --metadata-border: rgba(99, 102, 241, 0.15);
+            --preview-bg: #f3f4f6;
+            --scrollbar-track: #e5e7eb;
+            --scrollbar-thumb: #9ca3af;
+            --scrollbar-thumb-hover: #6b7280;
+            --btn-border: #e0e7ff;
+            --btn-hover-bg: #f0f4ff;
+        }
+
+        /* Dark Mode Variables */
+        body.dark-mode {
+            --bg-gradient-start: #0f1419;
+            --bg-gradient-end: #1a1f2e;
+            --header-bg: rgba(26, 31, 46, 0.96);
+            --header-border: rgba(255, 255, 255, 0.1);
+            --header-shadow: rgba(0, 0, 0, 0.5);
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --text-tertiary: #9ca3af;
+            --text-muted: #e5e7eb;
+            --card-bg: #1a1f2e;
+            --card-border: #2d3345;
+            --card-shadow: rgba(0, 0, 0, 0.3);
+            --surface-bg: rgba(45, 51, 69, 0.5);
+            --surface-border: rgba(99, 102, 241, 0.2);
+            --icon-bg: rgba(99, 102, 241, 0.2);
+            --metadata-bg-start: rgba(99, 102, 241, 0.15);
+            --metadata-bg-end: rgba(14, 165, 233, 0.12);
+            --metadata-border: rgba(99, 102, 241, 0.3);
+            --preview-bg: #1a1f2e;
+            --scrollbar-track: #2d3345;
+            --scrollbar-thumb: #4b5563;
+            --scrollbar-thumb-hover: #6b7280;
+            --btn-border: rgba(99, 102, 241, 0.3);
+            --btn-hover-bg: rgba(99, 102, 241, 0.15);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(180deg, var(--bg-gradient-start), var(--bg-gradient-end));
+            min-height: 100vh;
+            padding: 20px;
+            transition: background 0.3s ease;
+        }
+
+        /* Header */
+        .page-header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: var(--header-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--header-border);
+            box-shadow: 0 4px 12px var(--header-shadow);
+            margin: -20px -20px 20px -20px;
+            padding: 16px 24px;
+            transition: all 0.3s ease;
+        }
+
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .logo span {
+            background: linear-gradient(120deg, #6366f1, #4338ca);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--card-bg);
+            color: #6366f1;
+            border: 2px solid var(--btn-border);
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: var(--btn-hover-bg);
+            border-color: #6366f1;
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle-btn {
+            padding: 8px 12px;
+            border: none;
+            background: var(--icon-bg);
+            color: var(--text-secondary);
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+        }
+
+        .theme-toggle-btn:hover {
+            background: var(--surface-bg);
+            transform: scale(1.05);
+        }
+
+        /* Container */
+        .cert-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Hero Card */
+        .hero-card {
+            background: linear-gradient(135deg, #6366f1, #4338ca);
+            color: white;
+            padding: 40px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.3);
+        }
+
+        .hero-card h1 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+
+        .hero-client {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            opacity: 0.95;
+        }
+
+        .hero-meta {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .confidence-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.18);
+            color: #065f46;
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        body.dark-mode .confidence-chip {
+            background: rgba(16, 185, 129, 0.25);
+            color: #6ee7b7;
+        }
+
+        /* Grid Layout */
+        .cert-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        /* Cards */
+        .cert-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px var(--card-shadow);
+            border: 1px solid var(--card-border);
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .cert-card h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: color 0.3s ease;
+        }
+
+        .card-icon {
+            font-size: 24px;
+        }
+
+        .muted-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        body.dark-mode .muted-text {
+            color: var(--text-tertiary);
+        }
+
+        .tag-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .tag-badge {
+            padding: 6px 14px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(14, 165, 233, 0.12));
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #312e81;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        body.dark-mode .tag-badge {
+            color: var(--text-primary);
+            border-color: rgba(99, 102, 241, 0.35);
+            background: rgba(99, 102, 241, 0.22);
+        }
+
+        /* Info Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .info-grid.single-column {
+            grid-template-columns: 1fr;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            font-weight: 700;
+            transition: color 0.3s ease;
+        }
+
+        .info-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            word-break: break-word;
+            transition: color 0.3s ease;
+        }
+
+        .info-value.multiline {
+            line-height: 1.6;
+            white-space: pre-line;
+        }
+
+        .info-section {
+            margin-bottom: 18px;
+        }
+
+        /* Services */
+        .services-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .service-badge {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(14, 165, 233, 0.08));
+            color: #4338ca;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 600;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        /* Extracted Text */
+        .extracted-text {
+            font-size: 14px;
+            line-height: 1.8;
+            color: var(--text-muted);
+            background: var(--surface-bg);
+            padding: 20px;
+            border-radius: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s ease;
+        }
+
+        .scope-text {
+            font-size: 15px;
+            line-height: 1.7;
+            color: var(--text-muted);
+            background: var(--surface-bg);
+            padding: 20px;
+            border-radius: 12px;
+            white-space: pre-line;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        .metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .metrics-table th,
+        .metrics-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--surface-border);
+            text-align: left;
+            color: var(--text-primary);
+        }
+
+        .metrics-table th {
+            background: var(--surface-bg);
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .metrics-table tbody tr:hover {
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        /* Preview Card - Full Width */
+        .preview-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px var(--card-shadow);
+            border: 1px solid var(--card-border);
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .preview-container {
+            background: var(--preview-bg);
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s ease;
+        }
+
+        .preview-pdf {
+            width: 100%;
+            height: 700px;
+            border: none;
+            border-radius: 12px;
+            background: white;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .preview-placeholder {
+            text-align: center;
+            color: var(--text-secondary);
+            transition: color 0.3s ease;
+        }
+
+        .preview-placeholder-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .preview-placeholder-text {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        /* Metadata Card */
+        .metadata-card {
+            background: linear-gradient(135deg, var(--metadata-bg-start), var(--metadata-bg-end));
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            border: 1px solid var(--metadata-border);
+            transition: all 0.3s ease;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .metadata-item {
+            font-size: 13px;
+            color: var(--text-muted);
+            transition: color 0.3s ease;
+        }
+
+        .metadata-item strong {
+            color: var(--text-primary);
+            font-weight: 700;
+            display: block;
+            margin-bottom: 4px;
+            transition: color 0.3s ease;
+        }
+
+        /* Actions */
+        .actions-container {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            border: none;
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, #6366f1, #4338ca);
+            color: white;
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .action-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(99, 102, 241, 0.4);
+        }
+
+        .action-btn.secondary {
+            background: var(--card-bg);
+            color: #6366f1;
+            border: 2px solid var(--btn-border);
+        }
+
+        .action-btn.secondary:hover {
+            background: var(--btn-hover-bg);
+            border-color: #6366f1;
+        }
+
+        /* Scrollbar Styling */
+        .extracted-text::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .extracted-text::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+            border-radius: 12px;
+        }
+
+        .extracted-text::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 12px;
+        }
+
+        .extracted-text::-webkit-scrollbar-thumb:hover {
+            background: var(--scrollbar-thumb-hover);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .cert-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .hero-card {
+                padding: 24px;
+            }
+
+            .hero-card h1 {
+                font-size: 28px;
+            }
+
+            .cert-card {
+                padding: 20px;
+            }
+
+            .preview-pdf {
+                height: 500px;
+            }
+
+            .actions-container {
+                flex-direction: column;
+            }
+
+            .action-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="page-header">
+        <div class="header-container">
+            <a href="/" class="logo"><span>Tender</span>Hub</a>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button type="button" class="theme-toggle-btn" id="themeToggle" aria-label="Toggle dark mode">
+                    🌙
+                </button>
+                <button onclick="window.history.back()" class="back-btn" style="background: none; border: none; cursor: pointer;">
+                    ← Back to Search
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="cert-container">
+        <!-- Hero Card -->
+        <div class="hero-card">
+            <h1>{{ certificate.project_name }}</h1>
+            <div class="hero-client">
+                <span>🏢</span>
+                <span>{{ certificate.client_name or 'Client Not Specified' }}</span>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="cert-grid">
+            <!-- Key Information -->
+            <div class="cert-card">
+                <h2><span class="card-icon">📊</span> Key Information</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Completion Date</div>
+                        <div class="info-value">
+                            {% if certificate.completion_date %}
+                                {{ certificate.completion_date.strftime('%B %d, %Y') }}
+                            {% else %}
+                                Not specified
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Project Value</div>
+                        <div class="info-value">
+                            {% if certificate.project_value %}
+                                ₹{{ "{:,.2f}".format(certificate.project_value) }}
+                            {% elif certificate.project_value_inr %}
+                                {{ certificate.project_value_inr }}
+                            {% else %}
+                                Not specified
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Consultancy Fee</div>
+                        <div class="info-value">{{ certificate.consultancy_fee_inr or 'Not specified' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Start Date</div>
+                        <div class="info-value">
+                            {% if certificate.start_date %}
+                                {{ certificate.start_date.strftime('%B %d, %Y') }}
+                            {% else %}
+                                Not specified
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">End Date</div>
+                        <div class="info-value">
+                            {% if certificate.end_date %}
+                                {{ certificate.end_date.strftime('%B %d, %Y') }}
+                            {% else %}
+                                Not specified
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Duration</div>
+                        <div class="info-value">{{ certificate.duration or 'Not specified' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Location</div>
+                        <div class="info-value">{{ certificate.location or 'Not specified' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Role</div>
+                        <div class="info-value">{{ certificate.role_lead_jv or 'Not specified' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Funding Agency</div>
+                        <div class="info-value">{{ certificate.funding_agency or 'Not specified' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Original Filename</div>
+                        <div class="info-value" style="font-size: 13px;">{{ certificate.original_filename }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Services Rendered -->
+            <div class="cert-card">
+                <h2><span class="card-icon">🔧</span> Services Rendered</h2>
+                {% if certificate.services_rendered and certificate.services_rendered|length > 0 %}
+                    <div class="services-grid">
+                        {% for service in certificate.services_rendered %}
+                            <span class="service-badge">{{ service }}</span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="muted-text">No services specified</p>
+                {% endif %}
+            </div>
+
+            <!-- Project Context -->
+            <div class="cert-card">
+                <h2><span class="card-icon">🌐</span> Project Context</h2>
+                <div class="info-section">
+                    <div class="info-label">Primary Sectors</div>
+                    {% if certificate.sectors %}
+                        <div class="tag-grid">
+                            {% for sector in certificate.sectors %}
+                                <span class="tag-badge">{{ sector }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="muted-text">Not specified</p>
+                    {% endif %}
+                </div>
+                <div class="info-section">
+                    <div class="info-label">Sub-sectors</div>
+                    {% if certificate.sub_sectors %}
+                        <div class="tag-grid">
+                            {% for sub in certificate.sub_sectors %}
+                                <span class="tag-badge">{{ sub }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="muted-text">Not specified</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Authority & Compliance -->
+            <div class="cert-card">
+                <h2><span class="card-icon">✅</span> Authority & Compliance</h2>
+                <div class="info-grid single-column">
+                    <div class="info-item">
+                        <div class="info-label">Issuing Authority</div>
+                        <div class="info-value">{{ certificate.issuing_authority_details or 'Not specified' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Signing Authority</div>
+                        <div class="info-value">{{ certificate.signing_authority_details or 'Not specified' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Certificate Number</div>
+                        <div class="info-value">{{ certificate.certificate_number or 'Not specified' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Performance Remarks</div>
+                        <div class="info-value multiline">{{ certificate.performance_remarks or 'Not specified' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">JV Partners</div>
+                        {% if certificate.jv_partners %}
+                            <div class="tag-grid">
+                                {% for partner in certificate.jv_partners %}
+                                    <span class="tag-badge">{{ partner }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="info-value">Not specified</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scope of Work -->
+        <div class="cert-card">
+            <h2><span class="card-icon">🧭</span> Scope of Work</h2>
+            <div class="scope-text">
+                {% if certificate.scope_of_work %}
+                    {{ certificate.scope_of_work }}
+                {% else %}
+                    <span class="muted-text">Not specified</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="cert-card">
+            <h2><span class="card-icon">📏</span> Metrics & Quantities</h2>
+            {% if certificate.metrics %}
+            <div class="table-wrapper">
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Value</th>
+                            <th>Unit</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for metric in certificate.metrics %}
+                        <tr>
+                            <td>{{ metric.metric_name or '—' }}</td>
+                            <td>{{ metric.value or '—' }}</td>
+                            <td>{{ metric.unit or '—' }}</td>
+                            <td>{{ metric.notes or '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="muted-text">No structured metrics extracted.</p>
+            {% endif %}
+        </div>
+
+        <!-- Extracted Text -->
+        {% if certificate.extracted_text %}
+        <div class="cert-card">
+            <h2><span class="card-icon">📝</span> Extracted Certificate Text</h2>
+            <div class="extracted-text">{{ certificate.extracted_text }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Certificate Preview -->
+        <div class="preview-card">
+            <h2><span class="card-icon">📄</span> Certificate Preview</h2>
+            <div class="preview-container">
+                {% set file_ext = certificate.file_path.lower() %}
+                {% if file_ext.endswith('.pdf') %}
+                    <iframe class="preview-pdf" src="/api/certificates/{{ certificate.id }}/file#toolbar=0" type="application/pdf"></iframe>
+                {% elif file_ext.endswith(('.jpg', '.jpeg', '.png')) %}
+                    <img class="preview-image" src="/api/certificates/{{ certificate.id }}/file" alt="Certificate Preview">
+                {% else %}
+                    <div class="preview-placeholder">
+                        <div class="preview-placeholder-icon">📄</div>
+                        <div class="preview-placeholder-text">Preview not available for this file type</div>
+                        <p style="margin-top: 12px; font-size: 14px; color: var(--text-tertiary);">Use the download button below to view the file</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Metadata -->
+        <div class="metadata-card">
+            <div class="metadata-grid">
+                <div class="metadata-item">
+                    <strong>Certificate ID</strong>
+                    {{ certificate.id }}
+                </div>
+                <div class="metadata-item">
+                    <strong>Processing Status</strong>
+                    {{ certificate.processing_status|capitalize }}
+                </div>
+                <div class="metadata-item">
+                    <strong>Uploaded</strong>
+                    {{ certificate.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                </div>
+                {% if certificate.processed_at %}
+                <div class="metadata-item">
+                    <strong>Processed</strong>
+                    {{ certificate.processed_at.strftime('%B %d, %Y at %I:%M %p') }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions-container">
+            <a href="/api/certificates/{{ certificate.id }}/download" class="action-btn primary" download>
+                <span>📥</span>
+                <span>Download Certificate</span>
+            </a>
+            <button onclick="window.history.back()" class="action-btn secondary" style="background: none; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                <span>🔍</span>
+                <span>Back to Search</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Theme Toggle Functionality
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(savedTheme);
+        }
+
+        function applyTheme(theme) {
+            const body = document.body;
+            const themeToggle = document.getElementById('themeToggle');
+
+            if (theme === 'dark') {
+                body.classList.add('dark-mode');
+                if (themeToggle) themeToggle.textContent = '☀️';
+                themeToggle.setAttribute('aria-label', 'Switch to light mode');
+            } else {
+                body.classList.remove('dark-mode');
+                if (themeToggle) themeToggle.textContent = '🌙';
+                themeToggle.setAttribute('aria-label', 'Switch to dark mode');
+            }
+
+            localStorage.setItem('theme', theme);
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        }
+
+        // Initialize theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeTheme();
+
+            // Add theme toggle listener
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', toggleTheme);
+            }
+        });
+    </script>
+</body>
+</html>

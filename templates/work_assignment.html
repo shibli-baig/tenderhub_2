@@ -1,0 +1,676 @@
+{% extends "base.html" %}
+
+{% block title %}Task Assignment - TenderHub{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <span class="chip chip--neutral">Manager workspace</span>
+            <h1 class="section-title">Coordinate tender delivery</h1>
+            <p class="section-subtitle">Pair tenders with the right people, capture milestones and keep the team aligned.</p>
+        </div>
+        <div class="panel-actions">
+            <a href="/home" class="btn btn-outline btn-sm" id="taskAssignmentBackLink">← Back to Home</a>
+            <a href="/employee/dashboard" class="btn btn-outline btn-sm">Employee view</a>
+        </div>
+    </div>
+
+    <div class="panel assignment-builder">
+        <div class="panel-header">
+            <div>
+                <h2 class="surface-card__title">Create a new assignment</h2>
+                <p class="panel-subtitle">Choose a tender, assign an employee and add starter tasks.</p>
+            </div>
+            <div class="panel-actions">
+                <button type="button" class="btn btn-outline btn-sm" onclick="resetAssignmentForm()">Clear form</button>
+            </div>
+        </div>
+
+        <div class="assignment-builder__grid">
+            <div class="form-group">
+                <label for="tenderSelect" class="form-label">Tender</label>
+                <select id="tenderSelect" class="form-control">
+                    <option value="">Select a tender…</option>
+                    {% for tender in tenders %}
+                    <option value="{{ tender.id }}">{{ tender.title[:70] }}{% if tender.title|length > 70 %}…{% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="employeeSelect" class="form-label">Employee</label>
+                <select id="employeeSelect" class="form-control">
+                    <option value="">Assign to…</option>
+                    {% for employee in employees %}
+                    <option value="{{ employee.id }}">{{ employee.name }} ({{ employee.email }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="roleInput" class="form-label">Role</label>
+                <input type="text" id="roleInput" class="form-control" placeholder="e.g. Bid manager, Technical lead">
+            </div>
+
+            <div class="form-group">
+                <label for="prioritySelect" class="form-label">Priority</label>
+                <select id="prioritySelect" class="form-control">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="assignment-tasks">
+            <div class="assignment-tasks__header">
+                <h3 class="surface-card__title">Task breakdown</h3>
+                <button type="button" class="btn btn-outline btn-sm" onclick="addTaskRow()">Add task</button>
+            </div>
+            <p class="panel-subtitle">Create granular tasks so team members know exactly what success looks like.</p>
+            <div class="assignment-task-list" id="tasksContainer"></div>
+        </div>
+
+        <div class="assignment-builder__actions">
+            <button type="button" class="btn btn-secondary" onclick="createAssignment()">Assign without tasks</button>
+            <button type="button" class="btn btn-primary" onclick="createAssignmentWithTasks()">Assign with tasks</button>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="panel">
+        <div class="panel-header">
+            <div>
+                <h2 class="surface-card__title">Tenders in pipeline</h2>
+                <p class="panel-subtitle">Open a tender card to assign teammates or review the current squad.</p>
+            </div>
+        </div>
+
+        <div class="employee-tenders-grid" id="tendersGrid">
+            {% for tender in tenders %}
+            <article class="surface-card employee-tender-card" data-tender-id="{{ tender.id }}" data-tender-title="{{ tender.title }}">
+                <header class="employee-tender-card__header">
+                    <div>
+                        <h3 class="employee-tender-card__title">{{ tender.title }}</h3>
+                        <div class="employee-tender-card__meta">
+                            <span class="badge badge--muted">Authority · {{ tender.authority or 'N/A' }}</span>
+                            {% if tender.deadline %}
+                            <span class="badge badge--muted">Deadline · {{ tender.deadline.strftime('%d %b %Y') }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <span class="badge badge--primary">₹{{ "{:,.0f}".format(tender.estimated_value) if tender.estimated_value else 'N/A' }}</span>
+                </header>
+
+                <div class="employee-tender-card__body">
+                    <p class="employee-tender-card__copy">{{ tender.description[:160] if tender.description else 'No description available.' }}{% if tender.description and tender.description|length > 160 %}…{% endif %}</p>
+                </div>
+
+                <div class="employee-tender-card__actions">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="showAssignmentModal(this)">Assign teammate</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="showTenderAssignmentsModal(this)">Quick view</button>
+                    <a class="btn btn-outline btn-sm" href="/team/{{ tender.id }}">Open team page</a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <div>
+                <h2 class="surface-card__title">Team roster</h2>
+                <p class="panel-subtitle">Quick-create individual tasks when you need rapid follow-ups.</p>
+            </div>
+        </div>
+
+        <div class="employee-roster-grid" id="employeesGrid">
+            {% for employee in employees %}
+            <article class="surface-card employee-roster-card" data-employee-id="{{ employee.id }}" data-employee-name="{{ employee.name }}">
+                <header class="employee-roster-card__header">
+                    <span class="employee-roster-avatar">{{ employee.name[0] if employee.name else 'E' }}</span>
+                    <div>
+                        <h3 class="employee-roster-card__name">{{ employee.name }}</h3>
+                        <p class="employee-roster-card__meta">{{ employee.email }}</p>
+                    </div>
+                </header>
+                <div class="employee-roster-card__actions">
+                    <button type="button" class="btn btn-outline btn-sm" onclick="showTaskModal('{{ employee.id }}', '{{ employee.name }}')">Create quick task</button>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<div class="modal" id="assignmentModal" aria-hidden="true" role="dialog">
+    <div class="modal__dialog">
+        <header class="modal__header">
+            <h2 class="modal__title">Assign teammate</h2>
+            <button type="button" class="modal__close" onclick="closeModal()">×</button>
+        </header>
+        <div class="modal__body">
+            <div class="form-group">
+                <label class="form-label">Tender</label>
+                <input type="text" id="modalTenderTitle" class="form-control" readonly>
+                <input type="hidden" id="modalTenderId">
+            </div>
+            <div class="form-group">
+                <label for="modalEmployeeSelect" class="form-label">Employee</label>
+                <select id="modalEmployeeSelect" class="form-control">
+                    <option value="">Select employee…</option>
+                    {% for employee in employees %}
+                    <option value="{{ employee.id }}">{{ employee.name }} ({{ employee.email }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="modalRoleInput" class="form-label">Role</label>
+                <input type="text" id="modalRoleInput" class="form-control" placeholder="Role on this tender">
+            </div>
+            <div class="form-group">
+                <label for="modalPrioritySelect" class="form-label">Priority</label>
+                <select id="modalPrioritySelect" class="form-control">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+        </div>
+        <footer class="modal__footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitAssignment()">Assign</button>
+        </footer>
+    </div>
+</div>
+
+<div class="modal" id="taskModal" aria-hidden="true" role="dialog">
+    <div class="modal__dialog">
+        <header class="modal__header">
+            <h2 class="modal__title">Create quick task</h2>
+            <button type="button" class="modal__close" onclick="closeModal()">×</button>
+        </header>
+        <div class="modal__body">
+            <div class="form-group">
+                <label class="form-label">Employee</label>
+                <input type="text" id="modalEmployeeName" class="form-control" readonly>
+                <input type="hidden" id="modalEmployeeId">
+            </div>
+            <div class="form-group">
+                <label for="taskTitle" class="form-label">Task title</label>
+                <input type="text" id="taskTitle" class="form-control" placeholder="What needs to happen?">
+            </div>
+            <div class="form-group">
+                <label for="taskDescription" class="form-label">Description</label>
+                <textarea id="taskDescription" class="form-control" rows="3" placeholder="Add context or acceptance criteria"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="taskPriority" class="form-label">Priority</label>
+                <select id="taskPriority" class="form-control">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="taskHours" class="form-label">Estimated hours</label>
+                <input type="number" id="taskHours" class="form-control" placeholder="e.g. 4" step="0.5">
+            </div>
+            <div class="form-group">
+                <label for="taskDeadline" class="form-label">Deadline</label>
+                <input type="datetime-local" id="taskDeadline" class="form-control">
+            </div>
+        </div>
+        <footer class="modal__footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitTask()">Create task</button>
+        </footer>
+    </div>
+</div>
+
+<div class="modal" id="tenderAssignmentsModal" aria-hidden="true" role="dialog">
+    <div class="modal__dialog modal__dialog--wide">
+        <header class="modal__header">
+            <h2 class="modal__title" id="tenderAssignmentsTitle">Tender team</h2>
+            <button type="button" class="modal__close" onclick="closeModal()">×</button>
+        </header>
+        <div class="modal__body" id="assignmentsContainer">
+            <div class="employee-placeholder">Loading team members…</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let currentTenderId = '';
+    let currentEmployeeId = '';
+    let taskCounter = 0;
+    const ASSIGNMENT_BACK_STORAGE_KEY = 'taskAssignmentBackSource';
+    const ASSIGNMENT_BACK_DESTINATIONS = {
+        project: {
+            url: '/project-management',
+            label: '← Back to Project Management'
+        },
+        awarded: {
+            url: '/tender-management?tab=awarded',
+            label: '← Back to Awarded Tenders'
+        }
+    };
+
+    function normalizeAssignmentSource(rawValue) {
+        if (!rawValue) {
+            return null;
+        }
+        const value = rawValue.toLowerCase();
+        if (value.includes('project')) {
+            return 'project';
+        }
+        if (value.includes('award') || value.includes('tender')) {
+            return 'awarded';
+        }
+        return ASSIGNMENT_BACK_DESTINATIONS[value] ? value : null;
+    }
+
+    function getStoredAssignmentSource() {
+        try {
+            return sessionStorage.getItem(ASSIGNMENT_BACK_STORAGE_KEY);
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function setStoredAssignmentSource(value) {
+        try {
+            sessionStorage.setItem(ASSIGNMENT_BACK_STORAGE_KEY, value);
+        } catch (error) {
+            console.warn('Unable to persist assignment context.', error);
+        }
+    }
+
+    function clearStoredAssignmentSource() {
+        try {
+            sessionStorage.removeItem(ASSIGNMENT_BACK_STORAGE_KEY);
+        } catch (error) {
+            // No-op if storage is unavailable
+        }
+    }
+
+    function detectSourceFromReferrer() {
+        if (!document.referrer) {
+            return null;
+        }
+        try {
+            const refUrl = new URL(document.referrer);
+            if (refUrl.pathname.includes('/project-management')) {
+                return 'project';
+            }
+            if (refUrl.pathname.includes('/tender-management')) {
+                return 'awarded';
+            }
+        } catch (error) {
+            // Ignore parsing issues and fall through to default handling
+        }
+        return null;
+    }
+
+    function configureAssignmentBackLink() {
+        const backLink = document.getElementById('taskAssignmentBackLink');
+        if (!backLink) {
+            return;
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const paramSource = normalizeAssignmentSource(params.get('source'));
+        let resolvedSource = paramSource || detectSourceFromReferrer();
+
+        if (!resolvedSource) {
+            const storedSource = normalizeAssignmentSource(getStoredAssignmentSource());
+            if (storedSource) {
+                resolvedSource = storedSource;
+            }
+        }
+
+        if (resolvedSource && ASSIGNMENT_BACK_DESTINATIONS[resolvedSource]) {
+            setStoredAssignmentSource(resolvedSource);
+            const destination = ASSIGNMENT_BACK_DESTINATIONS[resolvedSource];
+            backLink.href = destination.url;
+            backLink.textContent = destination.label;
+            return;
+        }
+
+        clearStoredAssignmentSource();
+
+        if (document.referrer) {
+            backLink.href = document.referrer;
+            backLink.textContent = '← Back to Previous Page';
+        } else {
+            backLink.href = '/home';
+            backLink.textContent = '← Back to Home';
+        }
+    }
+
+    function resetAssignmentForm() {
+        document.getElementById('tenderSelect').value = '';
+        document.getElementById('employeeSelect').value = '';
+        document.getElementById('roleInput').value = '';
+        document.getElementById('prioritySelect').value = 'medium';
+        document.getElementById('tasksContainer').innerHTML = '';
+        taskCounter = 0;
+    }
+
+    function createAssignment() {
+        const tenderId = document.getElementById('tenderSelect').value;
+        const employeeId = document.getElementById('employeeSelect').value;
+        const role = document.getElementById('roleInput').value;
+        const priority = document.getElementById('prioritySelect').value;
+
+        if (!tenderId || !employeeId || !role) {
+            alert('Select a tender, employee and role to continue.');
+            return;
+        }
+
+        submitAssignmentForm(tenderId, employeeId, role, priority);
+    }
+
+    function addTaskRow() {
+        taskCounter += 1;
+        const tasksContainer = document.getElementById('tasksContainer');
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'assignment-task-row';
+        wrapper.id = `taskRow${taskCounter}`;
+        wrapper.innerHTML = `
+            <div class="form-group">
+                <label for="taskTitle${taskCounter}" class="form-label">Task description</label>
+                <input type="text" id="taskTitle${taskCounter}" class="form-control" placeholder="Describe the deliverable" required>
+            </div>
+            <div class="form-group">
+                <label for="taskPriority${taskCounter}" class="form-label">Priority</label>
+                <select id="taskPriority${taskCounter}" class="form-control">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="taskDeadline${taskCounter}" class="form-label">Deadline</label>
+                <input type="datetime-local" id="taskDeadline${taskCounter}" class="form-control" required>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm assignment-task-remove" onclick="removeTaskRow(${taskCounter})" aria-label="Remove task">×</button>
+        `;
+
+        tasksContainer.appendChild(wrapper);
+
+        const deadlineField = document.getElementById(`taskDeadline${taskCounter}`);
+        deadlineField.min = new Date().toISOString().slice(0,16);
+    }
+
+    function removeTaskRow(id) {
+        const row = document.getElementById(`taskRow${id}`);
+        if (row) {
+            row.remove();
+        }
+    }
+
+    function createAssignmentWithTasks() {
+        const tenderId = document.getElementById('tenderSelect').value;
+        const employeeId = document.getElementById('employeeSelect').value;
+        const role = document.getElementById('roleInput').value;
+        const priority = document.getElementById('prioritySelect').value;
+
+        if (!tenderId || !employeeId || !role) {
+            alert('Select a tender, employee and role to continue.');
+            return;
+        }
+
+        const tasks = [];
+        for (let index = 1; index <= taskCounter; index++) {
+            const row = document.getElementById(`taskRow${index}`);
+            if (!row) { continue; }
+
+            const title = document.getElementById(`taskTitle${index}`).value;
+            const taskPriority = document.getElementById(`taskPriority${index}`).value;
+            const deadline = document.getElementById(`taskDeadline${index}`).value;
+
+            if (title && deadline) {
+                tasks.push({ title, priority: taskPriority, deadline });
+            }
+        }
+
+        if (!tasks.length) {
+            alert('Add at least one task or use “Assign without tasks”.');
+            return;
+        }
+
+        submitAssignmentWithTasks(tenderId, employeeId, role, priority, tasks);
+    }
+
+    function submitAssignmentWithTasks(tenderId, employeeId, role, priority, tasks) {
+        const formData = new FormData();
+        formData.append('tender_id', tenderId);
+        formData.append('employee_id', employeeId);
+        formData.append('role', role);
+        formData.append('priority', priority);
+        formData.append('tasks', JSON.stringify(tasks));
+
+        fetch('/api/employee/assignments-with-tasks', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                alert('Assignment created successfully!');
+                resetAssignmentForm();
+            } else {
+                alert('Error: ' + (data.detail || 'Unable to create assignment'));
+            }
+        })
+        .catch(error => {
+            console.error('Error creating assignment with tasks', error);
+            alert('Unexpected error. Please try again.');
+        });
+    }
+
+    function showAssignmentModal(trigger) {
+        const card = trigger.closest('.employee-tender-card');
+        if (!card) { return; }
+
+        const modal = document.getElementById('assignmentModal');
+        modal.classList.add('is-visible');
+        modal.setAttribute('aria-hidden', 'false');
+
+        document.getElementById('modalTenderTitle').value = card.dataset.tenderTitle;
+        document.getElementById('modalTenderId').value = card.dataset.tenderId;
+        currentTenderId = card.dataset.tenderId;
+    }
+
+    function showTaskModal(employeeId, employeeName) {
+        const modal = document.getElementById('taskModal');
+        modal.classList.add('is-visible');
+        modal.setAttribute('aria-hidden', 'false');
+
+        currentEmployeeId = employeeId;
+        document.getElementById('modalEmployeeName').value = employeeName;
+        document.getElementById('modalEmployeeId').value = employeeId;
+    }
+
+    function showTenderAssignmentsModal(trigger) {
+        const card = trigger.closest('.employee-tender-card');
+        if (!card) { return; }
+
+        const modal = document.getElementById('tenderAssignmentsModal');
+        modal.classList.add('is-visible');
+        modal.setAttribute('aria-hidden', 'false');
+
+        const title = document.getElementById('tenderAssignmentsTitle');
+        title.textContent = `Team · ${card.dataset.tenderTitle}`;
+
+        const container = document.getElementById('assignmentsContainer');
+        container.innerHTML = '<div class="employee-placeholder">Loading team members…</div>';
+
+        currentTenderId = card.dataset.tenderId;
+        loadTenderAssignments(card.dataset.tenderId);
+    }
+
+    function closeModal() {
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.classList.remove('is-visible');
+            modal.setAttribute('aria-hidden', 'true');
+        });
+    }
+
+    function loadTenderAssignments(tenderId) {
+        fetch(`/api/employee/assignments/${tenderId}`)
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('assignmentsContainer');
+
+                if (!data.assignments || !data.assignments.length) {
+                    container.innerHTML = '<div class="employee-placeholder">No one is assigned yet — start building your team.</div>';
+                    return;
+                }
+
+                container.innerHTML = data.assignments.map(assignment => `
+                    <article class="surface-card employee-assignment-card">
+                        <header class="employee-assignment-card__header">
+                            <div>
+                                <h3 class="employee-assignment-card__name">${assignment.employee_name}</h3>
+                                <p class="employee-assignment-card__meta">${assignment.employee_email}</p>
+                            </div>
+                            <span class="badge badge--muted">${assignment.role}</span>
+                        </header>
+                        <div class="employee-assignment-card__body">
+                            <p class="employee-assignment-card__priority">Priority · ${assignment.priority}</p>
+                            <p class="employee-assignment-card__tasks">Tasks assigned: ${assignment.task_count}</p>
+                        </div>
+                        <div class="employee-assignment-card__actions">
+                            <button type="button" class="btn btn-outline btn-sm" onclick="unassignEmployee('${assignment.id}', '${assignment.employee_name}')">Unassign</button>
+                        </div>
+                    </article>
+                `).join('');
+            })
+            .catch(error => {
+                console.error('Error loading assignments', error);
+                document.getElementById('assignmentsContainer').innerHTML = '<div class="employee-placeholder">Unable to load team members. Please try again.</div>';
+            });
+    }
+
+    function unassignEmployee(assignmentId, employeeName) {
+        if (!confirm(`Unassign ${employeeName}? This will remove their tasks for this tender.`)) {
+            return;
+        }
+
+        fetch(`/api/employee/assignments/${assignmentId}`, { method: 'DELETE' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(`${employeeName} has been removed from the tender.`);
+                    if (currentTenderId) {
+                        loadTenderAssignments(currentTenderId);
+                    }
+                } else {
+                    alert('Error: ' + (data.detail || 'Unable to unassign employee'));
+                }
+            })
+            .catch(error => {
+                console.error('Error unassigning employee', error);
+                alert('Unexpected error while unassigning.');
+            });
+    }
+
+    function submitAssignment() {
+        const tenderId = document.getElementById('modalTenderId').value;
+        const employeeId = document.getElementById('modalEmployeeSelect').value;
+        const role = document.getElementById('modalRoleInput').value;
+        const priority = document.getElementById('modalPrioritySelect').value;
+
+        if (!employeeId || !role) {
+            alert('Choose an employee and role to continue.');
+            return;
+        }
+
+        submitAssignmentForm(tenderId, employeeId, role, priority);
+        closeModal();
+    }
+
+    function submitAssignmentForm(tenderId, employeeId, role, priority) {
+        const formData = new FormData();
+        formData.append('tender_id', tenderId);
+        formData.append('employee_id', employeeId);
+        formData.append('role', role);
+        formData.append('priority', priority);
+
+        fetch('/api/employee/assignments', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                alert('Assignment created successfully!');
+                closeModal();
+            } else {
+                alert('Error: ' + (data.detail || 'Unable to create assignment'));
+            }
+        })
+        .catch(error => {
+            console.error('Error creating assignment', error);
+            alert('Unexpected error. Please try again.');
+        });
+    }
+
+    function submitTask() {
+        const title = document.getElementById('taskTitle').value;
+        const description = document.getElementById('taskDescription').value;
+        const priority = document.getElementById('taskPriority').value;
+        const hours = document.getElementById('taskHours').value;
+        const deadline = document.getElementById('taskDeadline').value;
+
+        if (!title) {
+            alert('Add a title for the task.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('assignment_id', '1');
+        formData.append('title', title);
+        formData.append('description', description);
+        formData.append('priority', priority);
+        if (hours) { formData.append('estimated_hours', hours); }
+        if (deadline) { formData.append('deadline', deadline); }
+
+        fetch('/api/employee/tasks', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                alert('Task created successfully!');
+                closeModal();
+            } else {
+                alert('Error: ' + (data.detail || 'Unable to create task'));
+            }
+        })
+        .catch(error => {
+            console.error('Error creating task', error);
+            alert('Unexpected error while creating task.');
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        configureAssignmentBackLink();
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', event => {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

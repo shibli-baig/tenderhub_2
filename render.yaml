@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: tenderhub-web
+    runtime: python
+    region: virginia
+    plan: starter
+    branch: core-tenderhub-clean
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 2 -k uvicorn.workers.UvicornWorker app:app --bind 0.0.0.0:$PORT --timeout 120
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tenderhub-db
+          property: connectionString
+      - key: USE_S3_STORAGE
+        value: true
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      # Other secrets will be added via Render Dashboard or API
+      # - OPENAI_API_KEY
+      # - AWS_ACCESS_KEY_ID  
+      # - AWS_SECRET_ACCESS_KEY
+      # - AWS_S3_BUCKET_NAME
+      # - AWS_REGION
+      # - SECRET_KEY
+
+databases:
+  - name: tenderhub-db
+    databaseName: tenderhub
+    user: tenderhub_admin
+    region: virginia
+    plan: free

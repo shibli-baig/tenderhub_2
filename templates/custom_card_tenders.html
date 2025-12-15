@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}{{ card.card_name }} - TenderHub{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <a href="/procurement" class="btn btn-secondary">← Back to Procurement</a>
+    <a href="/dashboard" class="btn btn-outline btn-sm" style="margin-left: 12px;">Manage cards</a>
+</div>
+
+<h1>{{ card.card_name }}</h1>
+
+<!-- Card Details -->
+<div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px;">
+    <h3>Card Criteria</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 15px;">
+        <div>
+            <strong>Search Terms:</strong><br>
+            <span style="color: #666;">{{ card.core_search_terms }}</span>
+        </div>
+        {% if card.state %}
+        <div>
+            <strong>State:</strong><br>
+            <span style="color: #666;">{{ card.state }}</span>
+        </div>
+        {% endif %}
+        {% if card.tender_type %}
+        <div>
+            <strong>Tender Type:</strong><br>
+            <span style="color: #666;">{{ card.tender_type }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search and Filter Section -->
+<div class="search-container">
+    <h2 style="margin-bottom: 20px; color: #333;">Matching Tenders</h2>
+    <div class="search-stats">
+        <p>Showing {{ tenders|length }} of {{ total_tenders }} matching tenders</p>
+    </div>
+    <div class="cert-actions" style="margin-top: 8px;">
+        <a href="/procurement" class="btn btn-outline btn-sm">Return to procurement search</a>
+    </div>
+</div>
+
+<!-- Tenders Grid -->
+{% if tenders %}
+    <div class="tenders-grid tenders-grid--responsive">
+        {% for tender in tenders %}
+            <div class="tender-card" data-tender-id="{{ tender.id }}">
+                <div class="tender-card-header">
+                    <h3 class="tender-title">{{ tender.title[:100] }}{% if tender.title|length > 100 %}...{% endif %}</h3>
+                    <div class="tender-authority">{{ tender.authority }}</div>
+                </div>
+
+                <div class="tender-meta">
+                    <span>{{ tender.state }}</span>
+                    <span>{{ tender.category }}</span>
+                </div>
+
+                {% if tender.estimated_value %}
+                    <div class="tender-value" data-value="{{ tender.estimated_value }}">
+                        ₹{{ "{:,.0f}".format(tender.estimated_value) }}
+                    </div>
+                {% endif %}
+
+                <div class="tender-tags">
+                    {% for tag in tender.tags[:3] %}
+                        <span class="tag">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="tender-summary">
+                    {{ tender.summary[:120] }}{% if tender.summary|length > 120 %}...{% endif %}
+                </div>
+
+                <div class="tender-footer">
+                    <span class="published">
+                        Published:
+                        {% if tender.published_at %}
+                            {{ tender.published_at.strftime('%d %b %Y') }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
+
+                    {% if tender.deadline %}
+                        <span class="deadline" data-deadline="{{ tender.deadline.isoformat() }}">
+                            Deadline: {{ tender.deadline.strftime('%d %b %Y') }}
+                        </span>
+                    {% else %}
+                        <span class="deadline">Deadline: N/A</span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+        <div class="pagination">
+            {% if has_prev %}
+                <a href="?page={{ page - 1 }}" class="btn btn-secondary">
+                    « Previous
+                </a>
+            {% endif %}
+
+            {% for page_num in range(1, total_pages + 1) %}
+                {% if page_num == page %}
+                    <span class="current">{{ page_num }}</span>
+                {% elif page_num == 1 or page_num == total_pages or (page_num >= page - 2 and page_num <= page + 2) %}
+                    <a href="?page={{ page_num }}">{{ page_num }}</a>
+                {% elif page_num == page - 3 or page_num == page + 3 %}
+                    <span>...</span>
+                {% endif %}
+            {% endfor %}
+
+            {% if has_next %}
+                <a href="?page={{ page + 1 }}" class="btn btn-secondary">
+                    Next »
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+{% else %}
+    <!-- Empty State -->
+        <div class="empty-state">
+            <h3>No tenders found</h3>
+            <p>No tenders match the criteria for this custom card.</p>
+            <p>You can modify the card criteria from your dashboard to find more tenders.</p>
+            <div class="d-flex gap-3 justify-center" style="margin-top: 20px;">
+                <a href="/procurement" class="btn btn-primary">Back to procurement</a>
+                <a href="/dashboard" class="btn btn-outline">Edit card</a>
+            </div>
+        </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Add keyboard navigation for tender cards
+document.addEventListener('keydown', function(e) {
+    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+        const cards = document.querySelectorAll('.tender-card');
+        const currentFocus = document.activeElement;
+        let currentIndex = -1;
+
+        // Find current focused card
+        cards.forEach((card, index) => {
+            if (card === currentFocus) {
+                currentIndex = index;
+            }
+        });
+
+        // Arrow key navigation
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+            e.preventDefault();
+            const nextIndex = currentIndex < cards.length - 1 ? currentIndex + 1 : 0;
+            cards[nextIndex].focus();
+        } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            const prevIndex = currentIndex > 0 ? currentIndex - 1 : cards.length - 1;
+            cards[prevIndex].focus();
+        } else if (e.key === 'Enter' && currentIndex >= 0) {
+            e.preventDefault();
+            cards[currentIndex].click();
+        }
+    }
+});
+
+// Make tender cards focusable for keyboard navigation
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.tender-card').forEach(card => {
+        card.setAttribute('tabindex', '0');
+        card.style.outline = 'none';
+
+        card.addEventListener('focus', function() {
+            this.style.transform = 'translateY(-3px)';
+            this.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.3)';
+        });
+
+        card.addEventListener('blur', function() {
+            this.style.transform = '';
+            this.style.boxShadow = '';
+        });
+
+        // Add click handler
+        card.addEventListener('click', function(e) {
+            const tenderId = this.getAttribute('data-tender-id');
+            if (tenderId) {
+                window.location.href = `/tender/${tenderId}`;
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

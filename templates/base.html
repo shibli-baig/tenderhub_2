@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Power TenderHub - Awesome Government Tender Management{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=Work+Sans:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}?v=10">
+
+    <!-- Dynamic Font Override -->
+    <style>
+        :root {
+            --font-sans: {{ selected_font.family }};
+        }
+    </style>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+    <!-- Meta tags -->
+    <meta name="description" content="Government tender management system for tracking and managing public tenders">
+    <meta name="keywords" content="government, tenders, public procurement, bidding">
+    <meta name="author" content="TenderHub">
+    
+    {% block extra_head %}{% endblock %}
+    {% block extra_styles %}{% endblock %}
+</head>
+<body class="page-shell">
+    <header>
+        <div class="header-container">
+            <a href="{% if current_user %}/dashboard{% elif current_employee %}/employee/dashboard{% elif current_expert %}/expert/dashboard{% else %}/{% endif %}" class="logo"><span>Tender</span>Hub</a>
+
+            <nav class="nav">
+                <!-- Dark Mode Toggle (visible for all users) -->
+                <div class="theme-toggle">
+                    <button
+                        type="button"
+                        class="theme-toggle-button"
+                        data-theme-toggle
+                        data-theme-state="light"
+                        aria-pressed="false"
+                        aria-label="Switch to dark mode"
+                        title="Switch to dark mode">
+                        <span class="theme-toggle-icon" data-theme-toggle-icon aria-hidden="true">🌙</span>
+                        <span class="theme-toggle-sr" data-theme-toggle-label>Switch to dark mode</span>
+                    </button>
+                </div>
+
+                {% if not current_user and not current_employee and not current_expert %}
+                    <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Home</a>
+                {% endif %}
+
+                {% if current_user %}
+                    {% if not is_test_mode %}
+                    {# Regular mode: Show all navigation #}
+                    <a href="/home" class="{% if request.url.path.startswith('/home') %}active{% endif %}">Home</a>
+                    <a href="/analytics" class="{% if request.url.path.startswith('/analytics') %}active{% endif %}">Analytics</a>
+
+                    <!-- Notification Center -->
+                    <div class="notification-center" data-endpoint="/api/notifications" data-mark-all-endpoint="/api/notifications/mark-all-read">
+                        <button type="button" class="notification-bell" onclick="toggleNotifications(event)">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                            <span class="notification-badge" style="display: none;">0</span>
+                        </button>
+                        <div class="notification-dropdown" id="notificationDropdown" style="display: none;">
+                            <div class="notification-header">
+                                <h3>Notifications</h3>
+                                <button type="button" class="mark-all-read" onclick="markAllAsRead()">Mark all as read</button>
+                            </div>
+                            <div class="notification-list" id="notificationList">
+                                <div class="notification-empty">
+                                    <p>No notifications yet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Menu Dropdown -->
+                    <div class="user-menu">
+                        <button type="button" class="user-menu-trigger" onclick="toggleUserMenu(event)">
+                            <span class="chip chip--neutral">{{ current_user.name }}</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <div class="user-menu-dropdown" id="userMenuDropdown" style="display: none;">
+                            <a href="/profile" class="user-menu-item">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                Profile
+                            </a>
+                            <a href="/subscription/manage" class="user-menu-item">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                                Manage Subscription
+                            </a>
+                            <form method="post" action="/api/auth/logout" class="user-menu-form">
+                                <button type="submit" class="user-menu-item user-menu-logout">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                        <polyline points="16 17 21 12 16 7"></polyline>
+                                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                                    </svg>
+                                    Logout
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    {# Test mode: Show minimal info, no navigation #}
+                    <div class="user-menu" style="pointer-events: none;">
+                        <span class="chip chip--neutral">{{ current_user.name }}</span>
+                    </div>
+                    {% endif %}
+                {% elif current_employee %}
+                    {% if current_employee.is_bd %}
+                        <!-- BD Employee Navigation -->
+                        <a href="/bd/home" class="{% if request.url.path.startswith('/bd/home') %}active{% endif %}">Home</a>
+
+                        <!-- Notification Center for BD Employees -->
+                        <div class="notification-center" data-endpoint="/api/notifications" data-mark-all-endpoint="/api/notifications/mark-all-read">
+                            <button type="button" class="notification-bell" onclick="toggleNotifications(event)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                </svg>
+                                <span class="notification-badge" style="display: none;">0</span>
+                            </button>
+                            <div class="notification-dropdown" id="notificationDropdown" style="display: none;">
+                                <div class="notification-header">
+                                    <h3>Notifications</h3>
+                                    <button type="button" class="mark-all-read" onclick="markAllAsRead()">Mark all as read</button>
+                                </div>
+                                <div class="notification-list" id="notificationList">
+                                    <div class="notification-empty">
+                                        <p>No notifications yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BD Employee User Menu -->
+                        <div class="user-menu">
+                            <button type="button" class="user-menu-trigger" onclick="toggleUserMenu(event)">
+                                <span class="chip chip--success">{{ current_employee.name }} (BD)</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
+                            <div class="user-menu-dropdown" id="userMenuDropdown" style="display: none;">
+                                <form method="post" action="/api/auth/employee/logout" class="user-menu-form">
+                                    <button type="submit" class="user-menu-item user-menu-logout">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                            <polyline points="16 17 21 12 16 7"></polyline>
+                                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                                        </svg>
+                                        Logout
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    {% else %}
+                        <!-- Regular Employee Navigation -->
+                        <a href="/employee/dashboard" class="{% if request.url.path.startswith('/employee/dashboard') %}active{% endif %}">Employee Dashboard</a>
+                        <span class="chip chip--neutral">{{ current_employee.name }}</span>
+                        <form method="post" action="/api/auth/employee/logout">
+                            <button type="submit" class="btn-logout">Logout</button>
+                        </form>
+                    {% endif %}
+                {% elif current_expert %}
+                    <a href="/expert/dashboard" class="{% if request.url.path == '/expert/dashboard' %}active{% endif %}">Dashboard</a>
+                    <a href="/expert/opportunities" class="{% if request.url.path.startswith('/expert/opportunities') %}active{% endif %}">Opportunities</a>
+                    <a href="/expert/projects" class="{% if request.url.path.startswith('/expert/projects') %}active{% endif %}">Current Projects</a>
+                    <a href="/expert/wall" class="{% if request.url.path.startswith('/expert/wall') %}active{% endif %}">Expert Wall</a>
+                    <div class="notification-center" data-endpoint="/api/expert/notifications" data-mark-all-endpoint="/api/expert/notifications/mark-all-read">
+                        <button type="button" class="notification-bell" onclick="toggleNotifications(event)">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                            <span class="notification-badge" style="display: none;">0</span>
+                        </button>
+                        <div class="notification-dropdown" id="notificationDropdown" style="display: none;">
+                            <div class="notification-header">
+                                <h3>Notifications</h3>
+                                <button type="button" class="mark-all-read" onclick="markAllAsRead()">Mark all as read</button>
+                            </div>
+                            <div class="notification-list" id="notificationList">
+                                <div class="notification-empty">
+                                    <p>No notifications yet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Expert Menu Dropdown -->
+                    <div class="user-menu">
+                        <button type="button" class="user-menu-trigger" onclick="toggleUserMenu(event)">
+                            <span class="chip chip--neutral">{{ current_expert.name }}</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <div class="user-menu-dropdown" id="userMenuDropdown" style="display: none;">
+                            <a href="/expert/profile" class="user-menu-item">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                My Profile
+                            </a>
+                            <a href="/expert/requests" class="user-menu-item">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                                Service Requests
+                            </a>
+                            <a href="/expert/collaborations" class="user-menu-item">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                                Collaborations
+                            </a>
+                            <a href="/expert/logout" class="user-menu-item user-menu-logout">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                    <polyline points="16 17 21 12 16 7"></polyline>
+                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                                </svg>
+                                Logout
+                            </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <a href="/login" class="{% if request.url.path.startswith('/login') %}active{% endif %}">Login</a>
+                    <a href="/employee/login" class="nav-cta">Employee Section</a>
+                    <a href="/expert/login" class="nav-cta" style="background-color: #8b5cf6; border-color: #8b5cf6;">Expert-Verse</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer>
+        <div class="container text-center">
+            <p>&copy; 2025 TenderHub. Government Tender Intelligence for modern enterprises.</p>
+            <p class="text-muted mt-2">Built to empower procurement leaders with real-time visibility and team coordination.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', path='js/main.js') }}?v=6"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

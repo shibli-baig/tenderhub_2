@@ -1,0 +1,1062 @@
+{% extends "base.html" %}
+
+{% block title %}Complete Your Expert Profile - TenderHub Expert-Verse{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Expert Profile Setup Styles */
+    .expert-profile-wrapper {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 400px;
+        padding: 6rem 1rem 8rem;
+    }
+
+    .expert-setup-container {
+        max-width: 960px;
+        margin: -4rem auto 3rem;
+        padding: 0 1rem;
+    }
+
+    .expert-setup-card {
+        background: var(--card-bg);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+        padding: 3rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .expert-setup-header {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+
+    .expert-setup-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 0.75rem 0;
+    }
+
+    .expert-setup-subtitle {
+        font-size: 1.125rem;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    /* Progress Bar */
+    .expert-progress-bar {
+        margin-bottom: 3rem;
+    }
+
+    .expert-progress-steps {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+
+    .expert-progress-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+    }
+
+    .expert-step-circle {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--neutral-100);
+        border: 3px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0.75rem;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .expert-step-number {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+    }
+
+    .expert-step-check {
+        width: 28px;
+        height: 28px;
+        color: white;
+        display: none;
+    }
+
+    .expert-progress-step.expert-step-active .expert-step-circle {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .expert-progress-step.expert-step-active .expert-step-number {
+        color: white;
+    }
+
+    .expert-progress-step.expert-step-completed .expert-step-circle {
+        background: #10b981;
+        border-color: #10b981;
+    }
+
+    .expert-progress-step.expert-step-completed .expert-step-number {
+        display: none;
+    }
+
+    .expert-progress-step.expert-step-completed .expert-step-check {
+        display: block;
+    }
+
+    .expert-step-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-align: center;
+    }
+
+    .expert-progress-step.expert-step-active .expert-step-label {
+        color: var(--primary-color);
+    }
+
+    .expert-progress-connector {
+        flex: 1;
+        height: 3px;
+        background: var(--border-color);
+        margin: 0 -0.5rem 3.5rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .expert-progress-track {
+        height: 8px;
+        background: var(--neutral-100);
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+
+    .expert-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-color), #8b5cf6);
+        transition: width 0.4s ease;
+        border-radius: 12px;
+    }
+
+    /* Form Steps */
+    .expert-form-step {
+        display: none;
+    }
+
+    .expert-form-step.expert-step-visible {
+        display: block;
+        animation: expertFadeIn 0.4s ease;
+    }
+
+    @keyframes expertFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(16px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .expert-step-header {
+        margin-bottom: 2.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .expert-step-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 0.5rem 0;
+    }
+
+    .expert-step-description {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    .expert-required {
+        color: #ef4444;
+        font-weight: 700;
+    }
+
+    /* Form Sections */
+    .expert-form-section {
+        margin-bottom: 2.5rem;
+    }
+
+    .expert-label {
+        display: block;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+    }
+
+    .expert-help-text {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin: -0.25rem 0 1rem 0;
+    }
+
+    /* Checkbox Grid */
+    .expert-checkbox-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+    }
+
+    .expert-checkbox {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        background: var(--neutral-50);
+        border: 2px solid var(--border-color);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+
+    .expert-checkbox:hover {
+        background: var(--card-bg);
+        border-color: var(--primary-color);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .expert-checkbox input[type="checkbox"] {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .expert-checkbox-box {
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        min-height: 22px;
+        border: 2px solid var(--border-color);
+        border-radius: 12px;
+        background: white;
+        flex-shrink: 0;
+        margin-top: 2px;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    .expert-checkbox-box::after {
+        content: '';
+        position: absolute;
+        left: 6px;
+        top: 2px;
+        width: 5px;
+        height: 10px;
+        border: solid white;
+        border-width: 0 3px 3px 0;
+        transform: rotate(45deg) scale(0);
+        transition: transform 0.2s ease;
+    }
+
+    .expert-checkbox input[type="checkbox"]:checked + .expert-checkbox-box {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .expert-checkbox input[type="checkbox"]:checked + .expert-checkbox-box::after {
+        transform: rotate(45deg) scale(1);
+    }
+
+    .expert-checkbox input[type="checkbox"]:checked ~ .expert-checkbox-label {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .expert-checkbox-label {
+        font-size: 0.9375rem;
+        color: var(--text-primary);
+        line-height: 1.5;
+        transition: all 0.2s ease;
+    }
+
+    .expert-checkbox-single {
+        padding: 1rem 1.25rem;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+    }
+
+    /* Form Fields */
+    .expert-form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .expert-form-field {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .expert-field-grow {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .expert-field-small {
+        flex: 0 0 140px;
+    }
+
+    .expert-input,
+    .expert-select,
+    .expert-textarea {
+        width: 100%;
+        padding: 0.875rem 1.125rem;
+        font-size: 1rem;
+        color: var(--text-primary);
+        background: var(--card-bg);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        outline: none;
+        transition: all 0.2s ease;
+        font-family: inherit;
+    }
+
+    .expert-input:focus,
+    .expert-select:focus,
+    .expert-textarea:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .expert-select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%236B7280' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        padding-right: 3rem;
+    }
+
+    .expert-textarea {
+        resize: vertical;
+        min-height: 120px;
+        line-height: 1.6;
+    }
+
+    .expert-char-count {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        text-align: right;
+        margin-top: 0.5rem;
+    }
+
+    /* Dynamic Items */
+    .expert-dynamic-item {
+        padding: 1.5rem;
+        background: var(--neutral-50);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .expert-btn-add {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        font-size: 0.9375rem;
+    }
+
+    .expert-btn-add svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* File Upload */
+    .expert-file-upload {
+        margin-top: 1rem;
+    }
+
+    .expert-file-input {
+        display: none;
+    }
+
+    .expert-file-label {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        background: var(--card-bg);
+        border: 2px dashed var(--border-color);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.9375rem;
+        color: var(--text-secondary);
+    }
+
+    .expert-file-label:hover {
+        border-color: var(--primary-color);
+        background: var(--neutral-50);
+        color: var(--primary-color);
+    }
+
+    .expert-file-label svg {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+    }
+
+    /* Alert */
+    .expert-alert {
+        display: flex;
+        gap: 1rem;
+        padding: 1.25rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+    }
+
+    .expert-alert-info {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1e40af;
+    }
+
+    .expert-alert-icon {
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+
+    /* Form Actions */
+    .expert-form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        margin-top: 3rem;
+        padding-top: 2rem;
+        border-top: 2px solid var(--border-color);
+    }
+
+    .expert-btn-large {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 1rem 2rem;
+        font-size: 1rem;
+        font-weight: 600;
+        border-radius: 12px;
+        transition: all 0.2s ease;
+    }
+
+    .expert-btn-large svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .expert-btn-submit {
+        background: linear-gradient(135deg, var(--primary-color), #8b5cf6);
+    }
+
+    .expert-btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .expert-profile-wrapper {
+            padding: 2rem 1rem 6rem;
+        }
+
+        .expert-setup-card {
+            padding: 2rem 1.5rem;
+        }
+
+        .expert-setup-title {
+            font-size: 1.5rem;
+        }
+
+        .expert-setup-subtitle {
+            font-size: 1rem;
+        }
+
+        .expert-checkbox-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .expert-form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .expert-step-circle {
+            width: 48px;
+            height: 48px;
+        }
+
+        .expert-step-number {
+            font-size: 1.125rem;
+        }
+
+        .expert-step-label {
+            font-size: 0.75rem;
+        }
+
+        .expert-form-actions {
+            flex-direction: column;
+        }
+
+        .expert-btn-large {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .expert-field-small {
+            flex: 1;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="expert-profile-wrapper">
+    <div class="expert-setup-container">
+        <div class="expert-setup-card">
+            <!-- Header -->
+            <div class="expert-setup-header">
+                <h1 class="expert-setup-title">Complete Your Expert Profile</h1>
+                <p class="expert-setup-subtitle">Help companies find you by showcasing your expertise and experience</p>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="expert-progress-bar">
+                <div class="expert-progress-steps">
+                    <div class="expert-progress-step expert-step-active" data-step="1">
+                        <div class="expert-step-circle">
+                            <span class="expert-step-number">1</span>
+                            <svg class="expert-step-check" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <div class="expert-step-label">Core Info</div>
+                    </div>
+                    <div class="expert-progress-connector"></div>
+                    <div class="expert-progress-step" data-step="2">
+                        <div class="expert-step-circle">
+                            <span class="expert-step-number">2</span>
+                            <svg class="expert-step-check" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <div class="expert-step-label">Experience</div>
+                    </div>
+                    <div class="expert-progress-connector"></div>
+                    <div class="expert-progress-step" data-step="3">
+                        <div class="expert-step-circle">
+                            <span class="expert-step-number">3</span>
+                            <svg class="expert-step-check" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <div class="expert-step-label">Additional</div>
+                    </div>
+                </div>
+                <div class="expert-progress-track">
+                    <div class="expert-progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <form id="profileSetupForm" method="post" action="/api/expert/profile-setup" enctype="multipart/form-data">
+                <!-- Step 1: Core Information (MANDATORY) -->
+                <div class="expert-form-step expert-step-visible" data-step="1">
+                    <div class="expert-step-header">
+                        <h2 class="expert-step-title">Core Information <span class="expert-required">*</span></h2>
+                        <p class="expert-step-description">These fields are mandatory to complete your profile</p>
+                    </div>
+
+                    <div class="expert-form-section">
+                        <label class="expert-label">Areas of Expertise <span class="expert-required">*</span></label>
+                        <p class="expert-help-text">Select all areas where you have expertise (minimum 1 required)</p>
+                        <div class="expert-checkbox-grid">
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="expertise_areas" value="Government Tenders">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Government Tenders & Procurement</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="expertise_areas" value="Infrastructure">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Infrastructure Projects</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="expertise_areas" value="Construction">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Construction & Civil Works</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="expertise_areas" value="IT Services">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">IT Services & Technology</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="expertise_areas" value="Healthcare">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Healthcare & Medical Equipment</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="expertise_areas" value="Education">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Education & Training</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="expertise_areas" value="Energy">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Energy & Utilities</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="expertise_areas" value="Transportation">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Transportation & Logistics</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="expertise_areas" value="Environment">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Environment & Sustainability</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="expertise_areas" value="Defense">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Defense & Security</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="expert-form-section">
+                        <label class="expert-label">Services You Offer <span class="expert-required">*</span></label>
+                        <p class="expert-help-text">Select all services you can provide (minimum 1 required)</p>
+                        <div class="expert-checkbox-grid">
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="services_offered" value="Bid Writing">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Bid Writing & Proposal Development</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="services_offered" value="Compliance Review">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Compliance Review & Documentation</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="services_offered" value="Technical Evaluation">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Technical Evaluation & Analysis</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="services_offered" value="Financial Modeling">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Financial Modeling & Cost Estimation</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="services_offered" value="Project Management">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Project Management & Planning</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="services_offered" value="Legal Advisory">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Legal Advisory & Contract Review</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="services_offered" value="Strategy Consulting">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Strategy Consulting & Market Analysis</span>
+                            </label>
+                            <label class="expert-checkbox">
+                                <input type="checkbox" name="services_offered" value="Training">
+                                <span class="expert-checkbox-box"></span>
+                                <span class="expert-checkbox-label">Training & Capacity Building</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="expert-form-actions">
+                        <button type="button" class="btn btn-primary expert-btn-large" onclick="nextStep(2)">
+                            Continue to Experience
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Experience & Qualifications -->
+                <div class="expert-form-step" data-step="2">
+                    <div class="expert-step-header">
+                        <h2 class="expert-step-title">Experience & Qualifications</h2>
+                        <p class="expert-step-description">Help companies understand your background (optional - can be completed later)</p>
+                    </div>
+
+                    <div class="expert-form-row">
+                        <div class="expert-form-field">
+                            <label for="employment_type" class="expert-label">Employment Type</label>
+                            <select id="employment_type" name="employment_type" class="expert-input expert-select">
+                                <option value="">Select employment type</option>
+                                <option value="freelance">Freelance Consultant</option>
+                                <option value="employed">Employed (Available for part-time)</option>
+                                <option value="both">Both (Flexible arrangements)</option>
+                            </select>
+                        </div>
+
+                        <div class="expert-form-field">
+                            <label for="experience_years" class="expert-label">Years of Experience</label>
+                            <input type="number" id="experience_years" name="experience_years" min="0" max="50" placeholder="e.g., 10" class="expert-input">
+                        </div>
+                    </div>
+
+                    <div class="expert-form-section">
+                        <label class="expert-label">Qualifications</label>
+                        <p class="expert-help-text">Add your educational qualifications</p>
+                        <div id="qualifications-container">
+                            <div class="expert-dynamic-item">
+                                <div class="expert-form-row">
+                                    <div class="expert-form-field expert-field-grow">
+                                        <input type="text" name="qualification_degree" placeholder="Degree (e.g., MBA, B.Tech)" class="expert-input">
+                                    </div>
+                                    <div class="expert-form-field expert-field-grow">
+                                        <input type="text" name="qualification_institution" placeholder="Institution" class="expert-input">
+                                    </div>
+                                    <div class="expert-form-field expert-field-small">
+                                        <input type="number" name="qualification_year" placeholder="Year" min="1950" max="2030" class="expert-input">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary expert-btn-add" onclick="addQualification()">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Add Another Qualification
+                        </button>
+                    </div>
+
+                    <div class="expert-form-section">
+                        <label class="expert-label">Certifications</label>
+                        <p class="expert-help-text">Add your professional certifications with optional file upload</p>
+                        <div id="certifications-container">
+                            <div class="expert-dynamic-item">
+                                <div class="expert-form-row">
+                                    <div class="expert-form-field expert-field-grow">
+                                        <input type="text" name="certification_name" placeholder="Certification Name (e.g., PMP, Six Sigma)" class="expert-input">
+                                    </div>
+                                    <div class="expert-form-field expert-field-grow">
+                                        <input type="text" name="certification_issuer" placeholder="Issuing Organization" class="expert-input">
+                                    </div>
+                                </div>
+                                <div class="expert-file-upload">
+                                    <input type="file" name="certification_file" accept=".pdf,.jpg,.jpeg,.png" class="expert-file-input" id="cert-file-0">
+                                    <label for="cert-file-0" class="expert-file-label">
+                                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                        </svg>
+                                        <span>Upload Certificate (Optional - PDF, JPG, PNG - max 5MB)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary expert-btn-add" onclick="addCertification()">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Add Another Certification
+                        </button>
+                    </div>
+
+                    <div class="expert-form-actions">
+                        <button type="button" class="btn btn-secondary expert-btn-large" onclick="prevStep(1)">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+                            Back
+                        </button>
+                        <button type="button" class="btn btn-primary expert-btn-large" onclick="nextStep(3)">
+                            Continue to Additional Info
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Additional Information -->
+                <div class="expert-form-step" data-step="3">
+                    <div class="expert-step-header">
+                        <h2 class="expert-step-title">Additional Information</h2>
+                        <p class="expert-step-description">Complete your profile (optional - can be updated anytime)</p>
+                    </div>
+
+                    <div class="expert-form-section">
+                        <label for="bio" class="expert-label">Professional Bio</label>
+                        <textarea id="bio" name="bio" rows="4" placeholder="Brief summary of your expertise, experience, and what sets you apart..." maxlength="500" class="expert-textarea"></textarea>
+                        <p class="expert-char-count"><span id="bio-counter">0</span> / 500 characters</p>
+                    </div>
+
+                    <div class="expert-form-row">
+                        <div class="expert-form-field">
+                            <label for="phone_number" class="expert-label">Phone Number</label>
+                            <input type="tel" id="phone_number" name="phone_number" placeholder="+91 98765 43210" class="expert-input">
+                        </div>
+                        <div class="expert-form-field">
+                            <label for="location" class="expert-label">Location</label>
+                            <input type="text" id="location" name="location" placeholder="City, State" class="expert-input">
+                        </div>
+                    </div>
+
+                    <div class="expert-form-row">
+                        <div class="expert-form-field">
+                            <label for="hourly_rate" class="expert-label">Hourly Rate (INR)</label>
+                            <input type="number" id="hourly_rate" name="hourly_rate" min="0" step="100" placeholder="e.g., 5000" class="expert-input">
+                        </div>
+                        <div class="expert-form-field">
+                            <label for="availability_status" class="expert-label">Availability</label>
+                            <select id="availability_status" name="availability_status" class="expert-input expert-select">
+                                <option value="available">Available for Projects</option>
+                                <option value="busy">Busy (Limited capacity)</option>
+                                <option value="unavailable">Not Available</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="expert-form-section">
+                        <label class="expert-label">Online Presence</label>
+                        <div class="expert-form-row">
+                            <div class="expert-form-field">
+                                <input type="url" name="linkedin_url" placeholder="LinkedIn Profile URL" class="expert-input">
+                            </div>
+                            <div class="expert-form-field">
+                                <input type="url" name="portfolio_url" placeholder="Portfolio/Website URL" class="expert-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="expert-form-field">
+                        <label for="languages" class="expert-label">Languages</label>
+                        <input type="text" id="languages" name="languages" placeholder="e.g., English, Hindi, Tamil (comma-separated)" class="expert-input">
+                    </div>
+
+                    <div class="expert-form-section">
+                        <label class="expert-checkbox expert-checkbox-single">
+                            <input type="checkbox" name="willing_to_travel" value="true">
+                            <span class="expert-checkbox-box"></span>
+                            <span class="expert-checkbox-label">I am willing to travel for projects</span>
+                        </label>
+                    </div>
+
+                    <div class="expert-alert expert-alert-info">
+                        <svg class="expert-alert-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div>
+                            <strong>Almost done!</strong> You can update all information later from your profile settings.
+                        </div>
+                    </div>
+
+                    <div class="expert-form-actions">
+                        <button type="button" class="btn btn-secondary expert-btn-large" onclick="prevStep(2)">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+                            Back
+                        </button>
+                        <button type="submit" class="btn btn-primary expert-btn-large expert-btn-submit">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Complete Profile & Get Started
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentStep = 1;
+let certCounter = 1;
+
+function updateProgress() {
+    const steps = document.querySelectorAll('.expert-progress-step');
+    const progressFill = document.querySelector('.expert-progress-fill');
+
+    steps.forEach((step, index) => {
+        const stepNum = index + 1;
+        if (stepNum < currentStep) {
+            step.classList.add('expert-step-completed');
+            step.classList.remove('expert-step-active');
+        } else if (stepNum === currentStep) {
+            step.classList.add('expert-step-active');
+            step.classList.remove('expert-step-completed');
+        } else {
+            step.classList.remove('expert-step-active', 'expert-step-completed');
+        }
+    });
+
+    const progress = ((currentStep - 1) / 2) * 100;
+    progressFill.style.width = `${progress}%`;
+}
+
+function showStep(step) {
+    document.querySelectorAll('.expert-form-step').forEach(el => {
+        el.classList.remove('expert-step-visible');
+    });
+    document.querySelector(`.expert-form-step[data-step="${step}"]`).classList.add('expert-step-visible');
+    currentStep = step;
+    updateProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function nextStep(step) {
+    if (currentStep === 1 && !validateStep1()) {
+        return;
+    }
+    showStep(step);
+}
+
+function prevStep(step) {
+    showStep(step);
+}
+
+function validateStep1() {
+    const expertiseAreas = document.querySelectorAll('input[name="expertise_areas"]:checked');
+    const servicesOffered = document.querySelectorAll('input[name="services_offered"]:checked');
+
+    if (expertiseAreas.length === 0) {
+        alert('⚠️ Please select at least one area of expertise');
+        return false;
+    }
+
+    if (servicesOffered.length === 0) {
+        alert('⚠️ Please select at least one service you offer');
+        return false;
+    }
+
+    return true;
+}
+
+function addQualification() {
+    const container = document.getElementById('qualifications-container');
+    const item = document.createElement('div');
+    item.className = 'expert-dynamic-item';
+    item.innerHTML = `
+        <div class="expert-form-row">
+            <div class="expert-form-field expert-field-grow">
+                <input type="text" name="qualification_degree" placeholder="Degree" class="expert-input">
+            </div>
+            <div class="expert-form-field expert-field-grow">
+                <input type="text" name="qualification_institution" placeholder="Institution" class="expert-input">
+            </div>
+            <div class="expert-form-field expert-field-small">
+                <input type="number" name="qualification_year" placeholder="Year" min="1950" max="2030" class="expert-input">
+            </div>
+        </div>
+    `;
+    container.appendChild(item);
+}
+
+function addCertification() {
+    const container = document.getElementById('certifications-container');
+    const item = document.createElement('div');
+    const fileId = `cert-file-${certCounter++}`;
+    item.className = 'expert-dynamic-item';
+    item.innerHTML = `
+        <div class="expert-form-row">
+            <div class="expert-form-field expert-field-grow">
+                <input type="text" name="certification_name" placeholder="Certification Name" class="expert-input">
+            </div>
+            <div class="expert-form-field expert-field-grow">
+                <input type="text" name="certification_issuer" placeholder="Issuing Organization" class="expert-input">
+            </div>
+        </div>
+        <div class="expert-file-upload">
+            <input type="file" name="certification_file" accept=".pdf,.jpg,.jpeg,.png" class="expert-file-input" id="${fileId}">
+            <label for="${fileId}" class="expert-file-label">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+                <span>Upload Certificate (Optional)</span>
+            </label>
+        </div>
+    `;
+    container.appendChild(item);
+}
+
+// Bio character counter
+const bioTextarea = document.getElementById('bio');
+const bioCounter = document.getElementById('bio-counter');
+if (bioTextarea) {
+    bioTextarea.addEventListener('input', function() {
+        bioCounter.textContent = this.value.length;
+    });
+}
+
+// Form submission
+document.getElementById('profileSetupForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    if (!validateStep1()) {
+        showStep(1);
+        return;
+    }
+
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>Saving...</span>';
+
+    try {
+        const response = await fetch('/api/expert/profile-setup', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('✅ Profile completed successfully! Welcome to Expert-Verse.');
+            window.location.href = data.redirect || '/expert/dashboard';
+        } else {
+            alert('❌ ' + (data.detail || 'Failed to save profile. Please try again.'));
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    } catch (error) {
+        console.error('Profile setup error:', error);
+        alert('❌ An error occurred. Please try again.');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
+});
+
+// Initialize
+updateProgress();
+</script>
+{% endblock %}

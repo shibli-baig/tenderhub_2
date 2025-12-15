@@ -1,0 +1,2617 @@
+{% extends "base.html" %}
+
+{% block title %}Government Tenders - TenderHub{% endblock %}
+
+{% block content %}
+{% set query_prefix = request.url.query %}
+{% if query_prefix %}
+    {% set query_prefix = query_prefix + '&' %}
+{% endif %}
+
+{% if current_user or current_employee %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Sector Cards</h2>
+            <p class="section-subtitle">Your saved criteria for rapid executive reviews.</p>
+        </div>
+        <div class="panel-actions" style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-outline" onclick="toggleEditMode()">
+                <span id="editCardBtnText">Edit Cards</span>
+            </button>
+            <button type="button" class="btn btn-primary" onclick="openAddCardModal()">
+                <span>+ Add Sector Card</span>
+            </button>
+        </div>
+    </div>
+    <div class="feature-grid" id="customCardsGrid">
+        <div class="surface-card" id="customCardsLoader">
+            <div class="d-flex gap-3 align-center">
+                <span class="badge badge--muted">Loading</span>
+                <span class="text-muted">Fetching your curated tender cards…</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Add Sector Card Modal -->
+<div id="addCardModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeAddCardModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="addCardModalTitle">Create Sector Card</h3>
+            <button type="button" class="modal-close" onclick="closeAddCardModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="addCardForm">
+                <div class="form-stack">
+                    <div class="form-group">
+                        <label for="card_name" class="form-label">Card Name *</label>
+                        <input type="text" id="card_name" name="card_name" required
+                               placeholder="e.g., Water Infrastructure Projects">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="core_search_terms" class="form-label">Keywords *</label>
+                        <textarea id="core_search_terms" name="core_search_terms" required rows="5"
+                                  placeholder="Enter keywords that define this search (e.g., water supply, infrastructure, irrigation)"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeAddCardModal()">Cancel</button>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-danger" id="deleteCardButton" style="display: none;" onclick="deleteCardFromModal()">Delete Card</button>
+                <button type="button" class="btn btn-primary" id="addCardSubmitButton" onclick="submitCardForm()">Create Card</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="section" id="filtersSection" style="display: {% if tenders or search or category or state or source or min_value or max_value or show_all %}block{% else %}none{% endif %};">
+    <div class="filters-card" style="background: rgba(99, 102, 241, 0.03); border: 1px solid rgba(99, 102, 241, 0.1); border-radius: 12px; padding: 2rem; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);">
+        <div class="section-header">
+            <div>
+                <h1 class="section-title">Choose Filter</h1>
+                <p class="section-subtitle">Filter by geography, sector and value to surface high-impact opportunities for your portfolio.</p>
+            </div>
+        </div>
+
+        <form class="filters-bar" method="get" action="/procurement" id="searchForm">
+            <div class="form-group">
+                <label for="search" class="form-label">Search tenders</label>
+                <input type="text" id="search" name="search" placeholder="Title, authority, keywords" value="{{ search or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="sector" class="form-label">Sector</label>
+                <select id="sector" name="sector">
+                    <option value="">All sectors</option>
+                    {% for sector_obj in user_sectors_data %}
+                        <option value="{{ sector_obj.sector }}">{{ sector_obj.sector }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="sub_sector" class="form-label">Sub-Sector</label>
+                <select id="sub_sector" name="sub_sector" disabled>
+                    <option value="">Select sub-sector</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="category" class="form-label">Category</label>
+                <select id="category" name="category">
+                    <option value="">All categories</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="product_category" class="form-label">Product Category</label>
+                <select id="product_category" name="product_category">
+                    <option value="">All product categories</option>
+                    {% for pc in product_categories %}
+                        <option value="{{ pc }}" {% if product_category == pc %}selected{% endif %}>{{ pc }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="state" class="form-label">State</label>
+                <select id="state" name="state">
+                    <option value="">All states</option>
+                    {% for st in states %}
+                        <option value="{{ st }}" {% if state == st %}selected{% endif %}>{{ st }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="source" class="form-label">Source</label>
+                <select id="source" name="source">
+                    <option value="">All sources</option>
+                    {% for src in sources %}
+                        <option value="{{ src }}" {% if source == src %}selected{% endif %}>{{ src }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="min_value" class="form-label">Min value (₹)</label>
+                <input type="number" id="min_value" name="min_value" placeholder="0" value="{{ min_value or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="max_value" class="form-label">Max value (₹)</label>
+                <input type="number" id="max_value" name="max_value" placeholder="Any" value="{{ max_value or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="sort_by" class="form-label">Sort by</label>
+                <select id="sort_by" name="sort_by">
+                    <option value="published_desc" {% if sort_by == 'published_desc' %}selected{% endif %}>Published Date (Newest First)</option>
+                    <option value="published_asc" {% if sort_by == 'published_asc' %}selected{% endif %}>Published Date (Oldest First)</option>
+                    <option value="deadline_asc" {% if sort_by == 'deadline_asc' %}selected{% endif %}>Deadline (Soonest First)</option>
+                    <option value="deadline_desc" {% if sort_by == 'deadline_desc' %}selected{% endif %}>Deadline (Latest First)</option>
+                    <option value="value_desc" {% if sort_by == 'value_desc' %}selected{% endif %}>Tender Value (High to Low)</option>
+                    <option value="value_asc" {% if sort_by == 'value_asc' %}selected{% endif %}>Tender Value (Low to High)</option>
+                    <option value="title_asc" {% if sort_by == 'title_asc' %}selected{% endif %}>Title (A to Z)</option>
+                    <option value="title_desc" {% if sort_by == 'title_desc' %}selected{% endif %}>Title (Z to A)</option>
+                </select>
+            </div>
+            <div class="actions">
+                <button type="button" class="btn btn-primary" onclick="applyFilters(event)">Apply filters</button>
+                <a href="/procurement" class="btn btn-outline">Clear</a>
+            </div>
+        </form>
+
+        <div class="panel panel--compact mt-6">
+            <p class="panel-subtitle mb-0" id="tenderCountText">
+                Showing {{ tenders|length }} of {{ total_tenders }} tenders
+                {% if search or category or product_category or state or source or min_value or max_value %}
+                    (filtered view)
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Recommendation Toggle Section -->
+<section class="section" id="recommendationToggleSection" style="display: {% if tenders or search or category or state or source or min_value or max_value or show_all %}block{% else %}none{% endif %};">
+    <div class="recommendation-toggle-container">
+        <div class="recommendation-toggle-header">
+            <div class="toggle-label-group">
+                <span class="toggle-label-title">View Mode:</span>
+                <small class="toggle-label-subtitle">Switch between all results and personalized recommendations</small>
+            </div>
+            <div class="toggle-switch-wrapper">
+                <button class="toggle-option active" id="toggleAllBtn" data-mode="all">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="margin-right: 6px;">
+                        <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Show All Results
+                </button>
+                <button class="toggle-option" id="toggleRecommendedBtn" data-mode="recommended">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="margin-right: 6px;">
+                        <path d="M8 1l2.163 4.382 4.837.703-3.5 3.411.826 4.817L8 12.191l-4.326 2.122.826-4.817-3.5-3.411 4.837-.703L8 1z" fill="currentColor"/>
+                    </svg>
+                    Show Recommended Tenders
+                </button>
+            </div>
+        </div>
+        <div class="recommendation-info" id="recommendationInfo" style="display: none;">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="margin-right: 6px;">
+                <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                <path d="M8 4v4l2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <small>Recommendations based on your uploaded certificates and completed projects</small>
+        </div>
+        <div class="recommendation-loading" id="recommendationLoading" style="display: none;">
+            <div class="spinner-small"></div>
+            <span>Analyzing your expertise and matching tenders...</span>
+        </div>
+    </div>
+</section>
+
+<section class="section" id="tendersSection" style="display: {% if tenders or search or category or state or source or min_value or max_value or show_all %}block{% else %}none{% endif %};">
+    {% if tenders %}
+        <div class="tender-cards-list">
+            {% for tender in tenders %}
+                <article class="tender-card-new" data-tender-id="{{ tender.id }}" onclick="window.location.href='/tender/{{ tender.id }}'">
+                    <!-- Header: Title + Authority + Status -->
+                    <div class="tender-card-new__header">
+                        <div class="tender-card-new__title-block">
+                            <h2 class="tender-card-new__title">{{ tender.title }}</h2>
+                            <p class="tender-card-new__subtitle">
+                                {{ tender.authority or 'Authority not available' }}
+                                {% if tender.state and tender.state != 'Unknown' %}
+                                    · {{ tender.state }}
+                                {% endif %}
+                            </p>
+                        </div>
+                        <span class="tender-card-new__status">OPEN</span>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="tender-card-new__divider"></div>
+
+                    <!-- Info Grid: Pills with key data -->
+                    <div class="tender-card-new__grid">
+                        <div class="tender-pill">
+                            <span class="tender-pill__label">Value</span>
+                            <strong class="tender-pill__value">
+                                {% if tender.estimated_value %}
+                                    ₹{{ "{:,.0f}".format(tender.estimated_value) }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </strong>
+                        </div>
+                        <div class="tender-pill">
+                            <span class="tender-pill__label">Published</span>
+                            <strong class="tender-pill__value">{{ tender.published_at.strftime('%b %d, %Y') if tender.published_at else 'N/A' }}</strong>
+                        </div>
+                        <div class="tender-pill">
+                            <span class="tender-pill__label">Deadline</span>
+                            <strong class="tender-pill__value">
+                                {% if tender.deadline %}
+                                    {{ tender.deadline.strftime('%b %d, %Y') }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </strong>
+                        </div>
+                        <div class="tender-pill">
+                            <span class="tender-pill__label">Category</span>
+                            <strong class="tender-pill__value">{{ tender.category or 'N/A' }}</strong>
+                        </div>
+                    </div>
+
+                    <!-- Summary -->
+                    {% if tender.summary %}
+                    <p class="tender-card-new__summary">{{ tender.summary[:200] }}{% if tender.summary|length > 200 %}…{% endif %}</p>
+                    {% endif %}
+
+                    <!-- Footer: Chips + Actions -->
+                    <div class="tender-card-new__footer">
+                        <div class="tender-card-new__chips">
+                            {% if tender.work_item_details is mapping and tender.work_item_details.get('Location') and tender.work_item_details.get('Location') != 'NA' %}
+                                <span class="tender-chip">📍 {{ tender.work_item_details['Location'] }}</span>
+                            {% elif tender.state and tender.state != 'Unknown' %}
+                                <span class="tender-chip">📍 {{ tender.state }}</span>
+                            {% endif %}
+
+                            {% if tender.category %}
+                                <span class="tender-chip">
+                                    {% if tender.category == 'Works' %}
+                                        🛠️ Works
+                                    {% elif tender.category == 'Goods' %}
+                                        📦 Goods
+                                    {% elif tender.category == 'Services' %}
+                                        💼 Services
+                                    {% else %}
+                                        📋 {{ tender.category }}
+                                    {% endif %}
+                                </span>
+                            {% endif %}
+
+                            {% if tender.source %}
+                                <span class="tender-chip">🌐 {{ tender.source }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="tender-card-new__actions">
+                            <button type="button" class="tender-btn tender-btn--secondary" onclick="event.stopPropagation(); openReminderModalForTender('{{ tender.id }}', '{{ tender.title|replace("'", "\\'") }}')">
+                                🔔 Set Reminder
+                            </button>
+                            <button type="button" class="tender-btn tender-btn--primary" onclick="event.stopPropagation(); window.location.href='/tender/{{ tender.id }}'">
+                                View Details →
+                            </button>
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h3>No tenders found</h3>
+            <p>Refine your filters or broaden your search to discover more tenders.</p>
+        </div>
+    {% endif %}
+
+    {% if total_pages > 1 %}
+        <div class="panel panel--compact d-flex align-center justify-between gap-3 mb-0" style="margin-top: 30px;">
+            {% if has_prev %}
+                <a href="?{{ query_prefix }}page={{ page - 1 }}" class="btn btn-outline">« Previous</a>
+            {% endif %}
+            <span class="badge badge--muted">Page {{ page }} of {{ total_pages }}</span>
+            {% if has_next %}
+                <a href="?{{ query_prefix }}page={{ page + 1 }}" class="btn btn-outline">Next »</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</section>
+
+<!-- Recommended Tenders Section -->
+<section class="section" id="recommendedTendersSection" style="display: none;">
+    <!-- More Recommended Section -->
+    <div id="moreRecommendedSection" style="display: none;">
+        <div class="recommended-section-header">
+            <div class="recommended-section-title">
+                <svg width="20" height="20" viewBox="0 0 16 16" fill="none" style="margin-right: 8px; color: #10b981;">
+                    <path d="M8 1l2.163 4.382 4.837.703-3.5 3.411.826 4.817L8 12.191l-4.326 2.122.826-4.817-3.5-3.411 4.837-.703L8 1z" fill="currentColor"/>
+                </svg>
+                <h3>Highly Recommended Tenders</h3>
+                <span class="recommended-count-badge" id="moreRecoCount">0</span>
+            </div>
+            <p class="recommended-section-subtitle">These tenders closely match your expertise (>70% match)</p>
+        </div>
+        <div class="tender-cards-list" id="moreRecommendedList">
+            <!-- Populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Less Recommended Section -->
+    <div id="lessRecommendedSection" style="display: none; margin-top: 40px;">
+        <div class="recommended-section-header">
+            <div class="recommended-section-title">
+                <svg width="20" height="20" viewBox="0 0 16 16" fill="none" style="margin-right: 8px; color: #3b82f6;">
+                    <path d="M8 1l2.163 4.382 4.837.703-3.5 3.411.826 4.817L8 12.191l-4.326 2.122.826-4.817-3.5-3.411 4.837-.703L8 1z" fill="currentColor"/>
+                </svg>
+                <h3>Other Recommendations</h3>
+                <span class="recommended-count-badge" id="lessRecoCount">0</span>
+                <button class="toggle-expand-btn" id="lessRecoToggleBtn" onclick="toggleLessRecommended()">
+                    <span id="lessRecoToggleText">Show</span>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" id="lessRecoToggleIcon">
+                        <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+            <p class="recommended-section-subtitle">These tenders are moderately relevant (50-70% match)</p>
+        </div>
+        <div class="tender-cards-list" id="lessRecommendedList" style="display: none;">
+            <!-- Populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Empty State for Recommended -->
+    <div id="noRecommendationsMessage" style="display: none;">
+        <div class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 16 16" fill="none" style="margin-bottom: 16px; opacity: 0.3;">
+                <path d="M8 1l2.163 4.382 4.837.703-3.5 3.411.826 4.817L8 12.191l-4.326 2.122.826-4.817-3.5-3.411 4.837-.703L8 1z" fill="currentColor"/>
+            </svg>
+            <h3>No Recommended Tenders Found</h3>
+            <p id="noRecommendationsText">We couldn't find any tenders matching your expertise in this category. Try switching to "Show All Results" or upload more certificates and projects to improve recommendations.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Reminder Modal -->
+<div id="reminderModal" class="reminder-modal" style="display: none;">
+    <div class="reminder-modal-overlay" onclick="closeReminderModal()"></div>
+    <div class="reminder-modal-content">
+        <div class="reminder-modal-header">
+            <h3>Set Reminder</h3>
+            <button type="button" class="reminder-modal-close" onclick="closeReminderModal()">&times;</button>
+        </div>
+        <div class="reminder-modal-body">
+            <form id="reminderForm" onsubmit="saveReminderFromSearch(event)">
+                <input type="hidden" id="reminderTenderId" value="">
+                <input type="hidden" id="reminderTenderTitle" value="">
+
+                <div class="form-group">
+                    <label for="reminderDate">Select Date</label>
+                    <input type="date" id="reminderDate" name="reminderDate" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Select Time</label>
+                    <div class="time-picker">
+                        <select id="reminderHour" name="reminderHour" class="form-input time-select" required>
+                            <option value="">HH</option>
+                            <option value="00">00</option>
+                            <option value="01">01</option>
+                            <option value="02">02</option>
+                            <option value="03">03</option>
+                            <option value="04">04</option>
+                            <option value="05">05</option>
+                            <option value="06">06</option>
+                            <option value="07">07</option>
+                            <option value="08">08</option>
+                            <option value="09">09</option>
+                            <option value="10">10</option>
+                            <option value="11">11</option>
+                            <option value="12">12</option>
+                            <option value="13">13</option>
+                            <option value="14">14</option>
+                            <option value="15">15</option>
+                            <option value="16">16</option>
+                            <option value="17">17</option>
+                            <option value="18">18</option>
+                            <option value="19">19</option>
+                            <option value="20">20</option>
+                            <option value="21">21</option>
+                            <option value="22">22</option>
+                            <option value="23">23</option>
+                        </select>
+                        <span class="time-separator">:</span>
+                        <select id="reminderMinute" name="reminderMinute" class="form-input time-select" required>
+                            <option value="">MM</option>
+                            <option value="00">00</option>
+                            <option value="05">05</option>
+                            <option value="10">10</option>
+                            <option value="15">15</option>
+                            <option value="20">20</option>
+                            <option value="25">25</option>
+                            <option value="30">30</option>
+                            <option value="35">35</option>
+                            <option value="40">40</option>
+                            <option value="45">45</option>
+                            <option value="50">50</option>
+                            <option value="55">55</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reminderNote">Note (Optional)</label>
+                    <textarea id="reminderNote" name="reminderNote" class="form-input" rows="3" placeholder="Add a note for this reminder..."></textarea>
+                </div>
+
+                <div class="reminder-modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeReminderModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Set Reminder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+/* New Tender Cards Styling */
+.tender-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.tender-card-new {
+    background: var(--card-bg, #ffffff);
+    border-radius: 12px;
+    border: 1px solid var(--card-border, #e5e7eb);
+    box-shadow: 0 20px 40px rgba(99, 102, 241, 0.08);
+    padding: 1.75rem;
+    display: grid;
+    gap: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tender-card-new:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 24px 48px rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* Header Section */
+.tender-card-new__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.tender-card-new__title-block {
+    flex: 1;
+}
+
+.tender-card-new__title {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text-primary, #1a1a1a);
+    line-height: 1.4;
+}
+
+.tender-card-new__subtitle {
+    margin: 0.3rem 0 0;
+    color: var(--text-secondary, #6b7280);
+    font-size: 0.95rem;
+}
+
+.tender-card-new__status {
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--primary-color, #6366f1);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+/* Divider */
+.tender-card-new__divider {
+    border-top: 1px dashed var(--card-border, #e5e7eb);
+    margin: 0.5rem 0;
+}
+
+/* Info Grid with Pills */
+.tender-card-new__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+}
+
+.tender-pill {
+    padding: 0.75rem 1rem;
+    background: rgba(99, 102, 241, 0.04);
+    border-radius: 12px;
+    border: 1px solid rgba(99, 102, 241, 0.1);
+    transition: all 0.2s ease;
+}
+
+.tender-pill:hover {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+.tender-pill__label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+
+.tender-pill__value {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary, #1a1a1a);
+}
+
+/* Summary */
+.tender-card-new__summary {
+    color: var(--text-secondary, #6b7280);
+    margin: 0.5rem 0;
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+/* Footer */
+.tender-card-new__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.tender-card-new__chips {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.tender-chip {
+    border: 1px solid var(--card-border, #e5e7eb);
+    border-radius: 12px;
+    padding: 0.4rem 0.85rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-secondary, #6b7280);
+    background: var(--surface-bg, #f8f9fa);
+    transition: all 0.2s ease;
+}
+
+.tender-chip:hover {
+    border-color: var(--primary-color, #6366f1);
+    color: var(--primary-color, #6366f1);
+}
+
+.tender-card-new__actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.tender-btn {
+    border: none;
+    border-radius: 12px;
+    padding: 0.6rem 1.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tender-btn--primary {
+    background: linear-gradient(135deg, #6366f1, #4338ca);
+    color: white;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.tender-btn--primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+}
+
+.tender-btn--secondary {
+    background: white;
+    color: var(--primary-color, #6366f1);
+    border: 2px solid var(--primary-color, #6366f1);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+}
+
+.tender-btn--secondary:hover {
+    background: rgba(99, 102, 241, 0.05);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+
+/* Reminder Modal Styles */
+.reminder-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+
+.reminder-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+}
+
+.reminder-modal-content {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    z-index: 1;
+    animation: slideUp 0.3s ease;
+}
+
+.reminder-modal-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.reminder-modal-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.reminder-modal-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    line-height: 1;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    transition: background 0.2s ease;
+}
+
+.reminder-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.reminder-modal-body {
+    padding: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--text-primary, #1a1a1a);
+    font-size: 0.95rem;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary-color, #6366f1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.time-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.time-select {
+    flex: 1;
+    padding: 0.75rem 1rem;
+}
+
+.time-separator {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-secondary, #6b7280);
+}
+
+.reminder-modal-footer {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Dark mode support for reminder modal */
+body.dark-mode .reminder-modal-content {
+    background: #1a1f2e;
+}
+
+body.dark-mode .form-input {
+    background: #242938;
+    border-color: rgba(99, 102, 241, 0.2);
+    color: #e5e7eb;
+}
+
+body.dark-mode .form-group label {
+    color: #e5e7eb;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .tender-card-new {
+        padding: 1.25rem;
+    }
+
+    .tender-card-new__header {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .tender-card-new__status {
+        align-self: flex-start;
+    }
+
+    .tender-card-new__grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .tender-card-new__footer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .tender-card-new__actions {
+        width: 100%;
+    }
+
+    .tender-btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .tender-card-new__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .tender-card-new__title {
+        font-size: 1.15rem;
+    }
+}
+
+/* Dark Mode Support */
+body.dark-mode .tender-card-new {
+    background: #1a1f2e;
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+body.dark-mode .tender-card-new:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+body.dark-mode .tender-card-new__title {
+    color: #e5e7eb;
+}
+
+body.dark-mode .tender-card-new__subtitle {
+    color: #9ca3af;
+}
+
+body.dark-mode .tender-pill {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+body.dark-mode .tender-pill__value {
+    color: #e5e7eb;
+}
+
+body.dark-mode .tender-card-new__summary {
+    color: #9ca3af;
+}
+
+body.dark-mode .tender-chip {
+    background: #242938;
+    border-color: rgba(99, 102, 241, 0.2);
+    color: #9ca3af;
+}
+
+/* Modal Styling */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    z-index: 1001;
+}
+
+.modal-header {
+    padding: 1.5rem 1.5rem 0 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: var(--text-color);
+}
+
+.modal-body {
+    padding: 0 1.5rem;
+}
+
+.modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 640px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-content {
+        width: 95%;
+        margin: 1rem;
+    }
+}
+
+/* Sector Cards Grid - Max 3 per row */
+#customCardsGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    #customCardsGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    #customCardsGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.custom-search-card__tools {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.custom-search-card__tools .card-edit-btn,
+.custom-search-card__tools .card-delete-btn {
+    padding: 0.25rem 0.5rem;
+    border: none;
+    background: transparent;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.custom-search-card__tools .card-delete-btn {
+    color: #dc2626;
+}
+
+/* Custom Search Card Styling */
+.custom-search-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.2s ease;
+}
+
+.custom-search-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    border-color: var(--primary-color);
+}
+
+.custom-search-card__header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.custom-search-card__icon {
+    font-size: 1.25rem;
+    opacity: 0.8;
+}
+
+.custom-search-card__title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-color);
+    flex: 1;
+}
+
+.card-delete-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #ef4444;
+    color: white;
+    border: 2px solid white;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.card-delete-btn:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+}
+
+.custom-search-card__content {
+    margin-bottom: 1.5rem;
+}
+
+.custom-search-card__terms {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin: 0 0 1rem 0;
+    font-style: italic;
+}
+
+.custom-search-card__filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.filter-select {
+    font-size: 0.875rem;
+    padding: 0.5rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.filter-select:disabled {
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+.custom-search-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.custom-search-card__actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+
+@media (max-width: 768px) {
+    .custom-search-card__filters {
+        grid-template-columns: 1fr;
+    }
+
+    .custom-search-card {
+        padding: 1rem;
+    }
+}
+
+/* Dark Mode for Custom Search Cards */
+body.dark-mode .custom-search-card {
+    background: #242938;
+    border-color: rgba(99, 102, 241, 0.25);
+}
+
+body.dark-mode .custom-search-card:hover {
+    border-color: #6366f1;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .custom-search-card__title {
+    color: #e5e7eb;
+}
+
+body.dark-mode .custom-search-card__terms {
+    color: #9ca3af;
+}
+
+body.dark-mode .filter-select {
+    background: #2d3345;
+    border-color: rgba(99, 102, 241, 0.25);
+    color: #e5e7eb;
+}
+
+body.dark-mode .filter-label {
+    color: #9ca3af;
+}
+
+body.dark-mode .card-delete-btn {
+    border-color: #242938;
+}
+
+body.dark-mode .modal-content {
+    background: #1a1f2e;
+}
+
+body.dark-mode .modal-header {
+    border-bottom-color: rgba(99, 102, 241, 0.2);
+}
+
+body.dark-mode .modal-header h3 {
+    color: #e5e7eb;
+}
+
+body.dark-mode .modal-close {
+    color: #9ca3af;
+}
+
+body.dark-mode .modal-close:hover {
+    color: #e5e7ab;
+}
+
+body.dark-mode .modal-footer {
+    border-top-color: rgba(99, 102, 241, 0.2);
+}
+
+body.dark-mode .modal-body {
+    color: #e5e7eb;
+}
+
+/* ====================================
+   Recommendation Toggle Styles
+   ==================================== */
+.recommendation-toggle-container {
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.recommendation-toggle-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.toggle-label-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.toggle-label-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.toggle-label-subtitle {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.toggle-switch-wrapper {
+    display: flex;
+    gap: 8px;
+    background: #ffffff;
+    padding: 4px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e5e7eb;
+}
+
+.toggle-option {
+    display: flex;
+    align-items: center;
+    padding: 10px 18px;
+    border: none;
+    background: transparent;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.toggle-option:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.toggle-option.active {
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.toggle-option svg {
+    flex-shrink: 0;
+}
+
+.recommendation-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #eff6ff;
+    border-radius: 12px;
+    border: 1px solid #bfdbfe;
+}
+
+.recommendation-info small {
+    color: #1e40af;
+    font-size: 0.875rem;
+}
+
+.recommendation-info svg {
+    color: #3b82f6;
+    flex-shrink: 0;
+}
+
+.recommendation-loading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 16px;
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.recommendation-loading span {
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+
+.spinner-small {
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f4f6;
+    border-top: 3px solid #6366f1;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ====================================
+   Recommendation Badges
+   ==================================== */
+.recommendation-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    cursor: help;
+    transition: all 0.2s ease;
+}
+
+.recommendation-badge--high {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.recommendation-badge--high:hover {
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+    transform: translateY(-1px);
+}
+
+.recommendation-badge--medium {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.recommendation-badge--medium:hover {
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+}
+
+.recommendation-badge svg {
+    flex-shrink: 0;
+}
+
+/* ====================================
+   Recommended Sections
+   ==================================== */
+.recommended-section-header {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.recommended-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.recommended-section-title h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.recommended-section-title svg {
+    flex-shrink: 0;
+}
+
+.recommended-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 8px;
+    background: #6366f1;
+    color: #ffffff;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.toggle-expand-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: auto;
+}
+
+.toggle-expand-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+    color: #374151;
+}
+
+.toggle-expand-btn svg {
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+}
+
+.recommended-section-subtitle {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #6b7280;
+}
+
+/* Match Reasons Text */
+.match-reasons-text {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.match-reasons-text svg {
+    flex-shrink: 0;
+}
+
+.tender-card-new__footer {
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid #f3f4f6;
+}
+
+/* ====================================
+   Responsive Design
+   ==================================== */
+@media (max-width: 768px) {
+    .recommendation-toggle-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .toggle-switch-wrapper {
+        flex-direction: column;
+    }
+
+    .toggle-option {
+        justify-content: center;
+    }
+
+    .recommended-section-title {
+        flex-wrap: wrap;
+    }
+
+    .toggle-expand-btn {
+        margin-left: 0;
+        margin-top: 8px;
+    }
+}
+
+/* ====================================
+   Dark Mode Support
+   ==================================== */
+body.dark-mode .recommendation-toggle-container {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+body.dark-mode .toggle-label-title {
+    color: #f9fafb;
+}
+
+body.dark-mode .toggle-label-subtitle {
+    color: #9ca3af;
+}
+
+body.dark-mode .toggle-switch-wrapper {
+    background: #111827;
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+body.dark-mode .toggle-option {
+    color: #9ca3af;
+}
+
+body.dark-mode .toggle-option:hover {
+    background: #374151;
+    color: #e5e7eb;
+}
+
+body.dark-mode .recommendation-info {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+body.dark-mode .recommendation-info small {
+    color: #93c5fd;
+}
+
+body.dark-mode .recommendation-loading {
+    background: #1f2937;
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+body.dark-mode .recommendation-loading span {
+    color: #9ca3af;
+}
+
+body.dark-mode .recommended-section-header {
+    border-bottom-color: rgba(99, 102, 241, 0.2);
+}
+
+body.dark-mode .recommended-section-title h3 {
+    color: #f9fafb;
+}
+
+body.dark-mode .recommended-section-subtitle {
+    color: #9ca3af;
+}
+
+body.dark-mode .toggle-expand-btn {
+    background: transparent;
+    border-color: rgba(99, 102, 241, 0.3);
+    color: #9ca3af;
+}
+
+body.dark-mode .toggle-expand-btn:hover {
+    background: #374151;
+    border-color: rgba(99, 102, 241, 0.5);
+    color: #e5e7eb;
+}
+
+body.dark-mode .match-reasons-text {
+    color: #9ca3af;
+}
+
+body.dark-mode .tender-card-new__footer {
+    border-top-color: rgba(99, 102, 241, 0.2);
+}
+</style>
+
+<script>
+const searchForm = document.getElementById('searchForm');
+if (searchForm) {
+    searchForm.addEventListener('submit', function(e) { e.preventDefault(); });
+}
+
+function applyFilters(event) {
+    event.preventDefault();
+
+    // If we have a current card search, apply filters to that search
+    if (currentCardId) {
+        const filters = {
+            search: document.getElementById('search')?.value.trim(),
+            sector: document.getElementById('sector')?.value.trim(),
+            sub_sector: document.getElementById('sub_sector')?.value.trim(),
+            category: document.getElementById('category')?.value.trim(),
+            product_category: document.getElementById('product_category')?.value.trim(),
+            state: document.getElementById('state')?.value.trim(),
+            source: document.getElementById('source')?.value.trim(),
+            min_value: document.getElementById('min_value')?.value.trim(),
+            max_value: document.getElementById('max_value')?.value.trim()
+        };
+
+        // Re-search with the card and additional filters
+        searchWithCard(currentCardId, filters);
+    } else {
+        // No card search active, do normal page navigation
+        const params = new URLSearchParams();
+        const fields = ['search', 'sector', 'sub_sector', 'category', 'product_category', 'state', 'source', 'min_value', 'max_value', 'sort_by'];
+        fields.forEach(field => {
+            const value = document.getElementById(field)?.value.trim();
+            if (value) params.set(field, value);
+        });
+
+        const query = params.toString();
+        window.location.href = query ? `/procurement?${query}` : '/procurement';
+    }
+}
+
+// Recommendation Toggle Functionality
+let currentViewMode = 'all'; // 'all' or 'recommended'
+let recommendationData = null;
+
+function initializeRecommendationToggle() {
+    const toggleAllBtn = document.getElementById('toggleAllBtn');
+    const toggleRecommendedBtn = document.getElementById('toggleRecommendedBtn');
+
+    if (toggleAllBtn) {
+        toggleAllBtn.addEventListener('click', function() {
+            switchViewMode('all');
+        });
+    }
+
+    if (toggleRecommendedBtn) {
+        toggleRecommendedBtn.addEventListener('click', function() {
+            switchViewMode('recommended');
+        });
+    }
+}
+
+function switchViewMode(mode) {
+    currentViewMode = mode;
+    const toggleAllBtn = document.getElementById('toggleAllBtn');
+    const toggleRecommendedBtn = document.getElementById('toggleRecommendedBtn');
+    const recommendationInfo = document.getElementById('recommendationInfo');
+    const tendersSection = document.getElementById('tendersSection');
+    const recommendedTendersSection = document.getElementById('recommendedTendersSection');
+
+    if (mode === 'all') {
+        // Show all results
+        toggleAllBtn.classList.add('active');
+        toggleRecommendedBtn.classList.remove('active');
+        recommendationInfo.style.display = 'none';
+        tendersSection.style.display = 'block';
+        recommendedTendersSection.style.display = 'none';
+    } else {
+        // Show recommended results
+        toggleAllBtn.classList.remove('active');
+        toggleRecommendedBtn.classList.add('active');
+        recommendationInfo.style.display = 'flex';
+        tendersSection.style.display = 'none';
+        recommendedTendersSection.style.display = 'block';
+
+        // Fetch recommended tenders
+        fetchRecommendedTenders();
+    }
+}
+
+async function fetchRecommendedTenders() {
+    const recommendationLoading = document.getElementById('recommendationLoading');
+    const moreRecommendedSection = document.getElementById('moreRecommendedSection');
+    const lessRecommendedSection = document.getElementById('lessRecommendedSection');
+    const noRecommendationsMessage = document.getElementById('noRecommendationsMessage');
+
+    // Show loading state
+    recommendationLoading.style.display = 'flex';
+    moreRecommendedSection.style.display = 'none';
+    lessRecommendedSection.style.display = 'none';
+    noRecommendationsMessage.style.display = 'none';
+
+    try {
+        // Build query parameters from current filters
+        const params = new URLSearchParams();
+
+        // Get filter values
+        const sector = document.getElementById('sector')?.value.trim();
+        const search = document.getElementById('search')?.value.trim();
+        const category = document.getElementById('category')?.value.trim();
+        const productCategory = document.getElementById('product_category')?.value.trim();
+        const state = document.getElementById('state')?.value.trim();
+        const source = document.getElementById('source')?.value.trim();
+        const minValue = document.getElementById('min_value')?.value.trim();
+        const maxValue = document.getElementById('max_value')?.value.trim();
+
+        // Add current card sector if searching via card
+        if (currentCardId && !sector) {
+            const cardData = customCards.find(c => c.id === currentCardId);
+            if (cardData && cardData.sector) {
+                params.set('sector', cardData.sector);
+            }
+        } else if (sector) {
+            params.set('sector', sector);
+        }
+
+        // Add other filters
+        if (search) params.set('search', search);
+        if (category) params.set('category', category);
+        if (productCategory) params.set('product_category', productCategory);
+        if (state) params.set('state', state);
+        if (source) params.set('source', source);
+        if (minValue) params.set('min_value', minValue);
+        if (maxValue) params.set('max_value', maxValue);
+
+        // Fetch recommendations
+        const response = await fetch(`/api/tenders/recommended?${params.toString()}`);
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch recommendations');
+        }
+
+        const data = await response.json();
+        recommendationData = data;
+
+        // Hide loading
+        recommendationLoading.style.display = 'none';
+
+        // Check if there are recommendations
+        if (data.message || (data.total_more === 0 && data.total_less === 0)) {
+            // No recommendations
+            noRecommendationsMessage.style.display = 'block';
+            const noRecoText = document.getElementById('noRecommendationsText');
+            if (data.message) {
+                noRecoText.textContent = data.message;
+            }
+        } else {
+            // Render recommendations
+            if (data.total_more > 0) {
+                renderRecommendedTenders(data.more_reco, 'moreRecommendedList', 'more');
+                moreRecommendedSection.style.display = 'block';
+                document.getElementById('moreRecoCount').textContent = data.total_more;
+            }
+
+            if (data.total_less > 0) {
+                renderRecommendedTenders(data.less_reco, 'lessRecommendedList', 'less');
+                lessRecommendedSection.style.display = 'block';
+                document.getElementById('lessRecoCount').textContent = data.total_less;
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching recommendations:', error);
+        recommendationLoading.style.display = 'none';
+        noRecommendationsMessage.style.display = 'block';
+        const noRecoText = document.getElementById('noRecommendationsText');
+        noRecoText.textContent = 'An error occurred while generating recommendations. Please try again.';
+    }
+}
+
+function renderRecommendedTenders(tenders, containerId, category) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    tenders.forEach(tender => {
+        const tenderCard = createRecommendedTenderCard(tender, category);
+        container.appendChild(tenderCard);
+    });
+}
+
+function createRecommendedTenderCard(tender, category) {
+    const article = document.createElement('article');
+    article.className = 'tender-card-new';
+    article.dataset.tenderId = tender.id;
+    article.onclick = () => window.location.href = `/tender/${tender.id}`;
+
+    // Determine badge class and text
+    let badgeClass, badgeText;
+    if (category === 'more') {
+        badgeClass = 'recommendation-badge recommendation-badge--high';
+        badgeText = tender.is_title_match ? 'Title Match ⚠️' : `${Math.round(tender.recommendation_score)}% Match`;
+    } else {
+        badgeClass = 'recommendation-badge recommendation-badge--medium';
+        badgeText = tender.is_title_match ? 'Title Match ⚠️' : `${Math.round(tender.recommendation_score)}% Match`;
+    }
+
+    // Format value
+    const formattedValue = tender.estimated_value ?
+        `₹${Number(tender.estimated_value).toLocaleString('en-IN')}` :
+        'Value not specified';
+
+    // Format dates
+    const publishedDate = tender.published_at ? new Date(tender.published_at).toLocaleDateString('en-IN') : 'N/A';
+    const deadline = tender.deadline ? new Date(tender.deadline).toLocaleDateString('en-IN') : 'No deadline';
+
+    // Build match reasons tooltip
+    const matchReasons = tender.match_reasons && tender.match_reasons.length > 0 ?
+        tender.match_reasons.join(', ') :
+        'Matches your expertise';
+
+    article.innerHTML = `
+        <!-- Recommendation Badge -->
+        <div class="${badgeClass}" title="${matchReasons}">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="margin-right: 4px;">
+                <path d="M8 1l2.163 4.382 4.837.703-3.5 3.411.826 4.817L8 12.191l-4.326 2.122.826-4.817-3.5-3.411 4.837-.703L8 1z" fill="currentColor"/>
+            </svg>
+            ${badgeText}
+        </div>
+
+        <!-- Header: Title + Authority + Status -->
+        <div class="tender-card-new__header">
+            <div class="tender-card-new__title-block">
+                <h2 class="tender-card-new__title">${tender.title || 'Untitled Tender'}</h2>
+                <p class="tender-card-new__subtitle">
+                    ${tender.authority || 'Authority not available'}
+                    ${tender.state && tender.state !== 'Unknown' ? `· ${tender.state}` : ''}
+                </p>
+            </div>
+            <span class="tender-card-new__status">OPEN</span>
+        </div>
+
+        <!-- Divider -->
+        <div class="tender-card-new__divider"></div>
+
+        <!-- Info Grid: Pills with key data -->
+        <div class="tender-card-new__info-grid">
+            ${tender.category ? `<span class="tender-card-new__info-pill">${tender.category}</span>` : ''}
+            <span class="tender-card-new__info-pill">${formattedValue}</span>
+            <span class="tender-card-new__info-pill">📅 Published: ${publishedDate}</span>
+            <span class="tender-card-new__info-pill">⏰ Deadline: ${deadline}</span>
+        </div>
+
+        <!-- Summary -->
+        ${tender.summary ? `
+        <div class="tender-card-new__summary">
+            ${tender.summary.substring(0, 200)}${tender.summary.length > 200 ? '...' : ''}
+        </div>
+        ` : ''}
+
+        <!-- Footer: Match Reasons -->
+        <div class="tender-card-new__footer">
+            <span class="match-reasons-text">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="margin-right: 4px;">
+                    <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <path d="M8 4v5l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                ${matchReasons}
+            </span>
+        </div>
+    `;
+
+    return article;
+}
+
+function toggleLessRecommended() {
+    const lessRecommendedList = document.getElementById('lessRecommendedList');
+    const toggleText = document.getElementById('lessRecoToggleText');
+    const toggleIcon = document.getElementById('lessRecoToggleIcon');
+
+    if (lessRecommendedList.style.display === 'none') {
+        lessRecommendedList.style.display = 'grid';
+        toggleText.textContent = 'Hide';
+        toggleIcon.style.transform = 'rotate(180deg)';
+    } else {
+        lessRecommendedList.style.display = 'none';
+        toggleText.textContent = 'Show';
+        toggleIcon.style.transform = 'rotate(0deg)';
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initializeRecommendationToggle();
+});
+
+{% if current_user or current_employee %}
+// Modal Functions
+let isEditMode = false;
+let currentEditingCardId = null;
+let customCards = [];
+
+function configureCardModal(card = null) {
+    const form = document.getElementById('addCardForm');
+    const titleEl = document.getElementById('addCardModalTitle');
+    const submitBtn = document.getElementById('addCardSubmitButton');
+    const deleteBtn = document.getElementById('deleteCardButton');
+
+    if (!form || !titleEl || !submitBtn || !deleteBtn) {
+        return;
+    }
+
+    if (card) {
+        form.card_name.value = card.card_name || '';
+        form.core_search_terms.value = card.core_search_terms || '';
+        titleEl.textContent = 'Edit Sector Card';
+        submitBtn.textContent = 'Update Card';
+        deleteBtn.style.display = 'inline-flex';
+    } else {
+        form.reset();
+        titleEl.textContent = 'Create Sector Card';
+        submitBtn.textContent = 'Create Card';
+        deleteBtn.style.display = 'none';
+    }
+}
+
+function openAddCardModal(cardId = null) {
+    const card = cardId ? customCards.find(item => item.id === cardId) : null;
+    currentEditingCardId = card ? cardId : null;
+    configureCardModal(card || null);
+    document.getElementById('addCardModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeAddCardModal() {
+    document.getElementById('addCardModal').style.display = 'none';
+    document.body.style.overflow = '';
+    currentEditingCardId = null;
+    configureCardModal(null);
+}
+
+// Toggle edit mode for cards
+function toggleEditMode() {
+    isEditMode = !isEditMode;
+    const editButtons = document.querySelectorAll('.card-edit-btn');
+    const editBtnText = document.getElementById('editCardBtnText');
+
+    editButtons.forEach(btn => {
+        btn.style.display = isEditMode ? 'block' : 'none';
+    });
+
+    editBtnText.textContent = isEditMode ? 'Done' : 'Edit Cards';
+}
+
+function editCard(cardId) {
+    openAddCardModal(cardId);
+}
+
+// Delete a card
+async function deleteCard(cardId) {
+    if (!confirm('Are you sure you want to delete this sector card?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/custom-cards/${cardId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            showNotification('Card deleted successfully', 'success');
+            loadCustomCards();
+        } else {
+            const error = await response.text();
+            showNotification('Failed to delete card: ' + error, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting card:', error);
+        showNotification('Error deleting card', 'error');
+    }
+}
+
+async function deleteCardFromModal() {
+    if (!currentEditingCardId) {
+        return;
+    }
+
+    if (!confirm('Are you sure you want to delete this sector card?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/custom-cards/${currentEditingCardId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            showNotification('Card deleted successfully', 'success');
+            closeAddCardModal();
+            loadCustomCards();
+        } else {
+            const error = await response.text();
+            showNotification('Failed to delete card: ' + error, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting card:', error);
+        showNotification('Error deleting card', 'error');
+    }
+}
+
+// Handle ESC key to close modal
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeAddCardModal();
+    }
+});
+
+async function submitCardForm() {
+    const formData = new FormData();
+
+    // Get form values
+    const cardName = document.getElementById('card_name').value.trim();
+    const coreSearchTerms = document.getElementById('core_search_terms').value.trim();
+
+    // Validation
+    if (!cardName) {
+        alert('Please enter a card name');
+        return;
+    }
+
+    if (!coreSearchTerms) {
+        alert('Please enter keywords');
+        return;
+    }
+
+    // Prepare form data
+    formData.append('card_name', cardName);
+    formData.append('core_search_terms', coreSearchTerms);
+    formData.append('state', '');
+    formData.append('source', '');
+    formData.append('tender_type', '');
+
+    const isEditing = Boolean(currentEditingCardId);
+    const endpoint = isEditing ? `/api/custom-cards/${currentEditingCardId}` : '/api/custom-cards';
+    const method = isEditing ? 'PUT' : 'POST';
+
+    try {
+        const response = await fetch(endpoint, {
+            method,
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            closeAddCardModal();
+            loadCustomCards();
+            showNotification(isEditing ? 'Custom card updated successfully!' : 'Custom card created successfully!', 'success');
+        } else {
+            alert(result.detail || 'Error saving custom card');
+        }
+    } catch (error) {
+        console.error('Error saving custom card:', error);
+        alert('Error saving custom card. Please try again.');
+    }
+}
+
+async function loadCustomCards() {
+    const grid = document.getElementById('customCardsGrid');
+    const loader = document.getElementById('customCardsLoader');
+    if (!grid) return;
+
+    try {
+        const response = await fetch('/api/custom-cards');
+        if (!response.ok) {
+            grid.innerHTML = '<div class="surface-card"><p class="text-muted">Unable to load cards.</p></div>';
+            return;
+        }
+
+        const data = await response.json();
+        const cards = data.cards || [];
+        customCards = cards;
+
+        // Create "Show All Tenders" permanent card HTML
+        const showAllCard = `
+            <article class="custom-search-card" data-card-id="show-all" style="border: 2px solid var(--primary-color, #6366f1);">
+                <div class="custom-search-card__header">
+                    <div class="custom-search-card__icon">🌐</div>
+                    <h3 class="custom-search-card__title">Show All Tenders</h3>
+                </div>
+
+                <div class="custom-search-card__content">
+                    <p class="custom-search-card__terms">Browse all available tenders. You can apply filters after viewing.</p>
+                </div>
+
+                <div class="custom-search-card__actions">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="window.location.href='/procurement?show_all=true'">
+                        🔍 Show All Tenders
+                    </button>
+                </div>
+            </article>
+        `;
+
+        // Generate user's custom cards HTML
+        const customCardsHtml = cards.map(card => `
+            <article class="custom-search-card" data-card-id="${card.id}">
+                <div class="custom-search-card__header">
+                    <div class="custom-search-card__icon">📌</div>
+                    <h3 class="custom-search-card__title">${card.card_name || 'Untitled card'}</h3>
+                    <div class="custom-search-card__tools">
+                        <button type="button" class="card-edit-btn" onclick="editCard(${card.id})" style="display: none;">
+                            ✏️
+                        </button>
+                    </div>
+                </div>
+
+                <div class="custom-search-card__content">
+                    <p class="custom-search-card__terms">${card.core_search_terms || 'No search terms'}</p>
+                </div>
+
+                <div class="custom-search-card__actions">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="searchWithCard(${card.id})">
+                        🔍 Search Tenders
+                    </button>
+                </div>
+            </article>
+        `).join('');
+
+        // Combine "Show All Tenders" card with user's custom cards
+        if (!cards.length) {
+            grid.innerHTML = showAllCard + '<div class="empty-state" style="grid-column: 1 / -1;"><h3>No custom cards yet</h3><p>Create your first custom search card using the button above.</p></div>';
+        } else {
+            grid.innerHTML = showAllCard + customCardsHtml;
+        }
+
+        if (isEditMode) {
+            document.querySelectorAll('.card-edit-btn').forEach(btn => btn.style.display = 'block');
+        }
+    } catch (error) {
+        console.error('Error loading custom cards:', error);
+        grid.innerHTML = '<div class="surface-card"><p class="text-danger">Error loading cards.</p></div>';
+    } finally {
+        if (loader) loader.remove();
+    }
+}
+
+// Simple notification function
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification--${type}`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#10b981' : '#3b82f6'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        z-index: 9999;
+        font-weight: 500;
+    `;
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Helper function to generate sector options
+function getSectorOptions(selectedSector) {
+    const sectors = [
+        'Information Technology & Software',
+        'Engineering & Technical Services',
+        'Construction & Infrastructure',
+        'Healthcare & Medical Services',
+        'Education & Training',
+        'Transportation & Logistics',
+        'Defense & Security',
+        'Financial Services & Banking',
+        'Manufacturing & Production',
+        'Energy & Utilities',
+        'Agriculture & Food Processing',
+        'Telecommunications',
+        'Media & Entertainment',
+        'Retail & E-commerce',
+        'Real Estate & Property',
+        'Legal & Consulting Services',
+        'Research & Development',
+        'Environmental Services',
+        'Tourism & Hospitality',
+        'Automotive & Transportation',
+        'Aerospace & Aviation',
+        'Biotechnology & Pharmaceuticals',
+        'Mining & Minerals',
+        'Textiles & Apparel',
+        'Sports & Recreation',
+        'Non-Profit & NGO',
+        'Government & Public Sector',
+        'Water Resources',
+        'Water Supply',
+        'Urban Infrastructure',
+        'Rural Infrastructure',
+        'Forest',
+        'Other'
+    ];
+
+    return sectors.map(sector =>
+        `<option value="${sector}" ${selectedSector === sector ? 'selected' : ''}>${sector}</option>`
+    ).join('');
+}
+
+// Sub-sector data (same as in add_project.html)
+// Build sub-sectors map from user's sectors data
+const subSectors = {};
+{% if user_sectors_data %}
+    {% for sector_obj in user_sectors_data %}
+        subSectors['{{ sector_obj.sector }}'] = {{ sector_obj.subsectors|tojson }};
+    {% endfor %}
+{% endif %}
+
+// Handle sector change in modal (for form creation)
+document.addEventListener('DOMContentLoaded', function() {
+    const modalSectorSelect = document.getElementById('modal_sector');
+    const modalSubSectorSelect = document.getElementById('modal_sub_sector');
+
+    if (modalSectorSelect && modalSubSectorSelect) {
+        modalSectorSelect.addEventListener('change', function() {
+            const selectedSector = this.value;
+            const options = subSectors[selectedSector] || [];
+
+            modalSubSectorSelect.innerHTML = '<option value="">Select sub-sector</option>';
+            if (options.length) {
+                options.forEach(subSector => {
+                    modalSubSectorSelect.innerHTML += `<option value="${subSector}">${subSector}</option>`;
+                });
+                modalSubSectorSelect.disabled = false;
+            } else {
+                modalSubSectorSelect.disabled = true;
+            }
+        });
+    }
+
+    // Handle sector change in main filters
+    const filterSectorSelect = document.getElementById('sector');
+    const filterSubSectorSelect = document.getElementById('sub_sector');
+
+    if (filterSectorSelect && filterSubSectorSelect) {
+        filterSectorSelect.addEventListener('change', function() {
+            const selectedSector = this.value;
+            const options = subSectors[selectedSector] || [];
+
+            filterSubSectorSelect.innerHTML = '<option value="">Select sub-sector</option>';
+            if (options.length && selectedSector) {
+                options.forEach(subSector => {
+                    filterSubSectorSelect.innerHTML += `<option value="${subSector}">${subSector}</option>`;
+                });
+                filterSubSectorSelect.disabled = false;
+            } else {
+                filterSubSectorSelect.disabled = true;
+            }
+        });
+    }
+});
+
+// Handle sector change in card filters (after cards are loaded)
+function initializeCardFilters() {
+    document.addEventListener('change', function(e) {
+        if (e.target.matches('[data-filter="sector"]')) {
+            const cardId = e.target.getAttribute('data-card-id');
+            const selectedSector = e.target.value;
+            const subSectorSelect = document.querySelector(`[data-card-id="${cardId}"][data-filter="sub_sector"]`);
+
+            if (subSectorSelect) {
+                const options = subSectors[selectedSector] || [];
+                subSectorSelect.innerHTML = '<option value="">Select sub-sector</option>';
+
+                if (options.length) {
+                    options.forEach(subSector => {
+                        subSectorSelect.innerHTML += `<option value="${subSector}">${subSector}</option>`;
+                    });
+                    subSectorSelect.disabled = false;
+                } else {
+                    subSectorSelect.disabled = true;
+                }
+            }
+        }
+    });
+}
+
+// Store current card ID for filtering
+let currentCardId = null;
+
+// Update filter form fields to reflect currently applied filters
+function updateFilterFormFields(filters) {
+    // Update each filter field with the applied value
+    if (filters.search !== undefined) {
+        const searchField = document.getElementById('search');
+        if (searchField) searchField.value = filters.search || '';
+    }
+
+    if (filters.sector !== undefined) {
+        const sectorField = document.getElementById('sector');
+        if (sectorField) sectorField.value = filters.sector || '';
+    }
+
+    if (filters.sub_sector !== undefined) {
+        const subSectorField = document.getElementById('sub_sector');
+        if (subSectorField) subSectorField.value = filters.sub_sector || '';
+    }
+
+    if (filters.category !== undefined) {
+        const categoryField = document.getElementById('category');
+        if (categoryField) categoryField.value = filters.category || '';
+    }
+
+    if (filters.product_category !== undefined) {
+        const productCategoryField = document.getElementById('product_category');
+        if (productCategoryField) productCategoryField.value = filters.product_category || '';
+    }
+
+    if (filters.state !== undefined) {
+        const stateField = document.getElementById('state');
+        if (stateField) stateField.value = filters.state || '';
+    }
+
+    if (filters.source !== undefined) {
+        const sourceField = document.getElementById('source');
+        if (sourceField) sourceField.value = filters.source || '';
+    }
+
+    if (filters.min_value !== undefined) {
+        const minValueField = document.getElementById('min_value');
+        if (minValueField) minValueField.value = filters.min_value || '';
+    }
+
+    if (filters.max_value !== undefined) {
+        const maxValueField = document.getElementById('max_value');
+        if (maxValueField) maxValueField.value = filters.max_value || '';
+    }
+}
+
+// Search function for cards
+async function searchWithCard(cardId, additionalFilters = {}) {
+    try {
+        // Store the current card ID
+        currentCardId = cardId;
+
+        // Build form data with filters
+        const formData = new FormData();
+        if (additionalFilters.sector) formData.append('sector', additionalFilters.sector);
+        if (additionalFilters.sub_sector) formData.append('sub_sector', additionalFilters.sub_sector);
+        if (additionalFilters.search) formData.append('search', additionalFilters.search);
+        if (additionalFilters.category) formData.append('category', additionalFilters.category);
+        if (additionalFilters.product_category) formData.append('product_category', additionalFilters.product_category);
+        if (additionalFilters.state) formData.append('state', additionalFilters.state);
+        if (additionalFilters.source) formData.append('source', additionalFilters.source);
+        if (additionalFilters.min_value) formData.append('min_value', additionalFilters.min_value);
+        if (additionalFilters.max_value) formData.append('max_value', additionalFilters.max_value);
+
+        const response = await fetch(`/api/custom-cards/${cardId}/search`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            // Show filters and tenders sections
+            document.getElementById('filtersSection').style.display = 'block';
+            document.getElementById('tendersSection').style.display = 'block';
+
+            // Scroll to filters section
+            document.getElementById('filtersSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            // Display search results
+            displaySearchResults(result, cardId);
+
+            // Update filter form fields to show currently applied filters
+            updateFilterFormFields(additionalFilters);
+        } else {
+            alert('Error performing search. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error searching with card:', error);
+        alert('Error performing search. Please try again.');
+    }
+}
+
+// Display search results
+function displaySearchResults(result, cardId) {
+    const tendersSection = document.getElementById('tendersSection');
+    if (!tendersSection) return;
+
+    // Create results content using the same horizontal card layout as "Show All Tenders"
+    const resultsContent = result.tenders && result.tenders.length > 0 ? `
+        <div class="tender-cards-list">
+            ${result.tenders.map(tender => {
+                // Format published date
+                const publishedDate = tender.published_at ? new Date(tender.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
+
+                // Format deadline date
+                const deadlineDate = tender.deadline ? new Date(tender.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
+
+                // Format estimated value
+                const estimatedValue = tender.estimated_value ? `₹${Number(tender.estimated_value).toLocaleString('en-IN')}` : 'N/A';
+
+                // Get location from metadata or state
+                const location = tender.metadata?.work_item_details?.Location && tender.metadata.work_item_details.Location !== 'NA'
+                    ? tender.metadata.work_item_details.Location
+                    : (tender.state && tender.state !== 'Unknown' ? tender.state : null);
+
+                // Get category emoji
+                let categoryIcon = '📋';
+                if (tender.category === 'Works') categoryIcon = '🛠️';
+                else if (tender.category === 'Goods') categoryIcon = '📦';
+                else if (tender.category === 'Services') categoryIcon = '💼';
+
+                return `
+                    <article class="tender-card-new" data-tender-id="${tender.id}" onclick="window.location.href='/tender/${tender.id}'">
+                        <!-- Header: Title + Authority + Status -->
+                        <div class="tender-card-new__header">
+                            <div class="tender-card-new__title-block">
+                                <h2 class="tender-card-new__title">${tender.title}</h2>
+                                <p class="tender-card-new__subtitle">
+                                    ${tender.authority || 'Authority not available'}
+                                    ${tender.state && tender.state !== 'Unknown' ? '· ' + tender.state : ''}
+                                </p>
+                            </div>
+                            <span class="tender-card-new__status">OPEN</span>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="tender-card-new__divider"></div>
+
+                        <!-- Info Grid: Pills with key data -->
+                        <div class="tender-card-new__grid">
+                            <div class="tender-pill">
+                                <span class="tender-pill__label">Value</span>
+                                <strong class="tender-pill__value">${estimatedValue}</strong>
+                            </div>
+                            <div class="tender-pill">
+                                <span class="tender-pill__label">Published</span>
+                                <strong class="tender-pill__value">${publishedDate}</strong>
+                            </div>
+                            <div class="tender-pill">
+                                <span class="tender-pill__label">Deadline</span>
+                                <strong class="tender-pill__value">${deadlineDate}</strong>
+                            </div>
+                            <div class="tender-pill">
+                                <span class="tender-pill__label">Category</span>
+                                <strong class="tender-pill__value">${tender.category || 'N/A'}</strong>
+                            </div>
+                        </div>
+
+                        <!-- Summary -->
+                        ${tender.summary ? `<p class="tender-card-new__summary">${tender.summary.substring(0, 200)}${tender.summary.length > 200 ? '…' : ''}</p>` : ''}
+
+                        <!-- Footer: Chips + Actions -->
+                        <div class="tender-card-new__footer">
+                            <div class="tender-card-new__chips">
+                                ${location ? `<span class="tender-chip">📍 ${location}</span>` : ''}
+                                ${tender.category ? `<span class="tender-chip">${categoryIcon} ${tender.category}</span>` : ''}
+                                ${tender.source ? `<span class="tender-chip">🌐 ${tender.source}</span>` : ''}
+                            </div>
+                            <div class="tender-card-new__actions">
+                                <button type="button" class="tender-btn tender-btn--secondary" onclick="event.stopPropagation(); openReminderModalForTender('${tender.id}', '${(tender.title || '').replace(/'/g, "\\'")}')">
+                                    🔔 Set Reminder
+                                </button>
+                                <button type="button" class="tender-btn tender-btn--primary" onclick="event.stopPropagation(); window.location.href='/tender/${tender.id}'">
+                                    View Details →
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }).join('')}
+        </div>
+    ` : `
+        <div class="empty-state">
+            <h3>No tenders found</h3>
+            <p>Try adjusting your search criteria or check back later for new tenders.</p>
+        </div>
+    `;
+
+    // Update the tenders section
+    tendersSection.innerHTML = resultsContent;
+
+    // Update the tender count text in filters section
+    const tenderCountText = document.getElementById('tenderCountText');
+    if (tenderCountText) {
+        tenderCountText.textContent = `Showing ${result.tenders ? result.tenders.length : 0} tenders from "${result.card.card_name}"`;
+    }
+}
+
+// Clear search results
+function clearSearchResults() {
+    // Reload the page to restore original filter results
+    window.location.reload();
+}
+
+// Initialize everything
+loadCustomCards().then(() => {
+    initializeCardFilters();
+});
+
+{% endif %}
+
+// Navigate to detail on tender-card click (handles both old and new card styles)
+const tenderCards = document.querySelectorAll('.tender-card, .tender-card-new');
+tenderCards.forEach(card => {
+    card.addEventListener('click', (event) => {
+        if (event.target.closest('button') || event.target.tagName === 'A') return;
+        const tenderId = card.getAttribute('data-tender-id');
+        if (tenderId) window.location.href = `/tender/${tenderId}`;
+    });
+});
+
+// Reminder Modal Functions
+function openReminderModalForTender(tenderId, tenderTitle) {
+    const reminderModal = document.getElementById('reminderModal');
+    const dateInput = document.getElementById('reminderDate');
+
+    // Store tender info in hidden fields
+    document.getElementById('reminderTenderId').value = tenderId;
+    document.getElementById('reminderTenderTitle').value = tenderTitle;
+
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.min = today;
+
+    // Set default date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    dateInput.value = tomorrow.toISOString().split('T')[0];
+
+    // Set default time to 9:00 AM
+    document.getElementById('reminderHour').value = '09';
+    document.getElementById('reminderMinute').value = '00';
+
+    // Clear note
+    document.getElementById('reminderNote').value = '';
+
+    // Show modal
+    reminderModal.style.display = 'flex';
+}
+
+function closeReminderModal() {
+    const reminderModal = document.getElementById('reminderModal');
+    reminderModal.style.display = 'none';
+}
+
+async function saveReminderFromSearch(event) {
+    event.preventDefault();
+
+    const tenderId = document.getElementById('reminderTenderId').value;
+    const tenderTitle = document.getElementById('reminderTenderTitle').value;
+    const date = document.getElementById('reminderDate').value;
+    const hour = document.getElementById('reminderHour').value;
+    const minute = document.getElementById('reminderMinute').value;
+    const note = document.getElementById('reminderNote').value;
+
+    // Validate inputs
+    if (!date || !hour || !minute) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    // Create datetime string
+    const reminderDatetime = `${date}T${hour}:${minute}:00`;
+
+    // Check if reminder is in the past
+    const reminderTime = new Date(reminderDatetime);
+    const now = new Date();
+    if (reminderTime <= now) {
+        alert('Reminder time must be in the future');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/reminders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                tender_id: tenderId,
+                tender_title: tenderTitle,
+                reminder_datetime: reminderDatetime,
+                note: note || ''
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('Reminder set successfully! You will be notified on ' + new Date(reminderDatetime).toLocaleString());
+            closeReminderModal();
+        } else {
+            alert('Error setting reminder: ' + (data.message || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error saving reminder:', error);
+        alert('Failed to set reminder. Please try again.');
+    }
+}
+</script>
+{% endblock %}

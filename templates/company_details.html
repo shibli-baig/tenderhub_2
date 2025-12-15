@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+
+{% block title %}Company Details - TenderHub{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <span class="chip chip--primary">Required Setup</span>
+            <h1 class="section-title">Company Details</h1>
+            <p class="section-subtitle">Please complete your company details to access TenderHub services. This information is required for government tender applications.</p>
+        </div>
+    </div>
+</section>
+
+<form id="companyDetailsForm" method="post" action="/api/company-details" enctype="multipart/form-data">
+    <div class="form-stack">
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Basic Company Information</h2>
+                    <p class="panel-subtitle">Essential business registration details</p>
+                </div>
+            </div>
+            <div class="form-grid two-col">
+                <div class="form-group">
+                    <label for="company_name" class="form-label">Company Name *</label>
+                    <div style="padding: 12px 16px; background: var(--surface-bg, #f8f9fa); border: 2px solid var(--surface-border, #e9ecef); border-radius: 12px; font-size: 15px; color: var(--text-primary, #1a1a1a); font-weight: 500;">
+                        {{ company_details.company_name if company_details else (current_user.company if current_user.company else 'No company name provided') }}
+                    </div>
+                    <input type="hidden" name="company_name" value="{{ company_details.company_name if company_details else (current_user.company if current_user else '') }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="registration_number" class="form-label">Registration Number *</label>
+                    <input type="text" id="registration_number" name="registration_number" required value="{{ company_details.registration_number if company_details else '' }}" placeholder="e.g., CIN-U74999DL2018PTC331234">
+                </div>
+                <div class="form-group">
+                    <label for="gst_number" class="form-label">GST Number *</label>
+                    <input type="text" id="gst_number" name="gst_number" required value="{{ company_details.gst_number if company_details else '' }}" placeholder="e.g., 07AABCT1234M1Z5">
+                </div>
+                <div class="form-group">
+                    <label for="pan_number" class="form-label">PAN Number *</label>
+                    <input type="text" id="pan_number" name="pan_number" required value="{{ company_details.pan_number if company_details else '' }}" placeholder="e.g., AABCT1234M">
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Business Details</h2>
+                    <p class="panel-subtitle">Company size and sector information</p>
+                </div>
+            </div>
+            <div class="business-details-grid">
+                <div class="business-details-grid__sectors" style="grid-column: span 2;">
+                    <label class="form-label">Sectors & Sub-Sectors *</label>
+                    <p class="panel-subtitle" style="font-size: 0.875rem; margin-bottom: 1rem;">Add your business sectors and their sub-sectors (comma-separated)</p>
+                    <div style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.75rem; margin-bottom: 0.5rem;">
+                        <span class="sector-header-label">Sector</span>
+                        <span class="sector-header-label">Sub-sectors (comma-separated)</span>
+                        <span></span>
+                    </div>
+                    <div id="sectorSubsectorContainer">
+                        {% if company_details and company_details.industry_sector %}
+                            {% set sectors_data = company_details.industry_sector|fromjson if company_details.industry_sector.startswith('[{') else [] %}
+                            {% if sectors_data %}
+                                {% for sector_obj in sectors_data %}
+                                <div class="sector-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.75rem; margin-bottom: 0.75rem; align-items: start;">
+                                    <input type="text" placeholder="Sector (e.g., IT)" value="{{ sector_obj.sector }}" class="sector-input">
+                                    <input type="text" placeholder="Sub-sectors (comma-separated)" value="{{ sector_obj.subsectors|join(', ') }}" class="subsector-input">
+                                    <button type="button" onclick="removeSectorRow(this)" class="btn btn-outline btn-sm">Remove</button>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="sector-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.75rem; margin-bottom: 0.75rem; align-items: start;">
+                                    <input type="text" placeholder="Sector (e.g., IT)" class="sector-input">
+                                    <input type="text" placeholder="Sub-sectors (comma-separated)" class="subsector-input">
+                                    <button type="button" onclick="removeSectorRow(this)" class="btn btn-outline btn-sm">Remove</button>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="sector-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.75rem; margin-bottom: 0.75rem; align-items: start;">
+                                <input type="text" placeholder="Sector (e.g., IT)" class="sector-input">
+                                <input type="text" placeholder="Sub-sectors (comma-separated)" class="subsector-input">
+                                <button type="button" onclick="removeSectorRow(this)" class="btn btn-outline btn-sm">Remove</button>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <button type="button" onclick="addSectorRow()" class="btn btn-outline">+ Add Another Sector</button>
+                    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group">
+                            <label for="year_established" class="form-label">Year Established *</label>
+                            <input type="number" id="year_established" name="year_established" required min="1900" max="2100" value="{{ company_details.year_established if company_details else '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="employee_count" class="form-label">Employee Count *</label>
+                            <select id="employee_count" name="employee_count" required>
+                                <option value="">Select Employee Count</option>
+                                {% for option in ['1-10','11-50','51-100','101-250','251-500','500+'] %}
+                                    <option value="{{ option }}" {{ 'selected' if company_details and company_details.employee_count == option else '' }}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <input type="hidden" id="industry_sector" name="industry_sector" required value="{{ company_details.industry_sector if company_details else '' }}">
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Contact Information</h2>
+                    <p class="panel-subtitle">Business address and communication details</p>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="registered_address" class="form-label">Registered Address *</label>
+                    <textarea id="registered_address" name="registered_address" required rows="3" placeholder="Complete registered office address">{{ company_details.registered_address if company_details else '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="operational_address" class="form-label">Operational Address</label>
+                    <textarea id="operational_address" name="operational_address" rows="3" placeholder="If different from registered address">{{ company_details.operational_address if company_details else '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="phone_number" class="form-label">Phone Number *</label>
+                    <input type="tel" id="phone_number" name="phone_number" required value="{{ company_details.phone_number if company_details else '' }}" placeholder="e.g., +91-11-4567-8900">
+                </div>
+                <div class="form-group">
+                    <label for="email_address" class="form-label">Business Email *</label>
+                    <input type="email" id="email_address" name="email_address" required value="{{ company_details.email_address if company_details else '' }}" placeholder="e.g., contact@company.com">
+                </div>
+                <div class="form-group">
+                    <label for="website_url" class="form-label">Website URL</label>
+                    <input type="url" id="website_url" name="website_url" value="{{ company_details.website_url if company_details else '' }}" placeholder="e.g., https://www.company.com">
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Tender Specific Information</h2>
+                    <p class="panel-subtitle">Expertise and service areas for government tenders</p>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="key_services" class="form-label">Key Services Offered *</label>
+                    <textarea id="key_services" name="key_services" required rows="4">{{ company_details.key_services if company_details else '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="specialization_areas" class="form-label">Specialization Areas *</label>
+                    <textarea id="specialization_areas" name="specialization_areas" required rows="4">{{ company_details.specialization_areas if company_details else '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="previous_govt_experience" class="form-label">Previous Government Projects</label>
+                    <textarea id="previous_govt_experience" name="previous_govt_experience" rows="4">{{ company_details.previous_govt_experience if company_details else '' }}</textarea>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Legal Details</h2>
+                    <p class="panel-subtitle">Licenses and statutory registrations</p>
+                </div>
+            </div>
+            {% set legal_details = company_details.legal_details if company_details else {} %}
+            <div class="form-grid two-col">
+                <div class="form-group">
+                    <label for="company_type" class="form-label">Company Type</label>
+                    <input type="text" id="company_type" name="company_type" value="{{ legal_details.company_type if legal_details else '' }}" placeholder="e.g., Private Limited">
+                </div>
+                <div class="form-group">
+                    <label for="msme_registration" class="form-label">MSME Registration</label>
+                    <input type="text" id="msme_registration" name="msme_registration" value="{{ legal_details.msme_registration if legal_details else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="udyam_registration" class="form-label">Udyam Registration</label>
+                    <input type="text" id="udyam_registration" name="udyam_registration" value="{{ legal_details.udyam_registration if legal_details else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="tan_number" class="form-label">TAN Number</label>
+                    <input type="text" id="tan_number" name="tan_number" value="{{ legal_details.tan_number if legal_details else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="esi_registration" class="form-label">ESI Registration</label>
+                    <input type="text" id="esi_registration" name="esi_registration" value="{{ legal_details.esi_registration if legal_details else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="pf_registration" class="form-label">PF Registration</label>
+                    <input type="text" id="pf_registration" name="pf_registration" value="{{ legal_details.pf_registration if legal_details else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="labour_license_number" class="form-label">Labour License Number</label>
+                    <input type="text" id="labour_license_number" name="labour_license_number" value="{{ legal_details.labour_license_number if legal_details else '' }}">
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Financial Details</h2>
+                    <p class="panel-subtitle">Banking information and historical turnover</p>
+                </div>
+            </div>
+            {% set financial_details = company_details.financial_details if company_details else {} %}
+            {% set turnover_history = financial_details.turnover_history if financial_details and financial_details.turnover_history else [] %}
+            <div class="form-grid two-col">
+                <div class="form-group">
+                    <label for="bank_name" class="form-label">Bank Name</label>
+                    <input type="text" id="bank_name" name="bank_name" value="{{ company_details.bank_name if company_details else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="account_holder_name" class="form-label">Account Holder Name</label>
+                    <input type="text" id="account_holder_name" name="account_holder_name" value="{{ company_details.account_holder_name if company_details else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="account_number" class="form-label">Account Number</label>
+                    <input type="text" id="account_number" name="account_number" value="{{ company_details.account_number if company_details else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="ifsc_code" class="form-label">IFSC Code</label>
+                    <input type="text" id="ifsc_code" name="ifsc_code" value="{{ company_details.ifsc_code if company_details else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="auditor_name" class="form-label">Statutory Auditor</label>
+                    <input type="text" id="auditor_name" name="auditor_name" value="{{ financial_details.auditor_name if financial_details else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="credit_rating" class="form-label">Credit Rating</label>
+                    <input type="text" id="credit_rating" name="credit_rating" value="{{ financial_details.credit_rating if financial_details else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="net_worth" class="form-label">Net Worth</label>
+                    <input type="text" id="net_worth" name="net_worth" value="{{ financial_details.net_worth if financial_details else '' }}" placeholder="e.g., ₹50 Cr">
+                </div>
+                <div class="form-group">
+                    <label for="credit_facility" class="form-label">Credit Facility</label>
+                    <input type="text" id="credit_facility" name="credit_facility" value="{{ financial_details.credit_facility if financial_details else '' }}">
+                </div>
+            </div>
+            <div class="turnover-input-grid">
+                <label class="form-label" style="grid-column: span 2;">Past 5 Years Turnover</label>
+                {% for i in range(5) %}
+                    {% set record = turnover_history[i] if turnover_history|length > i else None %}
+                    <div class="form-group">
+                        <label class="form-label">Financial Year</label>
+                        <input type="text" name="turnover_year_labels" value="{{ record.label if record else '' }}" placeholder="e.g., FY 2023-24">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Turnover Amount</label>
+                        <input type="text" name="turnover_year_values" value="{{ record.raw_amount if record else '' }}" placeholder="e.g., ₹12 Cr">
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Key Personnel</h2>
+                    <p class="panel-subtitle">Important contacts and decision makers</p>
+                </div>
+            </div>
+            <div class="form-grid three-col">
+                <div class="form-group">
+                    <label for="managing_director" class="form-label">Managing Director / CEO *</label>
+                    <input type="text" id="managing_director" name="managing_director" required value="{{ company_details.managing_director if company_details else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="technical_head" class="form-label">Technical Head</label>
+                    <input type="text" id="technical_head" name="technical_head" value="{{ company_details.technical_head if company_details else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="compliance_officer" class="form-label">Compliance Officer</label>
+                    <input type="text" id="compliance_officer" name="compliance_officer" value="{{ company_details.compliance_officer if company_details else '' }}">
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Supporting Certifications</h2>
+                    <p class="panel-subtitle">Upload relevant certifications and compliance documents</p>
+                </div>
+            </div>
+            <div class="new-certification-wrapper">
+                <div id="certificationContainer" class="certification-input-list">
+                    <div class="certification-input-row">
+                        <input type="text" name="certification_names[]" placeholder="Certification Name" class="form-input">
+                        <input type="file" name="certification_files[]" accept=".pdf,.jpg,.jpeg,.png" class="form-input">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="removeCertificationRow(this)">Remove</button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-outline" onclick="addCertificationRow('certificationContainer')">+ Add Certification</button>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-actions">
+                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">Save Company Details</button>
+            </div>
+        </section>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Industry sector checkbox handling
+// Add new sector row
+function addSectorRow() {
+    const container = document.getElementById('sectorSubsectorContainer');
+    const newRow = document.createElement('div');
+    newRow.className = 'sector-row';
+    newRow.style.cssText = 'display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.75rem; margin-bottom: 0.75rem; align-items: start;';
+    newRow.innerHTML = `
+        <input type="text" placeholder="Sector (e.g., IT)" class="sector-input">
+        <input type="text" placeholder="Sub-sectors (comma-separated, e.g., Cloud, AI, Cybersecurity)" class="subsector-input">
+        <button type="button" onclick="removeSectorRow(this)" class="btn btn-outline btn-sm">&times;</button>
+    `;
+    container.appendChild(newRow);
+}
+
+// Remove sector row
+function removeSectorRow(button) {
+    const container = document.getElementById('sectorSubsectorContainer');
+    if (container.children.length > 1) {
+        button.parentElement.remove();
+    } else {
+        alert('You must have at least one sector');
+    }
+}
+
+function addCertificationRow(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'certification-input-row';
+    row.style.cssText = 'display: grid; grid-template-columns: 1.5fr 1.5fr auto; gap: 0.75rem; align-items: center;';
+    row.innerHTML = `
+        <input type="text" name="certification_names[]" placeholder="Certification Name" class="form-input">
+        <input type="file" name="certification_files[]" accept=".pdf,.jpg,.jpeg,.png" class="form-input">
+        <button type="button" class="btn btn-outline btn-sm" onclick="removeCertificationRow(this)">Remove</button>
+    `;
+
+    container.appendChild(row);
+}
+
+function removeCertificationRow(button) {
+    const row = button.closest('.certification-input-row');
+    if (!row) return;
+
+    const container = row.parentElement;
+    if (!container) return;
+
+    if (container.children.length === 1) {
+        row.querySelectorAll('input').forEach((input) => {
+            input.value = '';
+        });
+    } else {
+        container.removeChild(row);
+    }
+}
+
+// Collect sector data before form submission
+function collectSectorData() {
+    const rows = document.querySelectorAll('.sector-row');
+    const sectorsData = [];
+
+    rows.forEach(row => {
+        const sectorInput = row.querySelector('.sector-input');
+        const subsectorInput = row.querySelector('.subsector-input');
+
+        const sector = sectorInput.value.trim();
+        const subsectorsText = subsectorInput.value.trim();
+
+        if (sector) {
+            const subsectors = subsectorsText
+                ? subsectorsText.split(',').map(s => s.trim()).filter(s => s)
+                : [];
+
+            sectorsData.push({
+                sector: sector,
+                subsectors: subsectors
+            });
+        }
+    });
+
+    const hiddenInput = document.getElementById('industry_sector');
+    if (sectorsData.length > 0) {
+        hiddenInput.value = JSON.stringify(sectorsData);
+        hiddenInput.setCustomValidity('');
+        return true;
+    } else {
+        hiddenInput.setCustomValidity('Please add at least one sector');
+        return false;
+    }
+}
+
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+    // No initialization needed for the new system
+});
+
+document.getElementById('companyDetailsForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    // Collect sector data
+    if (!collectSectorData()) {
+        const hiddenSectorInput = document.getElementById('industry_sector');
+        hiddenSectorInput.reportValidity();
+        return;
+    }
+
+    if (!this.checkValidity()) {
+        this.reportValidity();
+        return;
+    }
+
+    const submitBtn = document.getElementById('submitBtn');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Saving...';
+    submitBtn.disabled = true;
+
+    const formData = new FormData(this);
+
+    // Debug: Log turnover data being submitted
+    const turnoverLabels = formData.getAll('turnover_year_labels');
+    const turnoverValues = formData.getAll('turnover_year_values');
+    console.log('=== Submitting Company Details ===');
+    console.log('Turnover Labels:', turnoverLabels);
+    console.log('Turnover Values:', turnoverValues);
+    console.log('Total turnover fields:', turnoverLabels.length);
+
+    fetch('/api/company-details', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        } else {
+            return response.text().then(text => {
+                throw new Error(text);
+            });
+        }
+    })
+    .then(data => {
+        // Redirect to home page
+        window.location.href = data.redirect || '/home';
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving company details. Please try again.');
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    });
+});
+
+function skipToApp() {
+    window.location.href = '/home';
+}
+</script>
+{% endblock %}

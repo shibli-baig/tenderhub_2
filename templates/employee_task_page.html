@@ -1,0 +1,1189 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tender.title }} - Task Workspace - TenderHub{% endblock %}
+
+{% block extra_head %}
+<style>
+    .task-workspace {
+        display: grid;
+        grid-template-columns: 300px 1fr 350px;
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+        min-height: calc(100vh - 200px);
+    }
+
+    .workspace-sidebar,
+    .workspace-main,
+    .workspace-chat {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Sticky Chat Box */
+    .workspace-chat {
+        position: sticky;
+        top: 1.5rem;
+        align-self: start;
+        max-height: calc(100vh - 3rem);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .workspace-sidebar h3,
+    .workspace-main h3,
+    .workspace-chat h3 {
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+    }
+
+    .workspace-chat h3 {
+        flex-shrink: 0; /* Prevent shrinking in sticky flex container */
+    }
+
+    /* Sidebar */
+    .tender-info {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .tender-info h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+        color: var(--primary-color);
+    }
+
+    .tender-meta {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card-mini {
+        background: var(--background);
+        padding: 0.75rem;
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    .stat-card-mini .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+
+    .stat-card-mini .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    .team-members {
+        margin-bottom: 1.5rem;
+    }
+
+    .team-member {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: var(--background);
+        border-radius: 12px;
+        margin-bottom: 0.5rem;
+    }
+
+    .team-member-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+
+    .team-member-info h4 {
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .team-member-info p {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+
+    /* Main Content */
+    .task-form {
+        background: var(--background);
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 0.9rem;
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    .btn-group {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .task-list {
+        margin-bottom: 2rem;
+    }
+
+    .task-card {
+        background: var(--background);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .task-card.priority-high {
+        border-left: 4px solid #ef4444;
+    }
+
+    .task-card.priority-medium {
+        border-left: 4px solid #f59e0b;
+    }
+
+    .task-card.priority-low {
+        border-left: 4px solid #10b981;
+    }
+
+    .task-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 0.75rem;
+    }
+
+    .task-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0;
+        color: var(--text-primary);
+    }
+
+    .task-badges {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .task-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-weight: 500;
+    }
+
+    .task-badge.status-pending {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    .task-badge.status-in_progress {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .task-badge.status-completed {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .task-meta {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-bottom: 0.75rem;
+    }
+
+    .task-description {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.75rem;
+        line-height: 1.5;
+    }
+
+    .task-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-sm {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        background: var(--primary-color);
+        color: white;
+        transition: all 0.2s;
+    }
+
+    .btn-sm:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+
+    .btn-sm.btn-secondary {
+        background: #6b7280;
+    }
+
+    .btn-sm.btn-danger {
+        background: #ef4444;
+    }
+
+    .subtask-list {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .subtask-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: var(--card-bg);
+        border-radius: 12px;
+        margin-bottom: 0.5rem;
+    }
+
+    .subtask-info {
+        flex: 1;
+    }
+
+    .subtask-title {
+        font-size: 0.9rem;
+        margin: 0 0 0.25rem 0;
+    }
+
+    .subtask-meta {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* Concerns Section */
+    .concerns-section {
+        margin-top: 2rem;
+    }
+
+    .concern-card {
+        background: var(--background);
+        border: 1px solid var(--border-color);
+        border-left: 4px solid #ef4444;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .concern-card.resolved {
+        border-left-color: #10b981;
+    }
+
+    .concern-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+    }
+
+    .concern-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .concern-type {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        background: #fee2e2;
+        color: #991b1b;
+        border-radius: 12px;
+    }
+
+    .concern-description {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+    }
+
+    .concern-meta {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* Chat */
+    .chat-messages {
+        flex: 1;
+        min-height: 0; /* Important for flexbox scrolling */
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: var(--background);
+    }
+
+    .chat-message {
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        border-radius: 12px;
+        background: var(--card-bg);
+    }
+
+    .chat-message.manager {
+        background: #dbeafe;
+        margin-left: 2rem;
+    }
+
+    .chat-message.employee {
+        background: var(--background);
+        margin-right: 2rem;
+    }
+
+    .chat-sender {
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        color: var(--text-primary);
+    }
+
+    .chat-text {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
+    }
+
+    .chat-time {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .chat-input-form {
+        display: flex;
+        gap: 0.5rem;
+        flex-shrink: 0; /* Prevent shrinking in sticky flex container */
+    }
+
+    .chat-input {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 0.9rem;
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+
+    .btn-send {
+        padding: 0.75rem 1.5rem;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    /* Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 2rem;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-header h2 {
+        font-size: 1.3rem;
+        margin: 0;
+    }
+
+    .modal-close {
+        font-size: 1.5rem;
+        cursor: pointer;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        padding: 0;
+        width: 30px;
+        height: 30px;
+    }
+
+    .employee-list {
+        margin-bottom: 1.5rem;
+    }
+
+    .employee-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--background);
+        border: 2px solid var(--border-color);
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .employee-item:hover {
+        border-color: var(--primary-color);
+    }
+
+    .employee-item.selected {
+        border-color: var(--primary-color);
+        background: rgba(59, 130, 246, 0.1);
+    }
+
+    .employee-item.suggested {
+        border-color: #10b981;
+    }
+
+    .employee-checkbox {
+        width: 20px;
+        height: 20px;
+    }
+
+    .employee-details h4 {
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    .employee-details p {
+        margin: 0.25rem 0 0 0;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .suggested-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        background: #d1fae5;
+        color: #065f46;
+        border-radius: 12px;
+        margin-left: auto;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+        .task-workspace {
+            grid-template-columns: 250px 1fr 300px;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .task-workspace {
+            grid-template-columns: 1fr;
+        }
+
+        .workspace-chat {
+            order: 3;
+            position: static; /* Disable sticky on mobile */
+            max-height: none;
+        }
+
+        .chat-messages {
+            height: 350px; /* Fixed height on mobile */
+            flex: none;
+        }
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-muted);
+    }
+
+    .empty-state svg {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1600px;">
+    <!-- Page Header -->
+    <div style="margin-bottom: 1.5rem;">
+        <a href="/tender-management?tab=awarded" id="taskWorkspaceBackLink" class="btn-sm btn-secondary" style="display: inline-block; text-decoration: none; margin-bottom: 1rem;">
+            ← Back to Tender Management
+        </a>
+        <h1 style="font-size: 1.8rem; margin: 0 0 0.5rem 0;">Task Workspace</h1>
+        <p style="color: var(--text-muted); margin: 0;">Manage tasks, team members, and communication for {{ tender.title }}</p>
+    </div>
+
+    <!-- Task Workspace Grid -->
+    <div class="task-workspace">
+        <!-- Left Sidebar -->
+        <div class="workspace-sidebar">
+            <!-- Tender Info -->
+            <div class="tender-info">
+                <h2>{{ tender.title }}</h2>
+                <div class="tender-meta">
+                    <div>📋 {{ tender.tender_reference_number or 'N/A' }}</div>
+                    <div>🏛️ {{ tender.organization_name or 'N/A' }}</div>
+                    {% if tender.deadline %}
+                    <div>⏰ Due: {{ tender.deadline.strftime('%d %b %Y') }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <h3>Quick Stats</h3>
+            <div class="stats-grid">
+                <div class="stat-card-mini">
+                    <div class="stat-value">{{ stats.total_tasks }}</div>
+                    <div class="stat-label">Total Tasks</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div class="stat-value">{{ stats.completed_tasks }}</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div class="stat-value">{{ stats.in_progress_tasks }}</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div class="stat-value">{{ stats.open_concerns }}</div>
+                    <div class="stat-label">Open Concerns</div>
+                </div>
+            </div>
+
+            <!-- Team Members -->
+            <h3>Team Members ({{ stats.team_size }})</h3>
+            <div class="team-members">
+                {% if assignments %}
+                    {% for assignment in assignments %}
+                    <div class="team-member">
+                        <div class="team-member-avatar">
+                            {{ assignment.employee.name[0].upper() }}
+                        </div>
+                        <div class="team-member-info">
+                            <h4>{{ assignment.employee.name }}</h4>
+                            <p>{{ assignment.role }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">No team members yet</p>
+                {% endif %}
+            </div>
+
+            <button type="button" class="btn-sm" onclick="openEmployeeModal()" style="width: 100%;">
+                + Add Team Members
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="workspace-main">
+            <!-- Create Task Form -->
+            <div class="task-form">
+                <h3>Create New Task</h3>
+                {% if all_employees %}
+                <form id="createTaskForm" onsubmit="createTask(event)">
+                    <div class="form-group">
+                        <label for="taskTitle">Task Title *</label>
+                        <input type="text" id="taskTitle" name="title" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="taskDescription">Description</label>
+                        <textarea id="taskDescription" name="description"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="taskEmployee">Assign To *</label>
+                            <select id="taskEmployee" name="assigned_employee_id" required>
+                                <option value="">Select employee...</option>
+                                {% for employee in all_employees %}
+                                <option value="{{ employee.id }}">{{ employee.name }}{% if employee.role %} ({{ employee.role }}){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="taskPriority">Priority</label>
+                            <select id="taskPriority" name="priority">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="taskDeadline">Deadline</label>
+                            <input type="datetime-local" id="taskDeadline" name="deadline">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="taskHours">Estimated Hours</label>
+                            <input type="number" id="taskHours" name="estimated_hours" step="0.5" min="0">
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn-sm" style="background: #3b82f6; color: white; font-weight: 600;">✓ Create Task</button>
+                        <button type="reset" class="btn-sm btn-secondary">Reset</button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="empty-state">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 48px; height: 48px; margin-bottom: 1rem; opacity: 0.5;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                    <p>Add employees to your company first to create tasks</p>
+                    <a href="/employee-management" class="btn-sm" style="display: inline-block; text-decoration: none; margin-top: 1rem;">Manage Employees</a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Task List -->
+            <div class="task-list">
+                <h3>Tasks ({{ tasks|length }})
+                    <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">
+                        • Click "➕ Add Subtask" on any task to break it down into smaller steps
+                    </span>
+                </h3>
+                {% if tasks %}
+                    {% for task in tasks %}
+                    <div class="task-card priority-{{ task.priority }}" id="task-{{ task.id }}">
+                        <div class="task-header">
+                            <div>
+                                <h4 class="task-title">{{ task.title }}</h4>
+                            </div>
+                            <div class="task-badges">
+                                <span class="task-badge status-{{ task.status }}">{{ task.status|replace('_', ' ')|title }}</span>
+                                <span class="task-badge">{{ task.priority|title }}</span>
+                            </div>
+                        </div>
+
+                        <div class="task-meta">
+                            <span>👤 {{ task.assignment.employee.name if task.assignment and task.assignment.employee else 'Unassigned' }}</span>
+                            {% if task.deadline %}
+                            <span>⏰ {{ task.deadline.strftime('%d %b %Y, %I:%M %p') }}</span>
+                            {% endif %}
+                            {% if task.estimated_hours %}
+                            <span>⏱️ {{ task.estimated_hours }}h</span>
+                            {% endif %}
+                        </div>
+
+                        {% if task.description %}
+                        <div class="task-description">{{ task.description }}</div>
+                        {% endif %}
+
+                        <div class="task-actions">
+                            {% if task.status != 'completed' %}
+                            <button class="btn-sm" onclick="updateTaskStatus({{ task.id }}, 'completed')">✓ Complete</button>
+                            {% endif %}
+                            <button class="btn-sm btn-secondary" onclick="editTask({{ task.id }})">✏️ Edit</button>
+                            <button class="btn-sm btn-secondary" onclick="addSubtask({{ task.id }})">➕ Add Subtask</button>
+                            <button class="btn-sm btn-danger" onclick="deleteTask({{ task.id }})">🗑️ Delete</button>
+                        </div>
+
+                        <!-- Subtasks -->
+                        {% if task.subtasks_list %}
+                        <div class="subtask-list">
+                            <h5 style="font-size: 0.9rem; margin-bottom: 0.75rem;">Subtasks ({{ task.subtasks_list|length }})</h5>
+                            {% for subtask in task.subtasks_list %}
+                            <div class="subtask-item">
+                                <div class="subtask-info">
+                                    <h6 class="subtask-title">
+                                        {% if subtask.status == 'completed' %}✓{% else %}○{% endif %}
+                                        {{ subtask.title }}
+                                    </h6>
+                                    <div class="subtask-meta">
+                                        {{ subtask.assignment.employee.name if subtask.assignment and subtask.assignment.employee else 'Unassigned' }} •
+                                        <span class="task-badge status-{{ subtask.status }}" style="display: inline;">{{ subtask.status|replace('_', ' ')|title }}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    {% if subtask.status != 'completed' %}
+                                    <button class="btn-sm" onclick="updateTaskStatus({{ subtask.id }}, 'completed')" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">Complete</button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <h4>No tasks yet</h4>
+                        <p>Create your first task to get started</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Concerns Section -->
+            <div class="concerns-section">
+                <h3>Concerns & Requests ({{ concerns|length }})</h3>
+                {% if concerns %}
+                    {% for concern in concerns %}
+                    <div class="concern-card {% if concern.status == 'resolved' %}resolved{% endif %}">
+                        <div class="concern-header">
+                            <span class="concern-title">{{ concern.title }}</span>
+                            <span class="concern-type">{{ concern.concern_type|replace('_', ' ')|title }}</span>
+                        </div>
+                        <div class="concern-description">{{ concern.description }}</div>
+                        <div class="concern-meta">
+                            Raised by {{ concern.employee.name }} •
+                            {{ concern.created_at.strftime('%d %b %Y') }} •
+                            Status: {{ concern.status|title }}
+                            {% if concern.status == 'resolved' %}
+                             • Resolved by {{ concern.resolver.name if concern.resolver else 'Manager' }}
+                            {% endif %}
+                        </div>
+                        {% if concern.status != 'resolved' %}
+                        <button class="btn-sm" onclick="resolveConcern({{ concern.id }})" style="margin-top: 0.75rem;">Resolve</button>
+                        {% endif %}
+                        {% if concern.resolution_notes %}
+                        <div style="margin-top: 0.75rem; padding: 0.75rem; background: var(--card-bg); border-radius: 12px;">
+                            <strong>Resolution:</strong> {{ concern.resolution_notes }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <h4>No concerns yet</h4>
+                        <p>All tasks are running smoothly</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Chat -->
+        <div class="workspace-chat">
+            <h3>Team Chat</h3>
+            <div class="chat-messages" id="chatMessages">
+                {% if messages %}
+                    {% for message in messages %}
+                    <div class="chat-message {% if message.employee_id %}employee{% else %}manager{% endif %}">
+                        <div class="chat-sender">
+                            {% if message.employee_id %}
+                                {{ message.employee.name }}
+                            {% else %}
+                                {{ current_user.name }} (Manager)
+                            {% endif %}
+                        </div>
+                        <div class="chat-text">{{ message.message }}</div>
+                        <div class="chat-time">{{ message.created_at.strftime('%d %b, %I:%M %p') }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <p>No messages yet. Start the conversation!</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            {% if assignments %}
+            <form class="chat-input-form" onsubmit="sendMessage(event)">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." required>
+                <button type="submit" class="btn-send">Send</button>
+            </form>
+            {% else %}
+            <div style="padding: 1rem; text-align: center; background: var(--background); border-radius: 12px; border: 1px solid var(--border-color);">
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0;">Add team members to enable chat</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Employee Selection Modal -->
+<div id="employeeModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add Team Members</h2>
+            <button class="modal-close" onclick="closeEmployeeModal()">&times;</button>
+        </div>
+
+        <form id="assignEmployeeForm" onsubmit="assignEmployees(event)">
+            {% if suggested_employees %}
+            <div style="margin-bottom: 1.5rem;">
+                <h4 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--text-primary);">Suggested (Previously Worked)</h4>
+                <div class="employee-list">
+                    {% for employee in suggested_employees %}
+                    <label class="employee-item suggested">
+                        <input type="checkbox" name="employee_ids" value="{{ employee.id }}" class="employee-checkbox">
+                        <div class="employee-details">
+                            <h4>{{ employee.name }}</h4>
+                            <p>{{ employee.email }}</p>
+                        </div>
+                        <span class="suggested-badge">Suggested</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <h4 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--text-primary);">All Employees</h4>
+            <div class="employee-list">
+                {% for employee in all_employees %}
+                {% if employee.id not in assigned_employee_ids %}
+                <label class="employee-item">
+                    <input type="checkbox" name="employee_ids" value="{{ employee.id }}" class="employee-checkbox">
+                    <div class="employee-details">
+                        <h4>{{ employee.name }}</h4>
+                        <p>{{ employee.email }}</p>
+                    </div>
+                </label>
+                {% endif %}
+                {% endfor %}
+            </div>
+
+            <div class="form-group" style="margin-top: 1.5rem;">
+                <label for="assignRole">Role *</label>
+                <input type="text" id="assignRole" name="role" placeholder="e.g., Developer, Designer, Analyst" required>
+            </div>
+
+            <div class="btn-group" style="margin-top: 1.5rem;">
+                <button type="submit" class="btn-sm">Assign Selected</button>
+                <button type="button" class="btn-sm btn-secondary" onclick="closeEmployeeModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Task Modal -->
+<div id="editTaskModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Task</h2>
+            <button class="modal-close" onclick="closeEditTaskModal()">&times;</button>
+        </div>
+
+        <form id="editTaskForm" onsubmit="updateTask(event)">
+            <input type="hidden" id="editTaskId" name="task_id">
+
+            <div class="form-group">
+                <label for="editTaskTitle">Task Title *</label>
+                <input type="text" id="editTaskTitle" name="title" required>
+            </div>
+
+            <div class="form-group">
+                <label for="editTaskDescription">Description</label>
+                <textarea id="editTaskDescription" name="description"></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editTaskPriority">Priority</label>
+                    <select id="editTaskPriority" name="priority">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="editTaskStatus">Status</label>
+                    <select id="editTaskStatus" name="status">
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="editTaskDeadline">Deadline</label>
+                <input type="datetime-local" id="editTaskDeadline" name="deadline">
+            </div>
+
+            <div class="btn-group" style="margin-top: 1.5rem;">
+                <button type="submit" class="btn-sm">Save Changes</button>
+                <button type="button" class="btn-sm btn-secondary" onclick="closeEditTaskModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Subtask Modal -->
+<div id="subtaskModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add Subtask</h2>
+            <button class="modal-close" onclick="closeSubtaskModal()">&times;</button>
+        </div>
+
+        <form id="subtaskForm" onsubmit="createSubtask(event)">
+            <input type="hidden" id="subtaskParentId" name="parent_task_id">
+
+            <div class="form-group">
+                <label for="subtaskTitle">Subtask Title *</label>
+                <input type="text" id="subtaskTitle" name="title" required>
+            </div>
+
+            <div class="form-group">
+                <label for="subtaskDescription">Description</label>
+                <textarea id="subtaskDescription" name="description"></textarea>
+            </div>
+
+            <div style="padding: 0.75rem; background: var(--background); border-radius: 12px; margin-bottom: 1rem; border: 1px solid var(--border-color);">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+                    ℹ️ This subtask will be automatically assigned to the same employee as the parent task.
+                </p>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="subtaskPriority">Priority</label>
+                    <select id="subtaskPriority" name="priority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="subtaskDeadline">Deadline</label>
+                    <input type="datetime-local" id="subtaskDeadline" name="deadline">
+                </div>
+            </div>
+
+            <div class="btn-group" style="margin-top: 1.5rem;">
+                <button type="submit" class="btn-sm">Create Subtask</button>
+                <button type="button" class="btn-sm btn-secondary" onclick="closeSubtaskModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Resolve Concern Modal -->
+<div id="resolveConcernModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Resolve Concern</h2>
+            <button class="modal-close" onclick="closeResolveConcernModal()">&times;</button>
+        </div>
+
+        <form id="resolveConcernForm" onsubmit="submitResolveConcern(event)">
+            <input type="hidden" id="resolveConcernId" name="concern_id">
+
+            <div class="form-group">
+                <label for="resolutionNotes">Resolution Notes *</label>
+                <textarea id="resolutionNotes" name="resolution_notes" required placeholder="Explain how this concern was resolved..."></textarea>
+            </div>
+
+            <div class="btn-group" style="margin-top: 1.5rem;">
+                <button type="submit" class="btn-sm">Mark as Resolved</button>
+                <button type="button" class="btn-sm btn-secondary" onclick="closeResolveConcernModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const tenderId = "{{ tender.id }}";
+    const currentManagerId = "{{ current_user.id }}";
+    const currentManagerName = "{{ current_user.company_name or current_user.email }}";
+
+    // Store task data for editing
+    const tasksData = {
+        {% for task in tasks %}
+        {{ task.id }}: {
+            title: "{{ task.title }}",
+            description: "{{ task.description or '' }}",
+            priority: "{{ task.priority }}",
+            status: "{{ task.status }}",
+            deadline: "{{ task.deadline.strftime('%Y-%m-%dT%H:%M') if task.deadline else '' }}"
+        },
+        {% endfor %}
+    };
+</script>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', path='js/task_management.js') }}"></script>
+<script>
+    (function () {
+        const BACK_LINK_ID = 'taskWorkspaceBackLink';
+        const STORAGE_KEY = 'taskAssignmentBackSource';
+        const DESTINATIONS = {
+            project: {
+                url: '/project-management',
+                label: '← Back to Project Management'
+            },
+            awarded: {
+                url: '/tender-management?tab=awarded',
+                label: '← Back to Tender Management'
+            }
+        };
+
+        function normalizeSource(value) {
+            if (!value) return null;
+            const lowered = value.toLowerCase();
+            if (lowered.includes('project')) return 'project';
+            if (lowered.includes('award') || lowered.includes('tender')) return 'awarded';
+            return DESTINATIONS[lowered] ? lowered : null;
+        }
+
+        function detectSourceFromReferrer() {
+            if (!document.referrer) return null;
+            try {
+                const url = new URL(document.referrer);
+                if (url.pathname.includes('/project-management')) {
+                    return 'project';
+                }
+                if (url.pathname.includes('/tender-management')) {
+                    return 'awarded';
+                }
+            } catch (error) {
+                console.warn('Unable to parse referrer for back link.', error);
+            }
+            return null;
+        }
+
+        function getStoredSource() {
+            try {
+                return sessionStorage.getItem(STORAGE_KEY);
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function setStoredSource(source) {
+            try {
+                sessionStorage.setItem(STORAGE_KEY, source);
+            } catch (error) {
+                console.warn('Unable to persist back link source.', error);
+            }
+        }
+
+        function clearStoredSource() {
+            try {
+                sessionStorage.removeItem(STORAGE_KEY);
+            } catch (error) {
+                // ignore
+            }
+        }
+
+        function configureBackLink() {
+            const backLink = document.getElementById(BACK_LINK_ID);
+            if (!backLink) return;
+
+            const params = new URLSearchParams(window.location.search);
+            const paramSource = normalizeSource(params.get('source'));
+            let resolved = paramSource || detectSourceFromReferrer();
+
+            if (!resolved) {
+                resolved = normalizeSource(getStoredSource());
+            }
+
+            if (resolved && DESTINATIONS[resolved]) {
+                setStoredSource(resolved);
+                const dest = DESTINATIONS[resolved];
+                backLink.href = dest.url;
+                backLink.textContent = dest.label;
+                return;
+            }
+
+            clearStoredSource();
+            if (document.referrer) {
+                backLink.href = document.referrer;
+                backLink.textContent = '← Back to Previous Page';
+            } else {
+                backLink.href = '/tender-management?tab=awarded';
+                backLink.textContent = '← Back to Tender Management';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', configureBackLink);
+    })();
+</script>
+{% endblock %}

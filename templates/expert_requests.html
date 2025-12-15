@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Service Requests - TenderHub Expert-Verse{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h1 class="section-title">Service Requests</h1>
+            <p class="section-subtitle">Companies seeking your expertise</p>
+        </div>
+        <div class="section-actions">
+            <a href="/expert/dashboard" class="btn btn-outline">Back to Dashboard</a>
+        </div>
+    </div>
+</section>
+
+<!-- Status Filter -->
+<section class="panel" style="margin-bottom: 1.5rem;">
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <a href="?status=all" class="btn btn-sm {% if status_filter == 'all' %}btn-primary{% else %}btn-outline{% endif %}">All</a>
+        <a href="?status=pending" class="btn btn-sm {% if status_filter == 'pending' %}btn-primary{% else %}btn-outline{% endif %}">Pending</a>
+        <a href="?status=accepted" class="btn btn-sm {% if status_filter == 'accepted' %}btn-primary{% else %}btn-outline{% endif %}">Accepted</a>
+        <a href="?status=rejected" class="btn btn-sm {% if status_filter == 'rejected' %}btn-primary{% else %}btn-outline{% endif %}">Rejected</a>
+        <a href="?status=completed" class="btn btn-sm {% if status_filter == 'completed' %}btn-primary{% else %}btn-outline{% endif %}">Completed</a>
+    </div>
+</section>
+
+<!-- Requests List -->
+<section class="panel">
+    <div class="profile-card__header" style="margin-bottom: 1.5rem;">
+        <div>
+            <h2 class="surface-card__title">All Requests</h2>
+            <p class="panel-subtitle">{{ total_requests }} requests found</p>
+        </div>
+    </div>
+
+    {% if service_requests and service_requests|length > 0 %}
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Company</th>
+                    <th>Tender</th>
+                    <th>Service Required</th>
+                    <th>Budget</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for request in service_requests %}
+                <tr>
+                    <td>{{ request.company_name }}</td>
+                    <td>{{ request.tender_title }}</td>
+                    <td>{{ request.service_type }}</td>
+                    <td>{% if request.budget %}₹{{ "{:,.0f}".format(request.budget) }}{% else %}Not disclosed{% endif %}</td>
+                    <td>
+                        <span class="badge badge-{{ 'warning' if request.status == 'pending' else 'success' if request.status == 'accepted' else 'danger' if request.status == 'rejected' else 'secondary' }}">
+                            {{ request.status|title }}
+                        </span>
+                    </td>
+                    <td>{{ request.created_at.strftime('%b %d, %Y') if request.created_at else 'N/A' }}</td>
+                    <td>
+                        <a href="/expert/request/{{ request.id }}" class="btn btn-sm btn-primary">View Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination" style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem;">
+        {% if has_prev %}
+        <a href="?page={{ page - 1 }}&status={{ status_filter }}" class="btn btn-sm btn-outline">← Previous</a>
+        {% endif %}
+
+        <span class="btn btn-sm btn-primary" style="pointer-events: none;">Page {{ page }} of {{ total_pages }}</span>
+
+        {% if has_next %}
+        <a href="?page={{ page + 1 }}&status={{ status_filter }}" class="btn btn-sm btn-outline">Next →</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state__icon">📭</div>
+        <h3 class="empty-state__title">No service requests</h3>
+        <p class="empty-state__description">Companies will be able to send you service requests based on your expertise.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.empty-state__icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.empty-state__description {
+    color: var(--text-secondary);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.badge-warning {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.badge-success {
+    background-color: #10b981;
+    color: white;
+}
+
+.badge-danger {
+    background-color: #ef4444;
+    color: white;
+}
+
+.badge-secondary {
+    background-color: var(--border-color);
+    color: var(--text-secondary);
+}
+</style>
+{% endblock %}
+

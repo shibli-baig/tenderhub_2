@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - TenderHub{% endblock %}
+
+{% block content %}
+<style>
+    .construction-container {
+        min-height: 60vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+
+    .construction-content {
+        text-align: center;
+        max-width: 600px;
+    }
+
+    .construction-icon {
+        font-size: 120px;
+        margin-bottom: 2rem;
+        animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+        0%, 100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(-20px);
+        }
+    }
+
+    .construction-content h1 {
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: var(--text-primary, #1a1a1a);
+    }
+
+    .construction-content p {
+        font-size: 18px;
+        color: var(--text-secondary, #6b7280);
+        margin-bottom: 2rem;
+        line-height: 1.6;
+    }
+
+    .back-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 12px 24px;
+        background: linear-gradient(135deg, #6366f1, #4338ca);
+        color: white;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .back-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    }
+
+    .features-list {
+        background: var(--surface-bg, #f8f9fa);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+        text-align: left;
+    }
+
+    .features-list h3 {
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: var(--text-primary, #1a1a1a);
+    }
+
+    .features-list ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .features-list li {
+        padding: 0.5rem 0;
+        color: var(--text-secondary, #6b7280);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .features-list li:before {
+        content: "✓";
+        color: var(--primary-color, #6366f1);
+        font-weight: 700;
+        font-size: 18px;
+    }
+</style>
+
+<div class="construction-container">
+    <div class="construction-content">
+        <div class="construction-icon">🚧</div>
+        <h1>{{ page_title }}</h1>
+        <p>{{ page_description }}</p>
+
+        {% if coming_soon_features %}
+        <div class="features-list">
+            <h3>Coming Soon:</h3>
+            <ul>
+                {% for feature in coming_soon_features %}
+                <li>{{ feature }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div style="margin-top: 2rem;">
+            <a href="/home" class="back-button">
+                ← Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

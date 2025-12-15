@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+
+{% block title %}Employee Workspace - TenderHub{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <span class="chip chip--neutral">Employee workspace</span>
+            <h1 class="section-title">Welcome back, {{ current_employee.name }}</h1>
+            <p class="section-subtitle">Review your tender assignments, track progress and stay ahead of deadlines.</p>
+        </div>
+    </div>
+
+    <div class="employee-stats-grid">
+        <article class="employee-stat-card">
+            <span class="employee-stat-label">Active tenders</span>
+            <span class="employee-stat-value">{{ active_tenders }}</span>
+            <p class="employee-stat-hint">Tenders you are currently collaborating on.</p>
+        </article>
+        <article class="employee-stat-card">
+            <span class="employee-stat-label">Tasks in progress</span>
+            <span class="employee-stat-value">{{ pending_tasks }}</span>
+            <p class="employee-stat-hint">Open tasks awaiting your update.</p>
+        </article>
+        <article class="employee-stat-card employee-stat-card--alert">
+            <span class="employee-stat-label">Overdue tasks</span>
+            <span class="employee-stat-value">{{ overdue_tasks }}</span>
+            <p class="employee-stat-hint">Prioritise these to restore timeline health.</p>
+        </article>
+        <article class="employee-stat-card employee-stat-card--today">
+            <span class="employee-stat-label">Due today</span>
+            <span class="employee-stat-value">{{ due_today }}</span>
+            <p class="employee-stat-hint">Finish these before sign-off.</p>
+        </article>
+    </div>
+</section>
+
+<section class="section">
+    <div class="panel">
+        <div class="panel-header">
+            <div>
+                <h2 class="surface-card__title">Focus filters</h2>
+                <p class="panel-subtitle">Search by tender name and narrow by upcoming deadlines.</p>
+            </div>
+        </div>
+
+        <form class="filters-bar">
+            <div class="form-group">
+                <label for="searchFilter" class="form-label">Search tenders</label>
+                <input type="text" id="searchFilter" placeholder="Search by title or ID" onkeyup="filterTenders()">
+            </div>
+            <div class="form-group">
+                <label for="deadlineFilter" class="form-label">Deadline</label>
+                <select id="deadlineFilter" onchange="filterTenders()">
+                    <option value="">All deadlines</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="today">Due today</option>
+                    <option value="week">Due this week</option>
+                    <option value="month">Due later</option>
+                </select>
+            </div>
+            <div class="actions">
+                <button type="button" class="btn btn-primary" onclick="filterTenders()">Apply filters</button>
+                <button type="button" class="btn btn-outline" onclick="clearFilters()">Reset</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <div>
+                <h2 class="surface-card__title">Active tender assignments</h2>
+                <p class="panel-subtitle">Click a card to open the detailed task board for that tender.</p>
+            </div>
+            <div class="panel-actions">
+                <span class="badge badge--muted">{{ tender_summaries|length }} total</span>
+            </div>
+        </div>
+
+        {% if tender_summaries %}
+        <div class="employee-tenders-grid" id="tendersGrid">
+            {% for summary in tender_summaries %}
+            {% set progress_percent = ((summary.total_tasks - summary.tasks_left) / summary.total_tasks * 100) if summary.total_tasks > 0 else 0 %}
+            {% set progress_deg = progress_percent * 3.6 %}
+            {% set deadline_class = 'is-open' %}
+            {% set deadline_status = 'No deadline' %}
+            {% set deadline_caption = 'Awaiting schedule' %}
+            {% set deadline_bucket = 'month' %}
+            {% if summary.nearest_deadline %}
+                {% if summary.nearest_deadline < now %}
+                    {% set days_overdue = (now - summary.nearest_deadline).days %}
+                    {% set deadline_class = 'is-overdue' %}
+                    {% set deadline_status = 'Overdue' %}
+                    {% set deadline_caption = days_overdue ~ ' day' ~ ('s' if days_overdue != 1 else '') ~ ' overdue' %}
+                    {% set deadline_bucket = 'overdue' %}
+                {% else %}
+                    {% set days_left = (summary.nearest_deadline - now).days %}
+                    {% if days_left == 0 %}
+                        {% set deadline_class = 'is-urgent' %}
+                        {% set deadline_status = 'Due today' %}
+                        {% set deadline_caption = 'Wrap up before day end' %}
+                        {% set deadline_bucket = 'today' %}
+                    {% elif days_left <= 3 %}
+                        {% set deadline_class = 'is-urgent' %}
+                        {% set deadline_status = 'Due soon' %}
+                        {% set deadline_caption = days_left ~ ' day' ~ ('s' if days_left != 1 else '') ~ ' left' %}
+                        {% set deadline_bucket = 'today' %}
+                    {% elif days_left <= 7 %}
+                        {% set deadline_class = 'is-warning' %}
+                        {% set deadline_status = 'Due this week' %}
+                        {% set deadline_caption = days_left ~ ' day' ~ ('s' if days_left != 1 else '') ~ ' left' %}
+                        {% set deadline_bucket = 'week' %}
+                    {% else %}
+                        {% set deadline_class = 'is-open' %}
+                        {% set deadline_status = 'Scheduled' %}
+                        {% set deadline_caption = days_left ~ ' day' ~ ('s' if days_left != 1 else '') ~ ' left' %}
+                        {% set deadline_bucket = 'month' %}
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+
+            {% set priority_class = 'badge--muted' %}
+            {% if summary.priority == 'high' %}
+                {% set priority_class = 'badge--danger' %}
+            {% elif summary.priority == 'medium' %}
+                {% set priority_class = 'badge--warning' %}
+            {% elif summary.priority == 'low' %}
+                {% set priority_class = 'badge--success' %}
+            {% endif %}
+
+            {% set card_state = '' %}
+            {% if deadline_class == 'is-overdue' %}
+                {% set card_state = 'is-overdue' %}
+            {% elif deadline_class in ['is-urgent', 'is-warning'] %}
+                {% set card_state = 'is-urgent' %}
+            {% endif %}
+
+            <article
+                class="surface-card employee-tender-card {{ card_state }}"
+                data-deadline="{{ deadline_bucket }}"
+                data-tender-id="{{ summary.id }}"
+                data-tender-title="{{ summary.title }}"
+                onclick="openTender('{{ summary.id }}')">
+                <div class="employee-tender-card__header">
+                    <h3 class="employee-tender-card__title">{{ summary.title }}</h3>
+                    <div class="employee-tender-card__meta">
+                        {% if summary.authority %}
+                            <span class="badge badge--muted">Authority · {{ summary.authority }}</span>
+                        {% endif %}
+                        {% if summary.reference_id %}
+                            <span class="badge badge--muted">ID · {{ summary.reference_id }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="employee-tender-card__progress">
+                    <div class="employee-progress-bar-container">
+                        <div class="employee-progress-bar">
+                            <div class="employee-progress-bar-fill" style="width: {{ progress_percent|round|int }}%;"></div>
+                        </div>
+                        <span class="employee-progress-label">{{ summary.total_tasks - summary.tasks_left }} / {{ summary.total_tasks }} tasks completed</span>
+                    </div>
+                </div>
+
+                <div class="employee-tender-card__deadline">
+                    <div class="employee-deadline-headline">
+                        <span class="employee-deadline-chip {{ deadline_class }}">{{ deadline_status }}</span>
+                        {% if summary.nearest_deadline %}
+                            <span class="employee-deadline-date">{{ summary.nearest_deadline.strftime('%d %b %Y') }}</span>
+                        {% else %}
+                            <span class="employee-deadline-date">No deadline set</span>
+                        {% endif %}
+                    </div>
+                    <span class="employee-deadline-caption">{{ deadline_caption }}</span>
+                </div>
+
+                <!-- Analysis Report Actions -->
+                <div class="employee-tender-card__actions">
+                    {% if not summary.has_analysis %}
+                    <button
+                        type="button"
+                        class="btn-tender-action btn-tender-action--primary"
+                        onclick="event.stopPropagation(); goToAnalysis('{{ summary.id }}')"
+                        title="Create analysis report for this tender">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Create Analysis
+                    </button>
+                    {% elif summary.is_analysis_owner %}
+                    <button
+                        type="button"
+                        class="btn-tender-action btn-tender-action--edit"
+                        onclick="event.stopPropagation(); goToAnalysis('{{ summary.id }}')"
+                        title="Edit your analysis report">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Edit Analysis
+                    </button>
+                    {% else %}
+                    <button
+                        type="button"
+                        class="btn-tender-action btn-tender-action--view"
+                        onclick="event.stopPropagation(); goToAnalysis('{{ summary.id }}')"
+                        title="View analysis report (read-only)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        View Analysis
+                    </button>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>No tender assignments yet</h3>
+            <p>Your manager will assign tenders to you. Check back shortly.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<button class="employee-chat-button" id="chatToggle" type="button" onclick="toggleChat()" aria-label="Toggle team chat">💬</button>
+
+<section class="employee-chat-window" id="chatWindow" aria-live="polite" aria-hidden="true">
+    <header class="employee-chat-window__header">
+        <div>
+            <h2>Team chat</h2>
+            <p>Share quick updates with your tender squad.</p>
+        </div>
+        <button type="button" class="employee-chat-close" onclick="toggleChat()" aria-label="Close chat">×</button>
+    </header>
+    <div class="employee-chat-window__body" id="chatWindowMessages">
+        <div class="employee-chat-message employee-chat-message--system">
+            <span class="employee-chat-meta">System</span>
+            <p>Welcome! Select a tender to start a conversation.</p>
+        </div>
+    </div>
+    <footer class="employee-chat-window__footer">
+        <textarea id="chatWindowInput" rows="2" placeholder="Type a message and press Enter" onkeypress="handleChatEnter(event)"></textarea>
+        <button type="button" class="btn btn-primary" onclick="sendChatMessage()">Send</button>
+    </footer>
+</section>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+/* Analysis Action Buttons */
+.employee-tender-card__actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: flex-start;
+    gap: 0.5rem;
+}
+
+.btn-tender-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-tender-action svg {
+    flex-shrink: 0;
+}
+
+.btn-tender-action--primary {
+    background: #0066cc;
+    color: white;
+}
+
+.btn-tender-action--primary:hover {
+    background: #0052a3;
+    transform: translateY(-1px);
+}
+
+.btn-tender-action--edit {
+    background: #ff9800;
+    color: white;
+}
+
+.btn-tender-action--edit:hover {
+    background: #e68900;
+    transform: translateY(-1px);
+}
+
+.btn-tender-action--view {
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #e0e0e0;
+}
+
+.btn-tender-action--view:hover {
+    background: #e0e0e0;
+    color: #333;
+}
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function filterTenders() {
+        const searchTerm = document.getElementById('searchFilter').value.toLowerCase();
+        const deadlineFilter = document.getElementById('deadlineFilter').value;
+        const tenderCards = document.querySelectorAll('.employee-tender-card');
+
+        tenderCards.forEach(card => {
+            const title = card.querySelector('.employee-tender-card__title').textContent.toLowerCase();
+            const bucket = card.getAttribute('data-deadline');
+            const matchesSearch = !searchTerm || title.includes(searchTerm);
+            const matchesDeadline = !deadlineFilter || bucket === deadlineFilter;
+            card.classList.toggle('is-hidden', !(matchesSearch && matchesDeadline));
+        });
+    }
+
+    function clearFilters() {
+        document.getElementById('searchFilter').value = '';
+        document.getElementById('deadlineFilter').value = '';
+        filterTenders();
+    }
+
+    function goToAnalysis(tenderId) {
+        window.location.href = `/employee/analysis/${tenderId}`;
+    }
+
+    function openTender(tenderId) {
+        window.location.href = `/employee/tender/${tenderId}`;
+    }
+
+    let chatSocket = null;
+    let currentChatTenderId = null;
+
+    function toggleChat() {
+        const windowEl = document.getElementById('chatWindow');
+        const toggleEl = document.getElementById('chatToggle');
+        const isOpen = windowEl.classList.toggle('is-open');
+        toggleEl.classList.toggle('is-active', isOpen);
+        windowEl.setAttribute('aria-hidden', String(!isOpen));
+
+        if (isOpen) {
+            const firstTender = document.querySelector('.employee-tender-card:not(.is-hidden)');
+            if (firstTender) {
+                const tenderId = firstTender.dataset.tenderId;
+                const tenderTitle = firstTender.dataset.tenderTitle;
+                connectToTenderChat(tenderId, tenderTitle);
+            } else {
+                updateChatHeader('Team chat', 'No active tenders available');
+            }
+            document.getElementById('chatWindowInput').focus();
+        } else {
+            disconnectChat();
+        }
+    }
+
+    function handleChatEnter(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendChatMessage();
+        }
+    }
+
+    function sendChatMessage() {
+        const input = document.getElementById('chatWindowInput');
+        const message = input.value.trim();
+        if (!message) { return; }
+
+        if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+            chatSocket.send(JSON.stringify({ type: 'message', message }));
+            appendChatMessage({
+                employee_id: '{{ current_employee.id }}',
+                employee_name: '{{ current_employee.name }}',
+                message: message,
+                created_at: new Date().toISOString()
+            });
+            input.value = '';
+        } else {
+            appendChatMessage({ sender: 'System', message: 'Chat connection not ready. Please open a tender card first.' }, true);
+        }
+    }
+
+    function appendChatMessage(data, isSystem = false) {
+        const container = document.getElementById('chatWindowMessages');
+        const messageEl = document.createElement('div');
+
+        if (isSystem) {
+            messageEl.className = 'employee-chat-message employee-chat-message--system';
+            const meta = document.createElement('span');
+            meta.className = 'employee-chat-meta';
+            meta.textContent = data.sender || 'System';
+            const body = document.createElement('p');
+            body.textContent = data.message;
+            messageEl.append(meta, body);
+        } else {
+            const currentEmployeeId = '{{ current_employee.id }}';
+            const isOwn = data.employee_id && data.employee_id.toString() === currentEmployeeId;
+            messageEl.className = `employee-chat-message ${isOwn ? 'employee-chat-message--own' : 'employee-chat-message--peer'}`;
+
+            const meta = document.createElement('span');
+            meta.className = 'employee-chat-meta';
+            const timestamp = data.created_at ? new Date(data.created_at).toLocaleString() : 'now';
+            meta.textContent = `${data.employee_name || 'Teammate'} • ${timestamp}`;
+
+            const body = document.createElement('p');
+            body.textContent = data.message;
+
+            messageEl.append(meta, body);
+        }
+
+        container.appendChild(messageEl);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function updateChatHeader(title, subtitle) {
+        const header = document.querySelector('.employee-chat-window__header');
+        if (!header) { return; }
+        const heading = header.querySelector('h2');
+        const tagline = header.querySelector('p');
+        if (heading) { heading.textContent = title; }
+        if (tagline && subtitle) { tagline.textContent = subtitle; }
+    }
+
+    function connectToTenderChat(tenderId, tenderTitle) {
+        if (!tenderId) { return; }
+
+        if (chatSocket) {
+            chatSocket.close();
+        }
+
+        currentChatTenderId = tenderId;
+        updateChatHeader('Team chat', tenderTitle);
+
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/chat/${tenderId}`;
+
+        chatSocket = new WebSocket(wsUrl);
+
+        chatSocket.onopen = () => {
+            fetchChatHistory(tenderId);
+        };
+
+        chatSocket.onmessage = event => {
+            try {
+                const payload = JSON.parse(event.data);
+                if (payload.type === 'new_message' && payload.message) {
+                    appendChatMessage(payload.message);
+                }
+            } catch (error) {
+                console.error('Unable to parse chat message', error);
+            }
+        };
+
+        chatSocket.onclose = () => {
+            chatSocket = null;
+        };
+
+        chatSocket.onerror = error => {
+            console.error('Chat socket error', error);
+        };
+    }
+
+    function disconnectChat() {
+        if (chatSocket) {
+            chatSocket.close();
+            chatSocket = null;
+        }
+        currentChatTenderId = null;
+        updateChatHeader('Team chat', 'Share quick updates with your tender squad.');
+    }
+
+    function fetchChatHistory(tenderId) {
+        fetch(`/api/employee/messages/tender/${tenderId}`)
+            .then(response => response.ok ? response.json() : Promise.reject(response))
+            .then(data => {
+                const container = document.getElementById('chatWindowMessages');
+                container.innerHTML = '';
+                if (data.messages && data.messages.length) {
+                    data.messages.forEach(message => appendChatMessage(message));
+                } else {
+                    appendChatMessage({ sender: 'System', message: 'No messages yet. Kick-off the conversation!' }, true);
+                }
+            })
+            .catch(() => {
+                appendChatMessage({ sender: 'System', message: 'Unable to load previous messages.' }, true);
+            });
+    }
+</script>
+{% endblock %}

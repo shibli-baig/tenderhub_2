@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block title %}Current Projects - Expert-Verse{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h1 class="section-title">Current Projects</h1>
+            <p class="section-subtitle">Collaborate with teams and stay aligned with your active deliveries.</p>
+        </div>
+        <div class="section-actions">
+            <a href="/expert/opportunities" class="btn btn-outline btn-sm">Browse Opportunities</a>
+        </div>
+    </div>
+</section>
+
+<section class="panel" style="padding: 0;">
+    {% if projects %}
+    <div class="project-cards-list" style="padding: 1.5rem;">
+        {% for project in projects %}
+        <article class="project-card-new" onclick="window.location.href='{{ project.detail_url }}'">
+            <!-- Header: Title + Type + Status -->
+            <div class="project-card-new__header">
+                <div class="project-card-new__title-block">
+                    <h2 class="project-card-new__title">{{ project.title or "Active Project" }}</h2>
+                    <p class="project-card-new__subtitle">
+                        {{ project.type|title }} Project
+                        {% if project.company %}
+                            · {{ project.company }}
+                        {% endif %}
+                    </p>
+                </div>
+                <span class="project-card-new__status project-card-new__status--active">ACTIVE</span>
+            </div>
+
+            <!-- Divider -->
+            <div class="project-card-new__divider"></div>
+
+            <!-- Info Grid: Key data in pills -->
+            <div class="project-card-new__grid">
+                {% if project.company %}
+                <div class="project-pill">
+                    <span class="project-pill__label">Company</span>
+                    <strong class="project-pill__value">{{ project.company }}</strong>
+                </div>
+                {% endif %}
+
+                {% if project.tender_state or project.location %}
+                <div class="project-pill">
+                    <span class="project-pill__label">Location</span>
+                    <strong class="project-pill__value">{{ project.tender_state or project.location }}</strong>
+                </div>
+                {% endif %}
+
+                {% if project.participants %}
+                <div class="project-pill">
+                    <span class="project-pill__label">Team Size</span>
+                    <strong class="project-pill__value">{{ project.participants }} member{{ 's' if project.participants != 1 else '' }}</strong>
+                </div>
+                {% endif %}
+
+                <div class="project-pill">
+                    <span class="project-pill__label">Type</span>
+                    <strong class="project-pill__value">{{ project.type|title }}</strong>
+                </div>
+            </div>
+
+            <!-- Footer: Chips + Actions -->
+            <div class="project-card-new__footer">
+                <div class="project-card-new__chips">
+                    {% if project.tender_title %}
+                    <span class="project-chip">📋 {{ project.tender_title[:60] }}{% if project.tender_title|length > 60 %}...{% endif %}</span>
+                    {% endif %}
+
+                    {% if project.project_name %}
+                    <span class="project-chip">🎯 {{ project.project_name[:50] }}{% if project.project_name|length > 50 %}...{% endif %}</span>
+                    {% endif %}
+
+                    {% if project.other_expert %}
+                    <span class="project-chip">🤝 Working with {{ project.other_expert }}</span>
+                    {% endif %}
+                </div>
+                <div class="project-card-new__actions">
+                    <button type="button" class="project-btn project-btn--primary" onclick="event.stopPropagation(); window.location.href='{{ project.detail_url }}'">
+                        Open Workspace →
+                    </button>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding: 4rem 2rem;">
+        <div class="empty-state__icon">📂</div>
+        <h3 class="empty-state__title">No active projects</h3>
+        <p class="empty-state__description">Once your applications are accepted, you will see those projects listed here.</p>
+        <a href="/expert/opportunities" class="btn btn-primary">Browse Opportunities</a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+/* ========================
+   PROJECT CARDS LIST
+   ======================== */
+.project-cards-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ========================
+   PROJECT CARD (Horizontal)
+   ======================== */
+.project-card-new {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.75rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.project-card-new:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    border-color: #cbd5e1;
+}
+
+/* Header Section */
+.project-card-new__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.project-card-new__title-block {
+    flex: 1;
+    min-width: 0;
+}
+
+.project-card-new__title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 0.5rem 0;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.project-card-new__subtitle {
+    font-size: 0.95rem;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.project-card-new__status {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 0.5rem 1rem;
+    border-radius: 12px;
+    text-transform: uppercase;
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.project-card-new__status--active {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+}
+
+.project-card-new__status--ongoing {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+}
+
+.project-card-new__status--complete {
+    background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+    color: #4338ca;
+}
+
+/* Divider */
+.project-card-new__divider {
+    height: 1px;
+    background: linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%);
+    margin-bottom: 1.25rem;
+}
+
+/* Info Grid (Pills) */
+.project-card-new__grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.project-pill {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.85rem 1rem;
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.project-card-new:hover .project-pill {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border-color: #d1d5db;
+}
+
+.project-pill__label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+}
+
+.project-pill__value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #111827;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Footer Section */
+.project-card-new__footer {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.project-card-new__chips {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.project-chip {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.85rem;
+    padding: 0.5rem 0.85rem;
+    background: #f3f4f6;
+    color: #374151;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.project-card-new__actions {
+    display: flex !important;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+.project-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.project-btn--primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+.project-btn--primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.project-btn--secondary {
+    background: #ffffff;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.project-btn--secondary:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+/* ========================
+   EMPTY STATE
+   ======================== */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-state__icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.4;
+}
+
+.empty-state__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.75rem;
+}
+
+.empty-state__description {
+    font-size: 1rem;
+    color: #6b7280;
+    margin-bottom: 2rem;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ========================
+   RESPONSIVE DESIGN
+   ======================== */
+@media (max-width: 1024px) {
+    .project-card-new__grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .project-card-new {
+        padding: 1.25rem;
+    }
+
+    .project-card-new__header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .project-card-new__title {
+        font-size: 1.15rem;
+    }
+
+    .project-card-new__status {
+        align-self: flex-start;
+    }
+
+    .project-card-new__grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .project-card-new__footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .project-card-new__chips {
+        order: 2;
+    }
+
+    .project-card-new__actions {
+        order: 1;
+        width: 100%;
+    }
+
+    .project-btn {
+        width: 100%;
+    }
+
+    .project-chip {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .project-card-new__title {
+        font-size: 1.05rem;
+    }
+
+    .project-card-new__subtitle {
+        font-size: 0.85rem;
+    }
+
+    .empty-state {
+        padding: 3rem 1.5rem;
+    }
+
+    .empty-state__icon {
+        font-size: 3rem;
+    }
+
+    .empty-state__title {
+        font-size: 1.25rem;
+    }
+}
+</style>
+{% endblock %}
+

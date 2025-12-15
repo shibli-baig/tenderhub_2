@@ -1,0 +1,585 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Project - TenderHub{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <span class="chip chip--neutral">Project update</span>
+            <h1 class="section-title">Edit project details</h1>
+            {% if project.is_auto_generated and project.completion_status == "incomplete" %}
+                <p class="section-subtitle">This project was auto-generated from an awarded tender. Please review and complete the missing information.</p>
+            {% else %}
+                <p class="section-subtitle">Update project information, add new documents, or refine service descriptions.</p>
+            {% endif %}
+        </div>
+        <div class="panel-actions">
+            <a href="{% if return_url %}{{ return_url }}{% else %}/project/{{ project.id }}{% endif %}" class="btn btn-outline">Back to project</a>
+        </div>
+    </div>
+    <div class="panel panel--compact">
+        <div class="progress-track">
+            <div class="progress-track__bar" id="progressBar"></div>
+        </div>
+        <p class="panel-subtitle mt-3">Progress updates as you complete sections. Required fields are marked with <span class="text-danger">*</span>.</p>
+    </div>
+</section>
+
+<section class="section section--surface">
+    <form id="projectForm" method="post" action="{% if is_test_mode %}{{ test_base_url }}/edit/{{ project.id }}?test_token={{ test_token }}{% else %}/edit_project/{{ project.id }}{% endif %}" enctype="multipart/form-data" class="form-stack">
+        {% if is_test_mode %}
+        <input type="hidden" name="test_token" value="{{ test_token }}">
+        {% endif %}
+        {% if return_url %}
+        <input type="hidden" name="return_url" value="{{ return_url }}">
+        {% endif %}
+
+        <article class="surface-card">
+            <div class="section-header" style="margin-bottom: var(--space-4);">
+                <div>
+                    <h2 class="surface-card__title">Project overview</h2>
+                    <p class="panel-subtitle">Core information that powers matching and credential exports.</p>
+                </div>
+            </div>
+            <div class="form-grid two-col">
+                <div class="form-group">
+                    <label for="project_name" class="form-label">Project name <span class="text-danger">*</span></label>
+                    <input type="text" id="project_name" name="project_name" required placeholder="e.g., Urban Water Supply Modernisation" value="{{ project.project_name }}">
+                </div>
+                <div class="form-group">
+                    <label for="client_name" class="form-label">Client / Authority</label>
+                    <input type="text" id="client_name" name="client_name" placeholder="e.g., Delhi Jal Board" value="{{ project.client_name or '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="financing_authority" class="form-label">Financing Authority</label>
+                    <input type="text" id="financing_authority" name="financing_authority" placeholder="Comma separated authority names" value="{{ project.financing_authority if project.financing_authority and project.financing_authority != 'Financing Not Required' else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="sector" class="form-label">Sector</label>
+                    <select id="sector" name="sector">
+                        <option value="">Select sector</option>
+                        {% if user_industry_sectors %}
+                            {% for sector in user_industry_sectors %}
+                            <option value="{{ sector }}" {% if project.sector == sector %}selected{% endif %}>{{ sector }}</option>
+                            {% endfor %}
+                        {% else %}
+                            <!-- Fallback to all sectors -->
+                            {% for option in [
+                                'Information Technology & Software',
+                                'Engineering & Technical Services',
+                                'Construction & Infrastructure',
+                                'Healthcare & Medical Services',
+                                'Education & Training',
+                                'Transportation & Logistics',
+                                'Defense & Security',
+                                'Financial Services & Banking',
+                                'Manufacturing & Production',
+                                'Energy & Utilities',
+                                'Agriculture & Food Processing',
+                                'Telecommunications',
+                                'Media & Entertainment',
+                                'Retail & E-commerce',
+                                'Real Estate & Property',
+                                'Legal & Consulting Services',
+                                'Research & Development',
+                                'Environmental Services',
+                                'Tourism & Hospitality',
+                                'Automotive & Transportation',
+                                'Aerospace & Aviation',
+                                'Biotechnology & Pharmaceuticals',
+                                'Mining & Minerals',
+                                'Textiles & Apparel',
+                                'Sports & Recreation',
+                                'Non-Profit & NGO',
+                                'Government & Public Sector',
+                                'Water Resources',
+                                'Water Supply',
+                                'Urban Infrastructure',
+                                'Rural Infrastructure',
+                                'Forest',
+                                'Other'
+                            ] %}
+                            <option value="{{ option }}" {% if project.sector == option %}selected{% endif %}>{{ option }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="sub_sector" class="form-label">Sub-sector</label>
+                    <select id="sub_sector" name="sub_sector">
+                        <option value="">Select sub-sector</option>
+                        {% if project.sub_sector %}
+                        <option value="{{ project.sub_sector }}" selected>{{ project.sub_sector }}</option>
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="consultancy_fee" class="form-label">Consultancy fee (₹)</label>
+                    <input type="number" id="consultancy_fee" name="consultancy_fee" placeholder="e.g., 25000000" value="{{ project.consultancy_fee or '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="project_cost" class="form-label">Project cost (₹)</label>
+                    <input type="number" id="project_cost" name="project_cost" placeholder="Overall project value" value="{{ project.project_cost or '' }}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="project_description" class="form-label">Project description</label>
+                <textarea id="project_description" name="project_description" rows="4" placeholder="Summarise the scope, objectives, scale, and outcomes.">{{ project.project_description or '' }}</textarea>
+            </div>
+        </article>
+
+        <article class="surface-card">
+            <div class="section-header" style="margin-bottom: var(--space-4);">
+                <div>
+                    <h2 class="surface-card__title">Complete scope of work</h2>
+                    <p class="panel-subtitle">Detailed description of all work performed, deliverables, and technical specifications.</p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="complete_scope_of_work" class="form-label">Scope of work details</label>
+                <textarea id="complete_scope_of_work" name="complete_scope_of_work" rows="8" placeholder="Provide comprehensive details about the scope of work, including specific tasks, deliverables, methodologies, and technical specifications...">{{ project.complete_scope_of_work or '' }}</textarea>
+                <span class="form-hint">Include all major activities, deliverables, methodologies, and technical specifications performed in this project</span>
+            </div>
+        </article>
+
+        <article class="surface-card">
+            <div class="section-header" style="margin-bottom: var(--space-4);">
+                <div>
+                    <h2 class="surface-card__title">Timeline & geography</h2>
+                    <p class="panel-subtitle">Key dates and locations strengthen eligibility scoring.</p>
+                </div>
+            </div>
+            <div class="form-grid three-col">
+                <div class="form-group">
+                    <label for="start_date" class="form-label">Start date</label>
+                    <input type="date" id="start_date" name="start_date" value="{{ project.start_date.strftime('%Y-%m-%d') if project.start_date else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="end_date" class="form-label">Completion date</label>
+                    <input type="date" id="end_date" name="end_date" value="{{ project.end_date.strftime('%Y-%m-%d') if project.end_date else '' }}" max="{{ now().strftime('%Y-%m-%d') }}" {% if not project.end_date %}{% endif %}>
+                    <small style="color: #6b7280; font-size: 12px; margin-top: 4px; display: block;">Cannot be in the future</small>
+                </div>
+                <div class="form-group">
+                    <label for="project_duration" class="form-label">Duration (months)</label>
+                    <input type="number" id="project_duration" name="project_duration_months" readonly placeholder="Auto calculated" value="{{ project.project_duration_months or '' }}">
+                </div>
+            </div>
+            <div class="d-flex align-center gap-3 mt-3">
+                <label class="form-label" for="ongoing" style="margin-bottom:0;">Still ongoing?</label>
+                <input type="checkbox" id="ongoing" name="ongoing" {% if project.end_date is none %}checked{% endif %}>
+            </div>
+            <div class="form-grid two-col mt-4">
+                <div class="form-group">
+                    <label for="country" class="form-label">Country</label>
+                    <input type="text" id="country" name="country" placeholder="e.g., India" value="{{ project.country or 'India' }}">
+                </div>
+                <div class="form-group">
+                    <label for="states" class="form-label">States covered</label>
+                    <input type="text" id="states" name="states" placeholder="Comma separated" value="{{ ', '.join(project.states) if project.states else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="cities" class="form-label">Cities covered</label>
+                    <input type="text" id="cities" name="cities" placeholder="Comma separated" value="{{ ', '.join(project.cities) if project.cities else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="jv_partner" class="form-label">JV partner</label>
+                    <input type="text" id="jv_partner" name="jv_partner" placeholder="If applicable" value="{{ project.jv_partner or '' }}">
+                </div>
+            </div>
+        </article>
+
+        <article class="surface-card">
+            <div class="section-header" style="margin-bottom: var(--space-4);">
+                <div>
+                    <h2 class="surface-card__title">Services delivered</h2>
+                    <p class="panel-subtitle">Highlight competencies showcased in this project.</p>
+                </div>
+            </div>
+            <div class="form-grid two-col">
+                <div class="form-group">
+                    <label for="survey_investigations" class="form-label">Survey & investigations</label>
+                    <textarea id="survey_investigations" name="services[survey_investigations]" rows="3" placeholder="Survey work, investigations, site assessments">{{ project.services_rendered.get('survey_investigations', '') if project.services_rendered else '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="design_engineering" class="form-label">Design & engineering</label>
+                    <textarea id="design_engineering" name="services[design_engineering]" rows="3" placeholder="Detail design deliverables">{{ project.services_rendered.get('design_engineering', '') if project.services_rendered else '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="dpr_feasibility" class="form-label">DPR & feasibility</label>
+                    <textarea id="dpr_feasibility" name="services[dpr_feasibility]" rows="3" placeholder="DPR, techno-economic studies, impact assessments">{{ project.services_rendered.get('dpr_feasibility', '') if project.services_rendered else '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="gis_data" class="form-label">GIS & data services</label>
+                    <textarea id="gis_data" name="services[gis_data]" rows="3" placeholder="Mapping, analytics, spatial databases">{{ project.services_rendered.get('gis_data', '') if project.services_rendered else '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="pmc" class="form-label">Project management consultancy</label>
+                    <textarea id="pmc" name="services[pmc]" rows="3" placeholder="Planning, monitoring, supervision">{{ project.services_rendered.get('pmc', '') if project.services_rendered else '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="pmu" class="form-label">Project management unit (PMU)</label>
+                    <textarea id="pmu" name="services[pmu]" rows="3" placeholder="Implementation support, capacity building">{{ project.services_rendered.get('pmu', '') if project.services_rendered else '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="advisory_capacity" class="form-label">Advisory & capacity building</label>
+                    <textarea id="advisory_capacity" name="services[advisory_capacity]" rows="3" placeholder="Training, policy advisory, stakeholder engagement">{{ project.services_rendered.get('advisory_capacity', '') if project.services_rendered else '' }}</textarea>
+                </div>
+            </div>
+        </article>
+
+        <article class="surface-card">
+            <div class="section-header" style="margin-bottom: var(--space-4);">
+                <div>
+                    <h2 class="surface-card__title">Supporting documents</h2>
+                    <p class="panel-subtitle">Upload additional documents to enhance this project's credentials.</p>
+                </div>
+            </div>
+
+            {% if project.documents and project.documents.items() | length > 0 %}
+            <div class="panel panel--compact mb-4">
+                {% set total_files = namespace(count=0) %}
+                {% for files in project.documents.values() %}
+                    {% if files %}
+                        {% set total_files.count = total_files.count + files|length %}
+                    {% endif %}
+                {% endfor %}
+                <h3 class="panel-subtitle">Existing documents ({{ total_files.count }} files)</h3>
+                <div class="existing-documents-grid">
+                    {% for doc_type, files in project.documents.items() %}
+                        {% if files %}
+                        <div class="document-category">
+                            <strong>{{ doc_type.replace('_', ' ').title() }}:</strong>
+                            <ul class="document-list">
+                                {% for file_entry in files %}
+                                <li class="document-item">
+                                    <div class="document-content">
+                                        {% if file_entry is mapping %}
+                                            {# New format: dict with file_path and original_filename #}
+                                            <a href="/{{ file_entry.file_path }}" target="_blank" class="document-link">
+                                                {{ file_entry.original_filename }}
+                                            </a>
+                                        {% else %}
+                                            {# Old format: just a string (file path) #}
+                                            <a href="/{{ file_entry }}" target="_blank" class="document-link">
+                                                {{ file_entry.split('/')[-1] }}
+                                            </a>
+                                        {% endif %}
+                                        <button type="button"
+                                                class="delete-doc-btn"
+                                                onclick="deleteDocument('{{ doc_type }}', {{ loop.index0 }}, '{% if file_entry is mapping %}{{ file_entry.original_filename }}{% else %}{{ file_entry.split('/')[-1] }}{% endif %}')"
+                                                title="Delete this document">
+                                            ✕
+                                        </button>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="form-grid two-col">
+                <div class="form-group">
+                    <label for="tender_documents" class="form-label">Add tender documents</label>
+                    <input type="file" id="tender_documents" name="documents[tender_documents][]" class="form-control-file" multiple accept=".pdf,.doc,.docx">
+                    <span class="form-hint">EOIs, RFPs, corrigenda, pre-bid minutes, BoQ</span>
+                </div>
+                <div class="form-group">
+                    <label for="technical_proposal" class="form-label">Add technical proposal</label>
+                    <input type="file" id="technical_proposal" name="documents[technical_proposal][]" class="form-control-file" multiple accept=".pdf,.doc,.docx">
+                    <span class="form-hint">Uploaded proposal submitted to authority</span>
+                </div>
+                <div class="form-group">
+                    <label for="work_order" class="form-label">Add work order</label>
+                    <input type="file" id="work_order" name="documents[work_order][]" class="form-control-file" multiple accept=".pdf,.doc,.docx">
+                    <span class="form-hint">Proof of award or contract issuance</span>
+                </div>
+                <div class="form-group">
+                    <label for="financial_proposal" class="form-label">Add financial proposal</label>
+                    <input type="file" id="financial_proposal" name="documents[financial_proposal][]" class="form-control-file" multiple accept=".pdf,.doc,.docx">
+                    <span class="form-hint">Pricing submission provided during bidding</span>
+                </div>
+                <div class="form-group">
+                    <label for="invoices_receipts" class="form-label">Add invoices & receipts</label>
+                    <input type="file" id="invoices_receipts" name="documents[invoices_receipts][]" class="form-control-file" multiple accept=".pdf,.doc,.docx,.jpg,.png">
+                    <span class="form-hint">Milestone invoices and client acknowledgements</span>
+                </div>
+                <div class="form-group">
+                    <label for="deliverables" class="form-label">Add deliverables</label>
+                    <input type="file" id="deliverables" name="documents[deliverables][]" class="form-control-file" multiple accept=".pdf,.doc,.docx,.zip">
+                    <span class="form-hint">Reports, designs, and other submitted outputs</span>
+                </div>
+                <div class="form-group">
+                    <label for="completion_certificate" class="form-label">Add completion certificate</label>
+                    <input type="file" id="completion_certificate" name="documents[completion_certificate][]" class="form-control-file" multiple accept=".pdf,.doc,.docx">
+                    <span class="form-hint">Final sign-off documentation</span>
+                </div>
+                <div class="form-group">
+                    <label for="other_documents" class="form-label">Add other documents</label>
+                    <input type="file" id="other_documents" name="documents[other_documents][]" class="form-control-file" multiple accept=".pdf,.doc,.docx,.jpg,.png,.zip">
+                    <span class="form-hint">Anything else that reinforces credentials</span>
+                </div>
+            </div>
+        </article>
+
+        <div class="panel" style="text-align: center;">
+            <div class="panel-actions" style="justify-content: center;">
+                <button type="submit" class="btn btn-primary btn-lg">Update project</button>
+                <a href="{% if return_url %}{{ return_url }}{% elif is_test_mode %}{{ test_base_url }}/project/{{ project.id }}?test_token={{ test_token }}{% else %}/project/{{ project.id }}{% endif %}" class="btn btn-outline btn-lg">Cancel</a>
+            </div>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.existing-documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.document-category {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.document-category strong {
+    display: block;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.document-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.document-list li {
+    padding: 0.25rem 0;
+}
+
+.document-item {
+    position: relative;
+}
+
+.document-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.document-link {
+    color: #3b82f6;
+    text-decoration: none;
+    font-size: 0.875rem;
+    word-break: break-all;
+    flex: 1;
+}
+
+.document-link:hover {
+    text-decoration: underline;
+}
+
+.delete-doc-btn {
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+}
+
+.delete-doc-btn:hover {
+    background: #dc2626;
+}
+
+.delete-doc-btn:active {
+    background: #b91c1c;
+}
+</style>
+
+<script>
+// Delete document function
+async function deleteDocument(docType, docIndex, filename) {
+    if (!confirm(`Are you sure you want to delete "${filename}"? This action cannot be undone.`)) {
+        return;
+    }
+
+    const projectId = {{ project.id }};
+    {% if is_test_mode %}
+    const testToken = '{{ test_token }}';
+    const url = `/public-projects/nkbpl.pratyaksh/project/${projectId}/document/${docType}/${docIndex}?test_token=${testToken}`;
+    const redirectUrl = `/public-projects/nkbpl.pratyaksh/edit/${projectId}?test_token=${testToken}`;
+    {% else %}
+    const url = `/project/${projectId}/document/${docType}/${docIndex}`;
+    const redirectUrl = `/edit_project/${projectId}`;
+    {% endif %}
+
+    try {
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            // Success - reload the page to show updated document list
+            window.location.href = redirectUrl;
+        } else {
+            const data = await response.json();
+            alert(`Error deleting document: ${data.detail || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Error deleting document:', error);
+        alert('Failed to delete document. Please try again.');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const sectorSelect = document.getElementById('sector');
+    const subSectorSelect = document.getElementById('sub_sector');
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    const ongoingCheckbox = document.getElementById('ongoing');
+    const durationInput = document.getElementById('project_duration');
+    const form = document.getElementById('projectForm');
+    const progressBar = document.getElementById('progressBar');
+
+    // Build sub-sectors map from user's sectors data
+    const subSectors = {};
+    {% if user_sectors_data %}
+        {% for sector_obj in user_sectors_data %}
+            subSectors['{{ sector_obj.sector }}'] = {{ sector_obj.subsectors|tojson }};
+        {% endfor %}
+    {% endif %}
+
+    // Initialize sub-sector options based on current sector
+    function updateSubSectorOptions() {
+        const currentSubSector = subSectorSelect.value;
+        const options = subSectors[sectorSelect.value] || [];
+        subSectorSelect.innerHTML = '<option value="">Select sub-sector</option>';
+
+        if (options.length) {
+            options.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                if (value === currentSubSector) {
+                    option.selected = true;
+                }
+                subSectorSelect.appendChild(option);
+            });
+            subSectorSelect.disabled = false;
+        } else {
+            // Preserve existing sub-sector even if not in list
+            if (currentSubSector) {
+                const option = document.createElement('option');
+                option.value = currentSubSector;
+                option.textContent = currentSubSector;
+                option.selected = true;
+                subSectorSelect.appendChild(option);
+            }
+            subSectorSelect.disabled = !currentSubSector;
+        }
+    }
+
+    sectorSelect.addEventListener('change', updateSubSectorOptions);
+
+    // Initialize on page load
+    updateSubSectorOptions();
+
+    function calculateDuration() {
+        const startDate = startDateInput.value ? new Date(startDateInput.value) : null;
+        const endDate = ongoingCheckbox.checked ? new Date() : (endDateInput.value ? new Date(endDateInput.value) : null);
+
+        if (startDate && endDate && startDate <= endDate) {
+            const diffTime = Math.abs(endDate - startDate);
+            const diffMonths = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30.44));
+            durationInput.value = diffMonths;
+        } else {
+            durationInput.value = '';
+        }
+    }
+
+    ongoingCheckbox.addEventListener('change', () => {
+        if (ongoingCheckbox.checked) {
+            endDateInput.value = '';
+            endDateInput.disabled = true;
+        } else {
+            endDateInput.disabled = false;
+        }
+        calculateDuration();
+    });
+
+    startDateInput.addEventListener('change', calculateDuration);
+    endDateInput.addEventListener('change', calculateDuration);
+
+    // Validate end date is not in the future
+    endDateInput.addEventListener('change', function() {
+        const selectedDate = new Date(this.value);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+
+        if (selectedDate > today) {
+            alert('Project completion date cannot be in the future. Please select today\'s date or earlier.');
+            this.value = ''; // Clear the invalid date
+        }
+    });
+
+    function updateProgressBar() {
+        if (!progressBar) return;
+        const fields = Array.from(form.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]):not([type="file"]), select, textarea'))
+            .filter(el => !el.disabled);
+        const filled = fields.filter(el => el.value && el.value.trim() !== '').length;
+        const ratio = fields.length ? Math.round((filled / fields.length) * 100) : 0;
+        progressBar.style.width = `${ratio}%`;
+    }
+
+    form.addEventListener('input', updateProgressBar);
+    form.addEventListener('change', updateProgressBar);
+    updateProgressBar();
+
+    form.addEventListener('submit', event => {
+        const requiredFields = [document.getElementById('project_name')];
+        let firstInvalid = null;
+
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('is-invalid');
+                if (!firstInvalid) firstInvalid = field;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+
+        if (firstInvalid) {
+            event.preventDefault();
+            firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            firstInvalid.focus();
+        }
+    });
+});
+</script>
+{% endblock %}

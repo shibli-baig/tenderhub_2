@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% block title %}Collaborations - TenderHub Expert-Verse{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h1 class="section-title">Collaborations</h1>
+            <p class="section-subtitle">Team up with other experts on complex projects</p>
+        </div>
+        <div class="section-actions">
+            <button onclick="showInviteModal()" class="btn btn-primary">+ Invite Expert</button>
+            <a href="/expert/dashboard" class="btn btn-outline">Back to Dashboard</a>
+        </div>
+    </div>
+</section>
+
+<!-- Pending Collaboration Requests -->
+{% if pending_collaborations and pending_collaborations|length > 0 %}
+<section class="panel" style="margin-bottom: 1.5rem;">
+    <div class="profile-card__header" style="margin-bottom: 1.5rem;">
+        <div>
+            <h2 class="surface-card__title">Pending Requests</h2>
+            <p class="panel-subtitle">{{ pending_collaborations|length }} pending collaboration request(s)</p>
+        </div>
+    </div>
+
+    <div style="display: grid; gap: 1rem;">
+        {% for collab in pending_collaborations %}
+        <div class="collaboration-card surface-card" style="padding: 1.5rem; border-left: 4px solid #f59e0b;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <h3 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">
+                        Collaboration Request from {{ collab.primary_expert.name if collab.primary_expert else 'Expert' }}
+                    </h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 0.75rem;">
+                        {{ collab.description }}
+                    </p>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <span class="badge badge-warning">Pending Response</span>
+                        <span class="badge badge-secondary">Requested {{ collab.created_at.strftime('%b %d, %Y') if collab.created_at else 'N/A' }}</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button onclick="acceptCollaboration('{{ collab.id }}')" class="btn btn-sm btn-success">Accept</button>
+                    <button onclick="rejectCollaboration('{{ collab.id }}')" class="btn btn-sm btn-danger">Decline</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Active Collaborations -->
+<section class="panel" style="margin-bottom: 1.5rem;">
+    <div class="profile-card__header" style="margin-bottom: 1.5rem;">
+        <div>
+            <h2 class="surface-card__title">Active Collaborations</h2>
+            <p class="panel-subtitle">{{ active_collaborations|length }} ongoing collaboration(s)</p>
+        </div>
+    </div>
+
+    {% if active_collaborations and active_collaborations|length > 0 %}
+    <div style="display: grid; gap: 1rem;">
+        {% for collab in active_collaborations %}
+        <div class="collaboration-card surface-card" style="padding: 1.5rem; border-left: 4px solid #10b981;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <h3 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">
+                        {% if collab.primary_expert_id == expert.id %}
+                            Collaborating with {{ collab.collaborator.name if collab.collaborator else 'Expert' }}
+                        {% else %}
+                            Collaborating with {{ collab.primary_expert.name if collab.primary_expert else 'Expert' }}
+                        {% endif %}
+                    </h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 0.75rem;">
+                        {{ collab.description }}
+                    </p>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <span class="badge badge-success">Active</span>
+                        {% if collab.tender_id %}
+                        <span class="badge badge-primary">Tender Project</span>
+                        {% endif %}
+                        <span class="badge badge-secondary">Started {{ collab.created_at.strftime('%b %d, %Y') if collab.created_at else 'N/A' }}</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-sm btn-outline">View Details</button>
+                    <button onclick="completeCollaboration('{{ collab.id }}')" class="btn btn-sm btn-primary">Mark Complete</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state__icon">🤝</div>
+        <h3 class="empty-state__title">No active collaborations</h3>
+        <p class="empty-state__description">Start collaborating with other experts to tackle complex projects together.</p>
+        <button onclick="showInviteModal()" class="btn btn-primary" style="margin-top: 1rem;">Invite an Expert</button>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Completed Collaborations -->
+{% if completed_collaborations and completed_collaborations|length > 0 %}
+<section class="panel">
+    <div class="profile-card__header" style="margin-bottom: 1.5rem;">
+        <div>
+            <h2 class="surface-card__title">Completed Collaborations</h2>
+            <p class="panel-subtitle">{{ completed_collaborations|length }} past collaboration(s)</p>
+        </div>
+    </div>
+
+    <div style="display: grid; gap: 1rem;">
+        {% for collab in completed_collaborations %}
+        <div class="collaboration-card surface-card" style="padding: 1rem; opacity: 0.8;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">
+                        {% if collab.primary_expert_id == expert.id %}
+                            With {{ collab.collaborator.name if collab.collaborator else 'Expert' }}
+                        {% else %}
+                            With {{ collab.primary_expert.name if collab.primary_expert else 'Expert' }}
+                        {% endif %}
+                    </h3>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <span class="badge badge-secondary">Completed</span>
+                        <span class="badge badge-secondary" style="font-size: 0.75rem;">{{ collab.created_at.strftime('%b %Y') if collab.created_at else 'N/A' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Invite Modal -->
+<div id="inviteModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeInviteModal()"></div>
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2 class="surface-card__title">Invite Expert to Collaborate</h2>
+            <button onclick="closeInviteModal()" class="btn-close">&times;</button>
+        </div>
+        <form id="inviteForm">
+            <div class="modal-body">
+                <div class="alert alert-info" style="margin-bottom: 1rem;">
+                    <svg class="alert-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <strong>Coming Soon</strong>
+                        <p>Expert search and invitation feature will be available soon. For now, collaborations can be initiated through service requests.</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="expert_email" class="form-label">Expert Email</label>
+                    <input type="email" id="expert_email" name="expert_email" placeholder="expert@example.com" disabled>
+                </div>
+
+                <div class="form-group">
+                    <label for="message" class="form-label">Collaboration Proposal</label>
+                    <textarea id="message" name="message" rows="5" placeholder="Describe the collaboration opportunity..." disabled></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" onclick="closeInviteModal()" class="btn btn-outline">Close</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function showInviteModal() {
+    document.getElementById('inviteModal').style.display = 'flex';
+}
+
+function closeInviteModal() {
+    document.getElementById('inviteModal').style.display = 'none';
+}
+
+async function acceptCollaboration(collabId) {
+    if (!confirm('Accept this collaboration request?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/expert/collaboration/${collabId}/accept`, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('Collaboration accepted!');
+            window.location.reload();
+        } else {
+            alert(data.detail || 'Failed to accept collaboration');
+        }
+    } catch (error) {
+        console.error('Error accepting collaboration:', error);
+        alert('An error occurred. Please try again.');
+    }
+}
+
+async function rejectCollaboration(collabId) {
+    if (!confirm('Decline this collaboration request?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/expert/collaboration/${collabId}/reject`, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('Collaboration declined.');
+            window.location.reload();
+        } else {
+            alert(data.detail || 'Failed to decline collaboration');
+        }
+    } catch (error) {
+        console.error('Error declining collaboration:', error);
+        alert('An error occurred. Please try again.');
+    }
+}
+
+async function completeCollaboration(collabId) {
+    if (!confirm('Mark this collaboration as complete?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/expert/collaboration/${collabId}/complete`, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('Collaboration marked as complete!');
+            window.location.reload();
+        } else {
+            alert(data.detail || 'Failed to complete collaboration');
+        }
+    } catch (error) {
+        console.error('Error completing collaboration:', error);
+        alert('An error occurred. Please try again.');
+    }
+}
+</script>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    position: relative;
+    background-color: var(--surface-color);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    z-index: 1001;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+.btn-close:hover {
+    background-color: var(--hover-color);
+    color: var(--text-primary);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.empty-state__icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.empty-state__description {
+    color: var(--text-secondary);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.badge-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.badge-secondary {
+    background-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.badge-success {
+    background-color: #10b981;
+    color: white;
+}
+
+.badge-warning {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.btn-success {
+    background-color: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #059669;
+}
+
+.btn-danger {
+    background-color: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+}
+</style>
+{% endblock %}
+

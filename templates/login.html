@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Login - TenderHub{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="auth-layout">
+        <div class="auth-info">
+            <h3 class="surface-card__title">Why leaders choose TenderHub</h3>
+            <p class="text-muted">Purpose-built for procurement command centres across infrastructure, utilities, smart cities and EPC organisations.</p>
+            <ul>
+                <li>Search thousands of government tenders with executive-grade filters and watchlists.</li>
+                <li>Save opportunities, capture qualification notes and track submission milestones.</li>
+                <li>Analyse tender documents and certificates with AI to accelerate readiness.</li>
+                <li>Orchestrate pursuit teams with task assignments, comments and live messaging.</li>
+                <li>Maintain a single source of truth for portfolio performance and award outcomes.</li>
+            </ul>
+            <p class="panel-subtitle mt-4">Need enterprise onboarding? <a href="mailto:support@tenderhub.com">Contact our team</a>.</p>
+        </div>
+
+        <div class="auth-panels">
+            <form id="loginForm" method="post" action="/api/auth/login" class="auth-card">
+                <h2 class="surface-card__title">Login to TenderHub</h2>
+                <p class="panel-subtitle mb-4">Access your procurement workspace and resume where you left off.</p>
+
+                {% if error %}
+                    <div class="alert alert-error">{{ error }}</div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label for="login_email" class="form-label">Email address</label>
+                    <input type="email" id="login_email" name="email" required placeholder="name@company.com" value="{{ request.query_params.get('email', '') }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="login_password" class="form-label">Password</label>
+                    <input type="password" id="login_password" name="password" required placeholder="Enter your password">
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Login</button>
+
+                <div class="auth-social">
+                    <span class="auth-social__label">or continue with</span>
+                    <div class="auth-social__buttons">
+                        <button type="button" class="btn btn-outline auth-social-btn" data-provider="google">
+                            <span>Google</span>
+                        </button>
+                        <button type="button" class="btn btn-outline auth-social-btn" data-provider="facebook">
+                            <span>Facebook</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <form id="signupForm" method="post" action="/api/auth/signup" class="auth-card hidden">
+                <h2 class="surface-card__title">Create a TenderHub account</h2>
+                <p class="panel-subtitle mb-4">Set up your organisation and start monitoring tenders instantly.</p>
+
+                {% if signup_error %}
+                    <div class="alert alert-error">{{ signup_error }}</div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label for="signup_name" class="form-label">Full name *</label>
+                    <input type="text" id="signup_name" name="name" required placeholder="Enter your full name">
+                </div>
+                <div class="form-group">
+                    <label for="signup_email" class="form-label">Email address *</label>
+                    <input type="email" id="signup_email" name="email" required placeholder="name@company.com">
+                </div>
+                <div class="form-group">
+                    <label for="signup_company" class="form-label">Company / Organisation</label>
+                    <input type="text" id="signup_company" name="company" placeholder="Company name (optional)">
+                </div>
+                <div class="form-group">
+                    <label for="signup_role" class="form-label">Role / Position</label>
+                    <input type="text" id="signup_role" name="role" placeholder="Your role (optional)">
+                </div>
+                <div class="form-group">
+                    <label for="signup_password" class="form-label">Password *</label>
+                    <input type="password" id="signup_password" name="password" minlength="6" required placeholder="Minimum 6 characters">
+                </div>
+                <div class="form-group">
+                    <label for="confirm_password" class="form-label">Confirm password *</label>
+                    <input type="password" id="confirm_password" name="confirm_password" minlength="6" required placeholder="Re-enter password">
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Create account</button>
+
+                <div class="auth-social">
+                    <span class="auth-social__label">or sign up with</span>
+                    <div class="auth-social__buttons">
+                        <button type="button" class="btn btn-outline auth-social-btn" data-provider="google">
+                            <span>Google</span>
+                        </button>
+                        <button type="button" class="btn btn-outline auth-social-btn" data-provider="facebook">
+                            <span>Facebook</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="auth-toggle">
+                <span id="authToggleText">Don't have an account? <a href="#" id="authToggleLink">Sign up here</a></span>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const loginForm = document.getElementById('loginForm');
+const signupForm = document.getElementById('signupForm');
+const toggleText = document.getElementById('authToggleText');
+
+function bindToggleLink(handler) {
+    const anchor = toggleText.querySelector('a');
+    if (anchor) {
+        anchor.addEventListener('click', (event) => {
+            event.preventDefault();
+            handler();
+        });
+    }
+}
+
+function showSignup() {
+    loginForm.classList.add('hidden');
+    signupForm.classList.remove('hidden');
+    toggleText.innerHTML = 'Already have an account? <a href="#">Back to login</a>';
+    bindToggleLink(showLogin);
+    document.getElementById('signup_name').focus();
+}
+
+function showLogin() {
+    signupForm.classList.add('hidden');
+    loginForm.classList.remove('hidden');
+    toggleText.innerHTML = 'Don\'t have an account? <a href="#">Sign up here</a>';
+    bindToggleLink(showSignup);
+    document.getElementById('login_email').focus();
+}
+
+bindToggleLink(showSignup);
+
+const signupPassword = document.getElementById('signup_password');
+const confirmPassword = document.getElementById('confirm_password');
+
+function validatePasswordMatch() {
+    const password = signupPassword.value;
+    const confirm = confirmPassword.value;
+
+    confirmPassword.classList.remove('is-invalid', 'is-valid');
+    signupPassword.classList.remove('is-invalid', 'is-valid');
+
+    if (!confirm) return;
+
+    if (password !== confirm) {
+        confirmPassword.classList.add('is-invalid');
+    } else {
+        confirmPassword.classList.add('is-valid');
+    }
+}
+
+confirmPassword.addEventListener('input', validatePasswordMatch);
+signupPassword.addEventListener('input', validatePasswordMatch);
+
+signupForm.addEventListener('submit', function(event) {
+    signupPassword.classList.remove('is-invalid');
+    confirmPassword.classList.remove('is-invalid');
+
+    if (signupPassword.value.length < 6) {
+        event.preventDefault();
+        signupPassword.classList.add('is-invalid');
+        showNotification('Password must be at least 6 characters long', 'error');
+        return;
+    }
+
+    if (signupPassword.value !== confirmPassword.value) {
+        event.preventDefault();
+        confirmPassword.classList.add('is-invalid');
+        showNotification('Passwords do not match', 'error');
+        return;
+    }
+});
+
+if (loginForm) {
+    document.getElementById('login_email').focus();
+}
+
+document.querySelectorAll('.auth-social-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+        const provider = button.dataset.provider || 'this provider';
+        const prettyProvider = provider.charAt(0).toUpperCase() + provider.slice(1);
+        const message = `${prettyProvider} sign-in will be available soon.`;
+        if (typeof showNotification === 'function') {
+            showNotification(message, 'info');
+        } else {
+            alert(message);
+        }
+    });
+});
+</script>
+{% endblock %}

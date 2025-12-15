@@ -1,0 +1,3563 @@
+{% extends "base.html" %}
+
+{% block title %}Tender Management - TenderHub{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <span class="chip chip--neutral">Tender Management</span>
+            <h1 class="section-title">Manage Your Tenders</h1>
+            <p class="section-subtitle">Track favourites, shortlist opportunities and manage awarded tenders.</p>
+        </div>
+    </div>
+
+    <!-- Define Tasks Button (Admin Only) -->
+    {% if is_admin %}
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 1.5rem;">
+        <button class="btn btn-primary" onclick="openTaskTemplateModal()" style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>📋</span> Define Tasks
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Stats Cards (Now Clickable Tabs) -->
+    <div class="stats-grid">
+        <article class="stat-card stat-card--clickable active" id="favoritesCard" onclick="switchTab('favorites')">
+            <div class="stat-card__body">
+                <span class="stat-card__label">Favourite Tenders</span>
+                <span class="stat-card__value">{{ favorite_count }}</span>
+            </div>
+            <div class="stat-card__icon stat-card__icon--primary">⭐</div>
+        </article>
+
+        <article class="stat-card stat-card--clickable" id="shortlistedCard" onclick="switchTab('shortlisted')">
+            <div class="stat-card__body">
+                <span class="stat-card__label">Shortlisted Tenders</span>
+                <span class="stat-card__value">{{ shortlisted_count }}</span>
+            </div>
+            <div class="stat-card__icon stat-card__icon--success">✓</div>
+        </article>
+
+        <article class="stat-card stat-card--clickable" id="awardedCard" onclick="switchTab('awarded')">
+            <div class="stat-card__body">
+                <span class="stat-card__label">Awarded Tenders</span>
+                <span class="stat-card__value">{{ awarded_count }}</span>
+            </div>
+            <div class="stat-card__icon stat-card__icon--accent">🏆</div>
+        </article>
+    </div>
+
+    <!-- SECTION 1: Favourite Tenders Table -->
+    <div class="tab-content" id="favoritesSection">
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2 class="surface-card__title">Favourite Tenders</h2>
+                    <p class="panel-subtitle">Review and manage your favourite tenders with detailed tracking.</p>
+                </div>
+            </div>
+
+            {% if favorites %}
+            <div class="table-container">
+                <table class="tender-table">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 120px;">ID</th>
+                            <th style="min-width: 300px;">Title</th>
+                            <th style="min-width: 130px;">Favourited Date</th>
+                            <th style="min-width: 130px;">Publishing Date</th>
+                            <th style="min-width: 130px;">Submission Date</th>
+                            <th style="min-width: 100px;">View Details</th>
+                            <th style="min-width: 120px;">EMD %</th>
+                            <th style="min-width: 130px;">EMD Amount</th>
+                            <th style="min-width: 150px;">Certificates</th>
+                            <th style="min-width: 250px;">Remarks</th>
+                            {% if is_admin %}
+                            <th style="min-width: 150px;">Worked By</th>
+                            {% endif %}
+                            <th style="min-width: 180px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for favorite in favorites %}
+                        <tr class="tender-row" data-tender-id="{{ favorite.tender.id }}" data-favorite-id="{{ favorite.id }}">
+                            <!-- 1. ID -->
+                            <td>{{ favorite.tender.tender_reference_number or 'N/A' }}</td>
+
+                            <!-- 2. Title -->
+                            <td class="tender-title-cell">{{ favorite.tender.title }}</td>
+
+                            <!-- 3. Favourited Date -->
+                            <td>{{ favorite.created_at.strftime('%d %b %Y') if favorite.created_at else 'N/A' }}</td>
+
+                            <!-- 4. Publishing Date -->
+                            <td>{{ favorite.tender.published_at.strftime('%d %b %Y') if favorite.tender.published_at else 'N/A' }}</td>
+
+                            <!-- 5. Submission Date (deadline) -->
+                            <td>{{ favorite.tender.deadline.strftime('%d %b %Y') if favorite.tender.deadline else 'N/A' }}</td>
+
+                            <!-- 6. View Details Button -->
+                            <td>
+                                <a href="/tender/{{ favorite.tender.id }}" class="btn btn-sm btn-outline" onclick="event.stopPropagation()">View</a>
+                            </td>
+
+                            <!-- 7. EMD % (from tender details) -->
+                            <td>
+                                {% if favorite.tender.emd_fee_details and favorite.tender.emd_fee_details.get('EMD Percentage') %}
+                                    {{ favorite.tender.emd_fee_details['EMD Percentage'] }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+
+                            <!-- 8. EMD Amount (from tender details) -->
+                            <td>
+                                {% if favorite.tender.emd_fee_details and favorite.tender.emd_fee_details.get('EMD Amount (INR)') %}
+                                    {{ favorite.tender.emd_fee_details['EMD Amount (INR)'] }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+
+                            <!-- 9. Certificates -->
+                            <td class="certificates-cell" data-tender-id="{{ favorite.tender.id }}">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline view-certificates-btn"
+                                        onclick="viewCertificates('{{ favorite.tender.id }}', event)"
+                                        data-tender-id="{{ favorite.tender.id }}"
+                                        style="display: none;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                    <span class="cert-count">0</span>
+                                </button>
+                                <span class="no-certificates-text" style="color: #666;">-</span>
+                            </td>
+
+                            <!-- 10. Remarks -->
+                            <td class="admin-field-cell">
+                                <input type="text"
+                                       class="admin-field-input"
+                                       data-field="remarks"
+                                       value="{{ (favorite.user_filled_data.remarks if favorite.user_filled_data and favorite.user_filled_data.remarks else '') }}"
+                                       placeholder="Enter remarks"
+                                       onclick="event.stopPropagation()">
+                            </td>
+
+                            <!-- 11. Worked By -->
+                            {% if is_admin %}
+                            <td>
+                                <span class="badge badge--{{ 'primary' if favorite.worked_by_type == 'user' else 'neutral' }}">
+                                    {{ favorite.worked_by_name or 'Unknown' }}
+                                </span>
+                            </td>
+                            {% endif %}
+
+                            <!-- 12. Actions -->
+                            <td class="tender-actions-cell">
+                                <div>
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="handleShortlist('{{ favorite.tender.id }}', event)">Shortlist</button>
+                                    <button type="button" class="btn btn-outline btn-sm" onclick="handleReject('{{ favorite.tender.id }}', event)">Reject</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <p class="empty-state__message">No favourite tenders yet. Start by marking tenders as favourites from the tender search page.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- SECTION 2: Shortlisted Tenders Table -->
+    <div class="tab-content" id="shortlistedSection" style="display: none;">
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2 class="surface-card__title">Shortlisted Tenders</h2>
+                    <p class="panel-subtitle">Tenders you've shortlisted for bidding. Track your progress and manage documents.</p>
+                </div>
+            </div>
+
+            {% if shortlisted_tenders %}
+            <div class="table-container">
+                <table class="tender-table">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 150px;">ID</th>
+                            <th style="min-width: 300px;">Title</th>
+                            <th style="min-width: 130px;">Fav Date</th>
+                            <th style="min-width: 130px;">Pub Date</th>
+                            <th style="min-width: 130px;">Sub Date</th>
+                            <th style="min-width: 100px;">View Details</th>
+                            <th style="min-width: 100px;">EMD %</th>
+                            <th style="min-width: 130px;">EMD</th>
+                            <th style="min-width: 150px;">Certificates</th>
+                            <th style="min-width: 250px;">Remarks</th>
+                            <th style="min-width: 300px;">Reason for Shortlisted</th>
+                            {% if is_admin %}
+                            <th style="min-width: 150px;">Worked By</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in shortlisted_tenders %}
+                        <tr class="tender-row shortlisted-row" data-tender-id="{{ item.shortlisted.tender.id }}" data-shortlist-id="{{ item.shortlisted.id }}">
+                            <!-- 1. ID -->
+                            <td>{{ item.shortlisted.tender.tender_reference_number or 'N/A' }}</td>
+
+                            <!-- 2. Title -->
+                            <td class="tender-title-cell">{{ item.shortlisted.tender.title }}</td>
+
+                            <!-- 3. Fav Date (when favorited) -->
+                            <td>{{ item.favorite.created_at.strftime('%d %b %Y') if item.favorite and item.favorite.created_at else 'N/A' }}</td>
+
+                            <!-- 4. Pub Date -->
+                            <td>{{ item.shortlisted.tender.published_at.strftime('%d %b %Y') if item.shortlisted.tender.published_at else 'N/A' }}</td>
+
+                            <!-- 5. Sub Date (deadline) -->
+                            <td>{{ item.shortlisted.tender.deadline.strftime('%d %b %Y') if item.shortlisted.tender.deadline else 'N/A' }}</td>
+
+                            <!-- 6. View Details -->
+                            <td>
+                                <a href="/tender/{{ item.shortlisted.tender.id }}" class="btn btn-sm btn-outline" onclick="event.stopPropagation()">View</a>
+                            </td>
+
+                            <!-- 7. EMD % -->
+                            <td>
+                                {% if item.shortlisted.tender.emd_fee_details and item.shortlisted.tender.emd_fee_details.get('EMD Percentage') %}
+                                    {{ item.shortlisted.tender.emd_fee_details['EMD Percentage'] }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+
+                            <!-- 8. EMD (Amount) -->
+                            <td>
+                                {% if item.shortlisted.tender.emd_fee_details and item.shortlisted.tender.emd_fee_details.get('EMD Amount (INR)') %}
+                                    {{ item.shortlisted.tender.emd_fee_details['EMD Amount (INR)'] }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+
+                            <!-- 9. Certificates -->
+                            <td class="certificates-cell" data-tender-id="{{ item.shortlisted.tender.id }}">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline view-certificates-btn"
+                                        onclick="viewCertificates('{{ item.shortlisted.tender.id }}', event)"
+                                        data-tender-id="{{ item.shortlisted.tender.id }}"
+                                        style="display: none;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                    <span class="cert-count">0</span>
+                                </button>
+                                <span class="no-certificates-text" style="color: #666;">-</span>
+                            </td>
+
+                            <!-- 10. Remarks (from favorite) -->
+                            <td>
+                                {{ (item.favorite.user_filled_data.remarks if item.favorite and item.favorite.user_filled_data and item.favorite.user_filled_data.remarks else 'N/A') }}
+                            </td>
+
+                            <!-- 11. Reason for Shortlisted -->
+                            <td class="reason-cell">{{ item.shortlisted.reason or 'N/A' }}</td>
+
+                            <!-- 12. Worked By -->
+                            {% if is_admin %}
+                            <td>
+                                <span class="badge badge--{{ 'primary' if item.shortlisted.worked_by_type == 'user' else 'neutral' }}">
+                                    {{ item.shortlisted.worked_by_name or 'Unknown' }}
+                                </span>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <h3>No shortlisted tenders yet</h3>
+                <p class="empty-state__message">Shortlist tenders from your favourites to track them here.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- SECTION 3: Awarded Tenders -->
+    <div class="tab-content" id="awardedSection" style="display: none;">
+        {% if awarded_tenders %}
+        <div class="tender-cards-list">
+            {% for awarded in awarded_tenders %}
+            <article class="tender-card-new" data-tender-id="{{ awarded.tender.id }}" onclick="window.location.href='/tender/{{ awarded.tender.id }}'">
+                <!-- Header: Title + Authority + Status -->
+                <div class="tender-card-new__header">
+                    <div class="tender-card-new__title-block">
+                        <h2 class="tender-card-new__title">{{ awarded.tender.title }}</h2>
+                        <p class="tender-card-new__subtitle">
+                            {{ awarded.tender.authority or 'Authority not available' }}
+                            {% if awarded.tender.state and awarded.tender.state != 'Unknown' %}
+                                · {{ awarded.tender.state }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                        <span class="tender-card-new__status" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">🏆 AWARDED</span>
+                        {% if is_admin and awarded.tender.worked_by_name %}
+                        <span class="badge badge--{{ 'primary' if awarded.tender.worked_by_type == 'user' else 'neutral' }}">
+                            {{ awarded.tender.worked_by_name }}
+                        </span>
+                        {% endif %}
+                        {% if awarded.awarded_date %}
+                        <span style="font-size: 0.85rem; color: #6b7280;">{{ awarded.awarded_date.strftime('%b %d, %Y') }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Divider -->
+                <div class="tender-card-new__divider"></div>
+
+                <!-- Info Grid: Pills with key data -->
+                <div class="tender-card-new__grid">
+                    <div class="tender-pill">
+                        <span class="tender-pill__label">Value</span>
+                        <strong class="tender-pill__value">
+                            {% if awarded.tender.estimated_value %}
+                                ₹{{ "{:,.0f}".format(awarded.tender.estimated_value) }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </strong>
+                    </div>
+                    <div class="tender-pill">
+                        <span class="tender-pill__label">Published</span>
+                        <strong class="tender-pill__value">{{ awarded.tender.published_at.strftime('%b %d, %Y') if awarded.tender.published_at else 'N/A' }}</strong>
+                    </div>
+                    <div class="tender-pill">
+                        <span class="tender-pill__label">Deadline</span>
+                        <strong class="tender-pill__value">
+                            {% if awarded.tender.deadline %}
+                                {{ awarded.tender.deadline.strftime('%b %d, %Y') }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </strong>
+                    </div>
+                    <div class="tender-pill">
+                        <span class="tender-pill__label">Category</span>
+                        <strong class="tender-pill__value">{{ awarded.tender.category or 'N/A' }}</strong>
+                    </div>
+                </div>
+
+                <!-- Summary or Notes -->
+                {% if awarded.notes %}
+                <p class="tender-card-new__summary">{{ awarded.notes[:200] }}{% if awarded.notes|length > 200 %}…{% endif %}</p>
+                {% elif awarded.tender.summary %}
+                <p class="tender-card-new__summary">{{ awarded.tender.summary[:200] }}{% if awarded.tender.summary|length > 200 %}…{% endif %}</p>
+                {% endif %}
+
+                <!-- Footer: Chips + Actions -->
+                <div class="tender-card-new__footer">
+                    <div class="tender-card-new__chips">
+                        {% if awarded.tender.work_item_details is mapping and awarded.tender.work_item_details.get('Location') and awarded.tender.work_item_details.get('Location') != 'NA' %}
+                            <span class="tender-chip">📍 {{ awarded.tender.work_item_details['Location'] }}</span>
+                        {% elif awarded.tender.state and awarded.tender.state != 'Unknown' %}
+                            <span class="tender-chip">📍 {{ awarded.tender.state }}</span>
+                        {% endif %}
+
+                        {% if awarded.tender.category %}
+                            <span class="tender-chip">
+                                {% if awarded.tender.category == 'Works' %}
+                                    🛠️ Works
+                                {% elif awarded.tender.category == 'Goods' %}
+                                    📦 Goods
+                                {% elif awarded.tender.category == 'Services' %}
+                                    💼 Services
+                                {% else %}
+                                    📋 {{ awarded.tender.category }}
+                                {% endif %}
+                            </span>
+                        {% endif %}
+
+                        {% if awarded.tender.source %}
+                            <span class="tender-chip">🌐 {{ awarded.tender.source }}</span>
+                        {% endif %}
+
+                        {% if awarded.tender.tender_reference_number %}
+                            <span class="tender-chip">🔖 {{ awarded.tender.tender_reference_number }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="tender-card-new__actions">
+                        <button type="button" class="tender-btn tender-btn--secondary" onclick="event.stopPropagation(); window.location.href='/tender/{{ awarded.tender.id }}'">
+                            View Details
+                        </button>
+                        <button type="button" class="tender-btn tender-btn--primary" onclick="event.stopPropagation(); window.location.href='/tender/{{ awarded.tender.id }}/tasks'">
+                            Assign Tasks →
+                        </button>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state__icon">🏆</div>
+            <h3 class="empty-state__title">No Awarded Tenders Yet</h3>
+            <p class="empty-state__message">Tenders you win will appear here. Keep bidding!</p>
+            <div class="empty-state__actions">
+                <a href="/procurement" class="btn btn-primary">Search Tenders</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Task Template Configuration Modal (Admin Only) -->
+{% if is_admin %}
+<div class="modal" id="taskTemplateModal">
+    <div class="modal__overlay" onclick="closeTaskTemplateModal()"></div>
+    <div class="modal__dialog" style="max-width: 1200px; max-height: 90vh;">
+        <header class="modal__header">
+            <h2 class="modal__title">Task Template Configuration</h2>
+            <button class="modal__close" onclick="closeTaskTemplateModal()">&times;</button>
+        </header>
+        <div class="modal__body" style="overflow-y: auto; max-height: calc(90vh - 200px);">
+            <p class="panel-subtitle" style="margin-bottom: 1.5rem;">
+                Define task templates that will be automatically created for assigned employees when tender stages progress.
+            </p>
+
+            <!-- Stage Tabs -->
+            <div class="stage-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                <button class="stage-tab active" data-stage="1" onclick="switchStageTab(1)">Step 1: Pre-Bid</button>
+                <button class="stage-tab" data-stage="2" onclick="switchStageTab(2)">Step 2: Proposal</button>
+                <button class="stage-tab" data-stage="3" onclick="switchStageTab(3)">Step 3: Tech Opening</button>
+                <button class="stage-tab" data-stage="4" onclick="switchStageTab(4)">Step 4: Financial</button>
+                <button class="stage-tab" data-stage="5" onclick="switchStageTab(5)">Step 5: Negotiations</button>
+                <button class="stage-tab" data-stage="6" onclick="switchStageTab(6)">Step 6: Awarded</button>
+            </div>
+
+            <!-- Stage Content Containers -->
+            {% for i in range(1, 7) %}
+            <div id="stageContent{{ i }}" class="stage-content {% if i == 1 %}active{% endif %}">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="margin: 0;">Step {{ i }} Tasks</h3>
+                    <button class="btn btn-sm btn-primary" onclick="addTaskTemplate({{ i }})">+ Add Task</button>
+                </div>
+                <div id="taskList{{ i }}" class="task-template-list"></div>
+            </div>
+            {% endfor %}
+        </div>
+        <footer class="modal__footer">
+            <button class="btn btn-secondary" onclick="closeTaskTemplateModal()">Close</button>
+        </footer>
+    </div>
+</div>
+{% endif %}
+
+<!-- Reason Modal (for Favorites) -->
+<div class="modal" id="reasonModal" aria-hidden="true" role="dialog" onclick="if(event.target === this) closeReasonModal()">
+    <div class="modal__overlay" onclick="closeReasonModal()"></div>
+    <div class="modal__dialog">
+        <header class="modal__header">
+            <h2 class="modal__title" id="modalTitle">Provide Reason</h2>
+            <button type="button" class="modal__close" onclick="closeReasonModal()">×</button>
+        </header>
+        <div class="modal__body">
+            <div class="form-group">
+                <label for="reasonText" class="form-label">Reason</label>
+                <textarea id="reasonText" class="form-control" rows="4" placeholder="Please explain your decision..."></textarea>
+            </div>
+        </div>
+        <footer class="modal__footer">
+            <button type="button" class="btn btn-secondary" onclick="closeReasonModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" id="submitReasonBtn" onclick="submitReason()">Submit</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Certificates Modal -->
+<div class="modal" id="certificatesModal" aria-hidden="true" role="dialog" onclick="if(event.target === this) closeCertificatesModal()">
+    <div class="modal__overlay" onclick="closeCertificatesModal()"></div>
+    <div class="modal__dialog" style="max-width: 800px;">
+        <header class="modal__header">
+            <h2 class="modal__title">Attached Certificates</h2>
+            <button type="button" class="modal__close" onclick="closeCertificatesModal()">×</button>
+        </header>
+        <div class="modal__body">
+            <div id="certificatesListContainer">
+                <div class="loading-state" style="text-align: center; padding: 2rem;">
+                    <p>Loading certificates...</p>
+                </div>
+            </div>
+        </div>
+        <footer class="modal__footer">
+            <button type="button" class="btn btn-secondary" onclick="closeCertificatesModal()">Close</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Progress Tracking Modal (for Shortlisted) -->
+<div class="modal" id="progressModal" aria-hidden="true" role="dialog" style="display: none;">
+    <div class="modal__overlay" onclick="closeProgressModal()"></div>
+    <div class="modal__dialog" style="max-width: 936px;">
+        <header class="modal__header">
+            <div>
+                <h2 class="modal__title" id="progressModalTitle">Tender Progress Tracking</h2>
+                <p class="modal__subtitle" id="progressModalSubtitle" style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-muted);"></p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button type="button" id="showDocsBtn" class="btn btn-sm btn-outline" onclick="showDocumentsView()" style="white-space: nowrap; min-width: 140px;">📄 Show All Docs</button>
+                <button type="button" id="backToProgressBtn" class="btn btn-sm btn-outline" onclick="showProgressView()" style="white-space: nowrap; min-width: 140px; display: none;">← Back to Progress</button>
+                <button type="button" class="modal__close" onclick="closeProgressModal()">×</button>
+            </div>
+        </header>
+        <div class="modal__body" id="progressView">
+            <!-- 6 Step Progress Tracking -->
+            <div class="progress-steps">
+
+                <!-- Step 1: Pre Bid Meeting -->
+                <div class="progress-step" data-step="1">
+                    <label class="progress-step__label">1. Pre Bid Meeting</label>
+                    <div class="deadline-display" id="deadline-step1">
+                        <!-- Populated by JavaScript with Clarification End Date -->
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="step1" class="progress-step__select" style="flex: 1;" onchange="handleStepChange(1, this.value)">
+                            <option value="">Select Status</option>
+                            <option value="Attended">Attended</option>
+                            <option value="Not Attended">Not Attended</option>
+                            <option value="Not Applicable">Not Applicable</option>
+                            <option value="Cancelled" class="removal-option">Cancelled (Tender Closed)</option>
+                        </select>
+                        <button type="button" id="step1Upload" class="btn btn-sm btn-secondary" data-upload-step="1" onclick="openUploadModal(1)" title="Upload Document">📎</button>
+                    </div>
+                    <div class="progress-step__meta">
+                        <span class="progress-step__status" id="step1Status" style="display: none;"></span>
+                        <span class="progress-step__timestamp" id="step1Timestamp">Last change: -</span>
+                    </div>
+                    <!-- Employee Assignment -->
+                    <div class="employee-assignment">
+                        <label class="employee-assignment-label">Assigned Team Members</label>
+                        <div class="employee-badges" id="employeeBadges1"></div>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="employeeInput1" class="employee-input" placeholder="Type to add employee..." autocomplete="off" oninput="handleEmployeeInput(1, this.value)" onkeydown="handleEmployeeKeydown(1, event)">
+                            <div class="autocomplete-dropdown" id="autocomplete1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Proposal Submission -->
+                <div class="progress-step" data-step="2">
+                    <label class="progress-step__label">2. Proposal Submission</label>
+                    <div class="deadline-display" id="deadline-step2">
+                        <!-- Populated by JavaScript with Bid Submission End Date -->
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="step2" class="progress-step__select" style="flex: 1;" onchange="handleStepChange(2, this.value)">
+                            <option value="">Select Status</option>
+                            <option value="Submitted">Submitted</option>
+                            <option value="Not Submitted">Not Submitted</option>
+                            <option value="Tender Cancelled" class="removal-option">Tender Cancelled (Tender Closed)</option>
+                        </select>
+                        <button type="button" id="step2Upload" class="btn btn-sm btn-secondary" data-upload-step="2" onclick="openUploadModal(2)" title="Upload Document">📎</button>
+                    </div>
+                    <div class="progress-step__meta">
+                        <span class="progress-step__status" id="step2Status" style="display: none;"></span>
+                        <span class="progress-step__timestamp" id="step2Timestamp">Last change: -</span>
+                    </div>
+                    <!-- Employee Assignment -->
+                    <div class="employee-assignment">
+                        <label class="employee-assignment-label">Assigned Team Members</label>
+                        <div class="employee-badges" id="employeeBadges2"></div>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="employeeInput2" class="employee-input" placeholder="Type to add employee..." autocomplete="off" oninput="handleEmployeeInput(2, this.value)" onkeydown="handleEmployeeKeydown(2, event)">
+                            <div class="autocomplete-dropdown" id="autocomplete2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Technical Proposal Opening -->
+                <div class="progress-step" data-step="3">
+                    <label class="progress-step__label">3. Technical Proposal Opening</label>
+                    <div class="deadline-display" id="deadline-step3">
+                        <!-- Populated by JavaScript with Bid Opening Date -->
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="step3" class="progress-step__select" style="flex: 1;" onchange="handleStepChange(3, this.value)">
+                            <option value="">Select Status</option>
+                            <option value="Not Opened">Not Opened</option>
+                            <option value="Opened & Qualified">Opened & Qualified</option>
+                            <option value="Opened & Not Qualified" class="removal-option">Opened & Not Qualified (Tender Closed)</option>
+                            <option value="Tender Cancelled" class="removal-option">Tender Cancelled (Tender Closed)</option>
+                        </select>
+                        <button type="button" id="step3Upload" class="btn btn-sm btn-secondary" data-upload-step="3" onclick="openUploadModal(3)" title="Upload Document">📎</button>
+                    </div>
+                    <div class="progress-step__meta">
+                        <span class="progress-step__status" id="step3Status" style="display: none;"></span>
+                        <span class="progress-step__timestamp" id="step3Timestamp">Last change: -</span>
+                    </div>
+                    <!-- Employee Assignment -->
+                    <div class="employee-assignment">
+                        <label class="employee-assignment-label">Assigned Team Members</label>
+                        <div class="employee-badges" id="employeeBadges3"></div>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="employeeInput3" class="employee-input" placeholder="Type to add employee..." autocomplete="off" oninput="handleEmployeeInput(3, this.value)" onkeydown="handleEmployeeKeydown(3, event)">
+                            <div class="autocomplete-dropdown" id="autocomplete3"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Financial Proposal -->
+                <div class="progress-step" data-step="4">
+                    <label class="progress-step__label">4. Financial Proposal</label>
+                    <div class="deadline-display" id="deadline-step4">
+                        <!-- Populated by JavaScript with manual deadline -->
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="step4" class="progress-step__select" style="flex: 1;" onchange="handleStepChange(4, this.value)">
+                            <option value="">Select Status</option>
+                            <option value="Not Opened">Not Opened</option>
+                            <option value="Opened & Won">Opened & Won</option>
+                            <option value="Opened & Lost" class="removal-option">Opened & Lost (Tender Closed)</option>
+                            <option value="Opened & Not Eligible" class="removal-option">Opened & Not Eligible (Tender Closed)</option>
+                            <option value="Tender Cancelled" class="removal-option">Tender Cancelled (Tender Closed)</option>
+                        </select>
+                        <button type="button" id="step4Upload" class="btn btn-sm btn-secondary" data-upload-step="4" onclick="openUploadModal(4)" title="Upload Document">📎</button>
+                    </div>
+                    <div class="deadline-manual-input">
+                        <label for="deadline-input-step4">Set Deadline:</label>
+                        <input type="date" id="deadline-input-step4" class="deadline-input">
+                        <button type="button" class="deadline-btn" onclick="saveManualDeadline(4)">Set Deadline</button>
+                    </div>
+                    <div class="progress-step__meta">
+                        <span class="progress-step__status" id="step4Status" style="display: none;"></span>
+                        <span class="progress-step__timestamp" id="step4Timestamp">Last change: -</span>
+                    </div>
+                    <!-- Employee Assignment -->
+                    <div class="employee-assignment">
+                        <label class="employee-assignment-label">Assigned Team Members</label>
+                        <div class="employee-badges" id="employeeBadges4"></div>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="employeeInput4" class="employee-input" placeholder="Type to add employee..." autocomplete="off" oninput="handleEmployeeInput(4, this.value)" onkeydown="handleEmployeeKeydown(4, event)">
+                            <div class="autocomplete-dropdown" id="autocomplete4"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Further Negotiations -->
+                <div class="progress-step" data-step="5">
+                    <label class="progress-step__label">5. Further Negotiations</label>
+                    <div class="deadline-display" id="deadline-step5">
+                        <!-- Populated by JavaScript with manual deadline -->
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="step5" class="progress-step__select" style="flex: 1;" onchange="handleStepChange(5, this.value)">
+                            <option value="">Select Status</option>
+                            <option value="Applicable">Applicable</option>
+                            <option value="Not Applicable">Not Applicable</option>
+                            <option value="Tender Cancelled" class="removal-option">Tender Cancelled (Tender Closed)</option>
+                        </select>
+                        <button type="button" id="step5Upload" class="btn btn-sm btn-secondary" onclick="openUploadModal(5)" title="Upload Document">📎</button>
+                    </div>
+                    <div class="deadline-manual-input">
+                        <label for="deadline-input-step5">Set Deadline:</label>
+                        <input type="date" id="deadline-input-step5" class="deadline-input">
+                        <button type="button" class="deadline-btn" onclick="saveManualDeadline(5)">Set Deadline</button>
+                    </div>
+                    <div class="progress-step__meta">
+                        <span class="progress-step__status" id="step5Status" style="display: none;"></span>
+                        <span class="progress-step__timestamp" id="step5Timestamp">Last change: -</span>
+                    </div>
+                    <!-- Employee Assignment -->
+                    <div class="employee-assignment">
+                        <label class="employee-assignment-label">Assigned Team Members</label>
+                        <div class="employee-badges" id="employeeBadges5"></div>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="employeeInput5" class="employee-input" placeholder="Type to add employee..." autocomplete="off" oninput="handleEmployeeInput(5, this.value)" onkeydown="handleEmployeeKeydown(5, event)">
+                            <div class="autocomplete-dropdown" id="autocomplete5"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 6: Tender Awarded -->
+                <div class="progress-step" data-step="6">
+                    <label class="progress-step__label">6. Tender Awarded</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="step6" class="progress-step__select" style="flex: 1;" onchange="handleStepChange(6, this.value)">
+                            <option value="">Select Status</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No" class="removal-option">No (Tender Closed)</option>
+                        </select>
+                        <button type="button" id="step6Upload" class="btn btn-sm btn-secondary" onclick="openUploadModal(6)" title="Upload Document">📎</button>
+                    </div>
+                    <div class="progress-step__meta">
+                        <span class="progress-step__status" id="step6Status" style="display: none;"></span>
+                        <span class="progress-step__timestamp" id="step6Timestamp">Last change: -</span>
+                    </div>
+                    <!-- Employee Assignment -->
+                    <div class="employee-assignment">
+                        <label class="employee-assignment-label">Assigned Team Members</label>
+                        <div class="employee-badges" id="employeeBadges6"></div>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="employeeInput6" class="employee-input" placeholder="Type to add employee..." autocomplete="off" oninput="handleEmployeeInput(6, this.value)" onkeydown="handleEmployeeKeydown(6, event)">
+                            <div class="autocomplete-dropdown" id="autocomplete6"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="progress-last-updated" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-muted);">
+                Last Updated: <span id="lastUpdated">-</span>
+            </div>
+        </div>
+
+        <!-- Documents View (hidden by default) -->
+        <div class="modal__body" id="documentsView" style="display: none;">
+            <div id="allDocsContainer" style="max-height: 60vh; overflow-y: auto;">
+                <div class="loading-state">Loading documents...</div>
+            </div>
+        </div>
+
+        <footer class="modal__footer" id="progressFooter">
+            <button type="button" class="btn btn-secondary" onclick="closeProgressModal()">Close</button>
+            <button type="button" class="btn btn-primary" onclick="saveAllProgress()">💾 Save Progress</button>
+        </footer>
+        <footer class="modal__footer" id="documentsFooter" style="display: none;">
+            <button type="button" class="btn btn-secondary" onclick="closeProgressModal()">Close</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Upload Document Modal (for Shortlisted) -->
+<div class="modal" id="uploadModal" aria-hidden="true" role="dialog" style="display: none;">
+    <div class="modal__overlay" onclick="closeUploadModal()"></div>
+    <div class="modal__dialog" style="max-width: 500px;">
+        <header class="modal__header">
+            <h2 class="modal__title">Upload Document for <span id="uploadStepName"></span></h2>
+            <button type="button" class="modal__close" onclick="closeUploadModal()">×</button>
+        </header>
+        <div class="modal__body">
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="docTitle" class="form-label">Document Title</label>
+                    <input type="text" id="docTitle" name="title" class="form-control" required placeholder="e.g., Pre-bid Meeting Minutes">
+                </div>
+                <div class="form-group">
+                    <label for="docFile" class="form-label">File</label>
+                    <input type="file" id="docFile" name="file" class="form-control" required accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png">
+                    <small class="form-hint">Accepted formats: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Max 10MB)</small>
+                </div>
+                <div class="form-group">
+                    <label for="docNotes" class="form-label">Notes (Optional)</label>
+                    <textarea id="docNotes" name="notes" class="form-control" rows="3" placeholder="Add any relevant notes..."></textarea>
+                </div>
+            </form>
+        </div>
+        <footer class="modal__footer">
+            <button type="button" class="btn btn-secondary" onclick="closeUploadModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitUpload()">Upload</button>
+        </footer>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let currentTenderId = '';
+    let currentAction = ''; // 'shortlist' or 'reject'
+    let currentShortlistId = '';
+    let currentActiveTab = 'favorites';
+
+    // Debounce timers for auto-save
+    const debounceTimers = {};
+
+    // Tab Switching Function
+    function switchTab(tabName) {
+        // Hide all sections
+        document.querySelectorAll('.tab-content').forEach(section => {
+            section.style.display = 'none';
+        });
+
+        // Remove active class from all cards
+        document.querySelectorAll('.stat-card').forEach(card => {
+            card.classList.remove('active');
+        });
+
+        // Show selected section
+        document.getElementById(tabName + 'Section').style.display = 'block';
+
+        // Add active class to selected card
+        document.getElementById(tabName + 'Card').classList.add('active');
+
+        // Update current active tab
+        currentActiveTab = tabName;
+
+        // Extract fields for the new tab if needed
+        setTimeout(() => {
+            if (tabName === 'favorites' || tabName === 'shortlisted') {
+                extractAllComputedFields();
+            }
+        }, 100);
+    }
+
+    // Data extraction on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        // Check for tab parameter in URL and switch to that tab
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        if (tabParam && ['favorites', 'shortlisted', 'awarded'].includes(tabParam)) {
+            switchTab(tabParam);
+        }
+
+        // Extract and display all computed fields
+        extractAllComputedFields();
+
+        // Setup auto-save for all admin fields
+        setupAdminFieldAutoSave();
+
+        // Make favorite rows clickable (except for action buttons and inputs)
+        document.querySelectorAll('.tender-row:not(.shortlisted-row)').forEach(row => {
+            row.addEventListener('click', (event) => {
+                // Don't navigate if clicking on action buttons or inputs
+                if (event.target.closest('.tender-actions-cell') ||
+                    event.target.closest('.admin-field-cell') ||
+                    event.target.tagName === 'INPUT' ||
+                    event.target.tagName === 'BUTTON') {
+                    return;
+                }
+                const tenderId = row.dataset.tenderId;
+                window.location.href = `/tender/${tenderId}`;
+            });
+        });
+
+        // Shortlisted rows open progress modal
+        document.querySelectorAll('.shortlisted-row').forEach(row => {
+            row.addEventListener('click', (event) => {
+                // Don't open modal if clicking on action buttons or links
+                if (event.target.closest('a') ||
+                    event.target.closest('button') ||
+                    event.target.tagName === 'A' ||
+                    event.target.tagName === 'BUTTON') {
+                    return;
+                }
+                const shortlistId = row.dataset.shortlistId;
+                const tenderId = row.dataset.tenderId;
+                const tenderTitle = row.querySelector('.tender-title-cell').textContent;
+                openProgressModal(shortlistId, tenderId, tenderTitle);
+            });
+        });
+
+        // Close modals on overlay click
+        document.getElementById('reasonModal').addEventListener('click', (event) => {
+            if (event.target.id === 'reasonModal') {
+                closeReasonModal();
+            }
+        });
+
+        // Fetch all employees on page load
+        fetchAllEmployees();
+    });
+
+    // Extract all computed fields from JSON data
+    function extractAllComputedFields() {
+        // Extract EMD values
+        document.querySelectorAll('.emd-cell').forEach(cell => {
+            const emdData = JSON.parse(cell.dataset.emd || '{}');
+            const emdValue = extractEMDValue(emdData);
+            cell.querySelector('.emd-value').textContent = emdValue;
+        });
+
+        // Extract Fee values
+        document.querySelectorAll('.fee-cell').forEach(cell => {
+            const feeData = JSON.parse(cell.dataset.fee || '{}');
+            const feeValue = extractFeeValue(feeData);
+            cell.querySelector('.fee-value').textContent = feeValue;
+        });
+
+        // Extract Tenure
+        document.querySelectorAll('.tenure-cell').forEach(cell => {
+            const workDetails = JSON.parse(cell.dataset.workDetails || '{}');
+            const tenure = extractTenure(workDetails);
+            cell.querySelector('.tenure-value').textContent = tenure;
+        });
+
+        // Extract Pre-Bid Date and Opening Date from critical dates
+        document.querySelectorAll('.prebid-cell').forEach(cell => {
+            const dates = JSON.parse(cell.dataset.dates || '{}');
+            const preBidDate = extractPreBidDate(dates);
+            cell.querySelector('.prebid-value').textContent = preBidDate;
+        });
+
+        document.querySelectorAll('.opening-cell').forEach(cell => {
+            const row = cell.closest('.tender-row');
+            const datesCell = row.querySelector('.prebid-cell');
+            const dates = JSON.parse(datesCell.dataset.dates || '{}');
+            const openingDate = extractOpeningDate(dates);
+            cell.querySelector('.opening-value').textContent = openingDate;
+        });
+    }
+
+    // Helper functions to extract data from JSON fields
+    function extractEMDValue(emdData) {
+        if (!emdData || Object.keys(emdData).length === 0) return 'N/A';
+
+        if (typeof emdData === 'string') {
+            try {
+                const parsed = JSON.parse(emdData);
+                if (parsed && typeof parsed === 'object') {
+                    return extractEMDValue(parsed);
+                }
+            } catch (e) {
+                try {
+                    const normalized = emdData.replace(/'/g, '"');
+                    const parsed = JSON.parse(normalized);
+                    if (parsed && typeof parsed === 'object') {
+                        return extractEMDValue(parsed);
+                    }
+                } catch (err) {
+                    // fall through to formatting below
+                }
+            }
+            return formatCurrency(emdData);
+        }
+
+        // Try to find amount field
+        const amount = emdData['EMD Amount'] ||
+                       emdData['EMD Amount (INR)'] ||
+                       emdData['EMD Amount in ₹'] ||
+                       emdData['Amount'] ||
+                       emdData['EMD Fee'] ||
+                       emdData['emd_amount'];
+        if (amount) {
+            return formatCurrency(amount);
+        }
+
+        // If it's a single value
+        if (typeof emdData === 'string' || typeof emdData === 'number') {
+            return formatCurrency(emdData);
+        }
+
+        return 'N/A';
+    }
+
+    function extractFeeValue(feeData) {
+        if (!feeData || Object.keys(feeData).length === 0) return 'N/A';
+
+        if (typeof feeData === 'string') {
+            try {
+                const parsed = JSON.parse(feeData);
+                if (parsed && typeof parsed === 'object') {
+                    return extractFeeValue(parsed);
+                }
+            } catch (e) {
+                try {
+                    const normalized = feeData.replace(/'/g, '"');
+                    const parsed = JSON.parse(normalized);
+                    if (parsed && typeof parsed === 'object') {
+                        return extractFeeValue(parsed);
+                    }
+                } catch (err) {
+                    // fall through to formatting below
+                }
+            }
+            return formatCurrency(feeData);
+        }
+
+        // Try to find fee field
+        const fee = feeData['Tender Fee'] ||
+                    feeData['Tender Fee (INR)'] ||
+                    feeData['Tender Fee in ₹'] ||
+                    feeData['Fee'] ||
+                    feeData['Amount'] ||
+                    feeData['tender_fee'];
+        if (fee) {
+            return formatCurrency(fee);
+        }
+
+        // If it's a single value
+        if (typeof feeData === 'string' || typeof feeData === 'number') {
+            return formatCurrency(feeData);
+        }
+
+        return 'N/A';
+    }
+
+    function extractTenure(workDetails) {
+        if (!workDetails || Object.keys(workDetails).length === 0) return 'N/A';
+
+        // Try common field names for tenure/duration
+        const tenure = workDetails['Period of Work'] ||
+                      workDetails['Contract Period'] ||
+                      workDetails['Duration'] ||
+                      workDetails['Completion Period'] ||
+                      workDetails['period_of_work'];
+
+        if (tenure) {
+            // Try to extract number of days
+            const match = String(tenure).match(/(\d+)\s*(day|days|month|months|year|years)/i);
+            if (match) {
+                const num = parseInt(match[1]);
+                const unit = match[2].toLowerCase();
+
+                if (unit.includes('month')) {
+                    return (num * 30) + ' days';
+                } else if (unit.includes('year')) {
+                    return (num * 365) + ' days';
+                } else {
+                    return num + ' days';
+                }
+            }
+            return tenure;
+        }
+
+        return 'N/A';
+    }
+
+    function extractPreBidDate(dates) {
+        if (!dates || Object.keys(dates).length === 0) return 'N/A';
+
+        const preBid = dates['Pre Bid Meeting Date'] ||
+                      dates['Pre-Bid Meeting'] ||
+                      dates['Prebid Date'] ||
+                      dates['pre_bid_date'];
+
+        return formatDate(preBid);
+    }
+
+    function extractOpeningDate(dates) {
+        if (!dates || Object.keys(dates).length === 0) return 'N/A';
+
+        const opening = dates['Opening Date'] ||
+                       dates['Bid Opening Date'] ||
+                       dates['Technical Bid Opening Date'] ||
+                       dates['opening_date'];
+
+        return formatDate(opening);
+    }
+
+    function formatCurrency(value) {
+        if (!value || value === 'N/A' || value === '') return 'N/A';
+
+        // Remove currency symbols and clean
+        const cleaned = String(value).replace(/[₹$,]/g, '').trim();
+        const num = parseFloat(cleaned);
+
+        if (isNaN(num)) return value;
+
+        // Format as Indian currency
+        return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr || dateStr === 'N/A' || dateStr === '') return 'N/A';
+
+        try {
+            // Try to parse the date
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) {
+                // If parsing fails, return original
+                return dateStr;
+            }
+
+            // Format as DD MMM YYYY
+            const options = { day: '2-digit', month: 'short', year: 'numeric' };
+            return date.toLocaleDateString('en-GB', options);
+        } catch (e) {
+            return dateStr;
+        }
+    }
+
+    // Setup auto-save for admin fields
+    function setupAdminFieldAutoSave() {
+        document.querySelectorAll('.admin-field-input').forEach(input => {
+            input.addEventListener('input', (event) => {
+                const field = event.target;
+                const fieldName = field.dataset.field;
+                const fieldValue = field.value;
+                const row = field.closest('.tender-row');
+                const favoriteId = row.dataset.favoriteId;
+
+                // Clear existing timer for this field
+                const timerKey = `${favoriteId}_${fieldName}`;
+                if (debounceTimers[timerKey]) {
+                    clearTimeout(debounceTimers[timerKey]);
+                }
+
+                // Set new timer for auto-save (1 second debounce)
+                debounceTimers[timerKey] = setTimeout(() => {
+                    autoSaveField(favoriteId, fieldName, fieldValue, field);
+                }, 1000);
+            });
+        });
+    }
+
+    // Auto-save field to backend
+    function autoSaveField(favoriteId, fieldName, fieldValue, inputElement) {
+        const formData = new FormData();
+        formData.append('field_name', fieldName);
+        formData.append('field_value', fieldValue);
+
+        // Add visual feedback
+        inputElement.classList.add('saving');
+
+        fetch(`/api/favorites/${favoriteId}/update-field`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success feedback
+                inputElement.classList.remove('saving');
+                inputElement.classList.add('saved');
+                setTimeout(() => {
+                    inputElement.classList.remove('saved');
+                }, 1000);
+            } else {
+                // Show error feedback
+                inputElement.classList.remove('saving');
+                inputElement.classList.add('error');
+                console.error('Failed to save field:', data);
+                setTimeout(() => {
+                    inputElement.classList.remove('error');
+                }, 2000);
+            }
+        })
+        .catch(error => {
+            console.error('Error saving field:', error);
+            inputElement.classList.remove('saving');
+            inputElement.classList.add('error');
+            setTimeout(() => {
+                inputElement.classList.remove('error');
+            }, 2000);
+        });
+    }
+
+    // Favorites Section Functions
+    function handleShortlist(tenderId, event) {
+        event.stopPropagation();
+        currentTenderId = tenderId;
+        currentAction = 'shortlist';
+        document.getElementById('modalTitle').textContent = 'Shortlist Tender - Provide Reason';
+        openReasonModal();
+    }
+
+    function handleReject(tenderId, event) {
+        event.stopPropagation();
+        currentTenderId = tenderId;
+        currentAction = 'reject';
+        document.getElementById('modalTitle').textContent = 'Reject Tender - Provide Reason';
+        openReasonModal();
+    }
+
+    function openReasonModal() {
+        const modal = document.getElementById('reasonModal');
+        modal.classList.add('is-visible');
+        modal.setAttribute('aria-hidden', 'false');
+        document.getElementById('reasonText').value = '';
+        document.getElementById('reasonText').focus();
+    }
+
+    function closeReasonModal() {
+        const modal = document.getElementById('reasonModal');
+        modal.classList.remove('is-visible');
+        modal.setAttribute('aria-hidden', 'true');
+        currentTenderId = '';
+        currentAction = '';
+    }
+
+    function submitReason() {
+        const reason = document.getElementById('reasonText').value.trim();
+
+        if (!reason) {
+            alert('Please provide a reason for your decision.');
+            return;
+        }
+
+        if (!currentTenderId || !currentAction) {
+            alert('Error: Missing tender information.');
+            return;
+        }
+
+        const endpoint = currentAction === 'shortlist'
+            ? '/api/tenders/shortlist'
+            : '/api/tenders/reject';
+
+        const formData = new FormData();
+        formData.append('tender_id', currentTenderId);
+        formData.append('reason', reason);
+
+        fetch(endpoint, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message || data.success) {
+                alert(data.message || 'Operation completed successfully!');
+                closeReasonModal();
+                // Reload page to update the list
+                window.location.reload();
+            } else {
+                alert('Error: ' + (data.detail || data.error || 'Unable to complete operation'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Unexpected error. Please try again.');
+        });
+    }
+
+    // Shortlisted Section Functions
+    // Removal options that should trigger tender removal
+    const REMOVAL_OPTIONS = [
+        'Cancelled', 'Tender Cancelled', 'Opened & Not Qualified',
+        'Opened & Lost', 'Opened & Not Eligible', 'No'
+    ];
+
+    function formatTimestampValue(isoString) {
+        if (!isoString) {
+            return '-';
+        }
+        const date = new Date(isoString);
+        if (isNaN(date.getTime())) {
+            return '-';
+        }
+        return date.toLocaleString();
+    }
+
+    function setLastUpdated(isoString) {
+        const el = document.getElementById('lastUpdated');
+        if (!el) return;
+        el.textContent = formatTimestampValue(isoString);
+    }
+
+    function setStepTimestamp(stepNumber, isoString) {
+        const el = document.getElementById(`step${stepNumber}Timestamp`);
+        if (!el) return;
+        const formatted = formatTimestampValue(isoString);
+        el.textContent = formatted === '-'
+            ? 'Last change: -'
+            : `Last change: ${formatted}`;
+    }
+
+    function setStepStatus(stepNumber, message) {
+        const el = document.getElementById(`step${stepNumber}Status`);
+        if (!el) return;
+        if (message) {
+            el.textContent = message;
+            el.style.display = '';
+        } else {
+            el.textContent = '';
+            el.style.display = 'none';
+        }
+    }
+
+    function hasStepValue(value) {
+        return value !== null && value !== undefined && String(value).trim() !== '';
+    }
+
+    function isStepUnlocked(stepNumber) {
+        if (stepNumber <= 1) return true;
+        const previousSelect = document.getElementById(`step${stepNumber - 1}`);
+        if (!previousSelect) return false;
+        return hasStepValue(previousSelect.value);
+    }
+
+    function updateStepLockStates() {
+        for (let step = 1; step <= 6; step++) {
+            const container = document.querySelector(`.progress-step[data-step="${step}"]`);
+            if (!container) continue;
+
+            const unlocked = step === 1 ? true : isStepUnlocked(step);
+            const selectEl = document.getElementById(`step${step}`);
+            const uploadBtn = document.getElementById(`step${step}Upload`);
+            const employeeInput = document.getElementById(`employeeInput${step}`);
+            const dropdown = document.getElementById(`autocomplete${step}`);
+
+            if (employeeInput && !employeeInput.dataset.originalPlaceholder) {
+                employeeInput.dataset.originalPlaceholder = employeeInput.placeholder || 'Type to add employee...';
+            }
+
+            if (unlocked) {
+                if (selectEl) selectEl.disabled = false;
+                if (uploadBtn) uploadBtn.disabled = false;
+                if (employeeInput) {
+                    employeeInput.disabled = false;
+                    employeeInput.placeholder = employeeInput.dataset.originalPlaceholder || 'Type to add employee...';
+                }
+                container.classList.remove('progress-step--locked');
+                setStepStatus(step, '');
+            } else {
+                if (selectEl) selectEl.disabled = true;
+                if (uploadBtn) uploadBtn.disabled = true;
+                if (employeeInput) {
+                    employeeInput.disabled = true;
+                    employeeInput.value = '';
+                    employeeInput.placeholder = 'Complete previous step to unlock';
+                    const dropdownEl = document.getElementById(`autocomplete${step}`);
+                    if (dropdownEl) {
+                        dropdownEl.classList.remove('show');
+                    }
+                }
+                container.classList.add('progress-step--locked');
+                setStepStatus(step, `Unlocks after Step ${step - 1}`);
+            }
+
+            // Update employee badges to reflect lock state (removes/hides remove buttons)
+            renderEmployeeBadges(step);
+        }
+    }
+
+    // ============ Deadline Management Functions ============
+
+    /**
+     * Calculate days remaining until a deadline
+     * @param {string} deadlineStr - ISO date string
+     * @returns {number|null} - Number of days remaining (negative if overdue), or null if no deadline
+     */
+    function calculateDaysRemaining(deadlineStr) {
+        if (!deadlineStr) return null;
+
+        const deadline = new Date(deadlineStr);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        deadline.setHours(0, 0, 0, 0);
+
+        const diffTime = deadline - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        return diffDays;
+    }
+
+    /**
+     * Get CSS class for deadline based on days remaining
+     * @param {number|null} daysRemaining - Number of days until deadline
+     * @returns {string} - CSS class name
+     */
+    function getDeadlineClass(daysRemaining) {
+        if (daysRemaining === null) return 'deadline-none';
+        if (daysRemaining <= 2) return 'deadline-critical';
+        if (daysRemaining <= 5) return 'deadline-warning';
+        return 'deadline-safe';
+    }
+
+    /**
+     * Format date string to readable format (DD MMM YYYY)
+     * @param {string} dateStr - ISO date string
+     * @returns {string} - Formatted date
+     */
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        // Check if date is invalid
+        if (isNaN(date.getTime())) return '';
+        const options = { day: '2-digit', month: 'short', year: 'numeric' };
+        return date.toLocaleDateString('en-GB', options);
+    }
+
+    /**
+     * Format deadline display HTML with color coding
+     * @param {string} deadlineStr - ISO date string
+     * @param {string} label - Label for the deadline
+     * @returns {string} - HTML string for deadline display
+     */
+    function formatDeadlineDisplay(deadlineStr, label) {
+        // Check if deadline is missing, empty, or invalid
+        if (!deadlineStr || deadlineStr.trim() === '') {
+            return '<span class="deadline-none">Deadline not available</span>';
+        }
+
+        // Validate the date
+        const testDate = new Date(deadlineStr);
+        if (isNaN(testDate.getTime())) {
+            return '<span class="deadline-none">Deadline not available</span>';
+        }
+
+        const daysRemaining = calculateDaysRemaining(deadlineStr);
+        const deadlineClass = getDeadlineClass(daysRemaining);
+        const formattedDate = formatDate(deadlineStr);
+
+        // If formatDate returns empty (invalid date), show not available
+        if (!formattedDate) {
+            return '<span class="deadline-none">Deadline not available</span>';
+        }
+
+        let daysText = '';
+        if (daysRemaining === null) {
+            daysText = '';
+        } else if (daysRemaining < 0) {
+            daysText = `(${Math.abs(daysRemaining)} days overdue)`;
+        } else if (daysRemaining === 0) {
+            daysText = '(Today)';
+        } else if (daysRemaining === 1) {
+            daysText = '(Tomorrow)';
+        } else {
+            daysText = `(${daysRemaining} days)`;
+        }
+
+        return `<span class="${deadlineClass}"><strong>${label}:</strong> ${formattedDate} ${daysText}</span>`;
+    }
+
+    /**
+     * Update all deadline displays in the progress modal
+     * @param {Object} deadlines - Object with step1-step6 deadline dates
+     */
+    function updateDeadlineDisplays(deadlines) {
+        if (!deadlines) return;
+
+        // Step 1: Clarification End Date
+        const deadline1 = document.getElementById('deadline-step1');
+        if (deadline1) {
+            deadline1.innerHTML = formatDeadlineDisplay(deadlines.step1, 'Clarification Deadline');
+        }
+
+        // Step 2: Bid Submission End Date
+        const deadline2 = document.getElementById('deadline-step2');
+        if (deadline2) {
+            deadline2.innerHTML = formatDeadlineDisplay(deadlines.step2, 'Submission Deadline');
+        }
+
+        // Step 3: Bid Opening Date
+        const deadline3 = document.getElementById('deadline-step3');
+        if (deadline3) {
+            deadline3.innerHTML = formatDeadlineDisplay(deadlines.step3, 'Opening Date');
+        }
+
+        // Step 4: Financial Proposal - Manual
+        const deadline4 = document.getElementById('deadline-step4');
+        if (deadline4) {
+            deadline4.innerHTML = deadlines.step4
+                ? formatDeadlineDisplay(deadlines.step4, 'Financial Deadline')
+                : '<span class="deadline-none">No Deadline Set</span>';
+        }
+
+        // Step 5: Negotiations - Manual
+        const deadline5 = document.getElementById('deadline-step5');
+        if (deadline5) {
+            deadline5.innerHTML = deadlines.step5
+                ? formatDeadlineDisplay(deadlines.step5, 'Negotiation Deadline')
+                : '<span class="deadline-none">No Deadline Set</span>';
+        }
+
+        // Pre-populate manual inputs
+        const input4 = document.getElementById('deadline-input-step4');
+        const input5 = document.getElementById('deadline-input-step5');
+
+        if (input4 && deadlines.step4) {
+            input4.value = deadlines.step4.split('T')[0];
+        } else if (input4) {
+            input4.value = '';
+        }
+
+        if (input5 && deadlines.step5) {
+            input5.value = deadlines.step5.split('T')[0];
+        } else if (input5) {
+            input5.value = '';
+        }
+    }
+
+    /**
+     * Save manual deadline for steps 4 or 5
+     * @param {number} stepNumber - Step number (4 or 5)
+     */
+    async function saveManualDeadline(stepNumber) {
+        const inputElement = document.getElementById(`deadline-input-step${stepNumber}`);
+        const deadlineValue = inputElement?.value;
+
+        if (!deadlineValue) {
+            alert('Please select a deadline date');
+            return;
+        }
+
+        if (!currentShortlistId) {
+            alert('Error: No shortlist ID found');
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `/api/tenders/shortlist/${currentShortlistId}/deadline`,
+                {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        step: stepNumber,
+                        deadline: deadlineValue
+                    })
+                }
+            );
+
+            if (response.ok) {
+                await refreshProgressData();
+                alert('Deadline saved successfully');
+            } else {
+                const error = await response.json();
+                alert('Error saving deadline: ' + (error.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to save deadline');
+        }
+    }
+
+    // ============ End Deadline Management Functions ============
+
+    function refreshProgressData() {
+        if (!currentShortlistId) {
+            updateStepLockStates();
+            return Promise.resolve(null);
+        }
+
+        return fetch(`/api/tenders/shortlist/${currentShortlistId}/progress-steps`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('step1').value = data.step1 || '';
+                document.getElementById('step2').value = data.step2 || '';
+                document.getElementById('step3').value = data.step3 || '';
+                document.getElementById('step4').value = data.step4 || '';
+                document.getElementById('step5').value = data.step5 || '';
+                document.getElementById('step6').value = data.step6 || '';
+
+                const stepTimestamps = (data.step_timestamps) || {};
+                for (let i = 1; i <= 6; i++) {
+                    setStepTimestamp(i, stepTimestamps[`step${i}`]);
+                }
+                setLastUpdated(data.last_updated);
+
+                // Update deadline displays
+                updateDeadlineDisplays(data.step_deadlines);
+
+                updateStepLockStates();
+                return data;
+            })
+            .catch(error => {
+                console.error('Error fetching progress:', error);
+                updateStepLockStates();
+                throw error;
+            });
+    }
+
+    // Open Progress Modal
+    function openProgressModal(shortlistId, tenderId, tenderTitle) {
+        currentShortlistId = shortlistId;
+        currentTenderId = tenderId;
+
+        const modal = document.getElementById('progressModal');
+        document.getElementById('progressModalSubtitle').textContent = tenderTitle;
+
+        // Reset timestamps before loading fresh data
+        setLastUpdated(null);
+        for (let i = 1; i <= 6; i++) {
+            setStepTimestamp(i, null);
+        }
+        for (let i = 1; i <= 6; i++) {
+            const selectElement = document.getElementById(`step${i}`);
+            if (selectElement) {
+                selectElement.value = '';
+            }
+        }
+        updateStepLockStates();
+
+        refreshProgressData().catch(() => {});
+
+        // Load assigned employees
+        loadAssignedEmployees();
+
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Close Progress Modal
+    function closeProgressModal() {
+        const modal = document.getElementById('progressModal');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        currentShortlistId = '';
+        currentTenderId = '';
+
+        // Clear employee data for next open
+        stepEmployees = {1: [], 2: [], 3: [], 4: [], 5: [], 6: []};
+
+        // Clear employee badges visually
+        for (let i = 1; i <= 6; i++) {
+            const container = document.getElementById(`employeeBadges${i}`);
+            if (container) container.innerHTML = '';
+        }
+
+        // Reset to progress view
+        showProgressView();
+
+        document.body.style.overflow = '';
+    }
+
+    // Handle step change
+    function handleStepChange(stepNumber, value) {
+        const selectElement = document.getElementById(`step${stepNumber}`);
+
+        if (!isStepUnlocked(stepNumber)) {
+            alert(`Please complete Step ${stepNumber - 1} before updating this step.`);
+            if (selectElement) {
+                selectElement.value = '';
+            }
+            return;
+        }
+
+        // Check if this is "Yes" on step 6 (Tender Awarded)
+        if (stepNumber === 6 && value === 'Yes') {
+            if (confirm('Mark this tender as awarded? It will be moved to Awarded Tenders.')) {
+                awardTender();
+            } else {
+                // Reset selection if user cancels
+                if (selectElement) {
+                    selectElement.value = '';
+                }
+            }
+            return;
+        }
+
+        // Check if this is a removal option
+        if (REMOVAL_OPTIONS.includes(value)) {
+            if (confirm(`This tender will be removed from Shortlisted Tenders. Continue?`)) {
+                removeTenderFromShortlist(value);
+            } else {
+                // Reset selection if user cancels
+                if (selectElement) {
+                    selectElement.value = '';
+                }
+            }
+            return;
+        }
+
+        // Normal save - update the step
+        saveStepProgress(stepNumber, value);
+    }
+
+    // Save step progress
+    function saveStepProgress(stepNumber, value) {
+        const updateData = {};
+        updateData[`step${stepNumber}`] = value;
+
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/progress-steps`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message || data.success) {
+                setLastUpdated(data.last_updated);
+                const stepTimestamps = (data.step_timestamps) || {};
+                setStepTimestamp(stepNumber, stepTimestamps[`step${stepNumber}`]);
+                updateStepLockStates();
+            } else {
+                alert('Error updating progress: ' + (data.detail || 'Unknown error'));
+                refreshProgressData().catch(() => {});
+            }
+        })
+        .catch(error => {
+            console.error('Error updating progress:', error);
+            alert('Error updating progress. Please try again.');
+            refreshProgressData().catch(() => {});
+        });
+    }
+
+    // Remove tender from shortlist
+    function removeTenderFromShortlist(reason) {
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/remove`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ removal_reason: reason })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message || data.success) {
+                alert('Tender removed from shortlist.');
+                closeProgressModal();
+                // Reload page to update the list
+                window.location.reload();
+            } else {
+                alert('Error removing tender: ' + (data.detail || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error removing tender:', error);
+            alert('Error removing tender. Please try again.');
+        });
+    }
+
+    // Award tender
+    function awardTender() {
+        fetch(`/api/tender/${currentTenderId}/award`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message || data.success) {
+                // Also remove from shortlist
+                fetch(`/api/tenders/shortlist/${currentShortlistId}/remove`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ removal_reason: 'Tender Awarded' })
+                })
+                .then(() => {
+                    // Build success message based on project creation status
+                    let message = 'Tender marked as awarded and moved to Awarded Tenders!';
+                    if (data.project_created && data.project_id) {
+                        message += `\n\nA new project "${data.project_name}" has been automatically created in your Past Projects.\nYou can edit it to complete any missing details.`;
+                    }
+                    alert(message);
+                    closeProgressModal();
+                    window.location.reload();
+                });
+            } else {
+                alert('Error awarding tender: ' + (data.detail || 'Unknown error'));
+                document.getElementById('step6').value = '';
+            }
+        })
+        .catch(error => {
+            console.error('Error awarding tender:', error);
+            alert('Error awarding tender. Please try again.');
+            document.getElementById('step6').value = '';
+        });
+    }
+
+    // Save All Progress
+    function saveAllProgress() {
+        const progressData = {
+            step1: document.getElementById('step1').value,
+            step2: document.getElementById('step2').value,
+            step3: document.getElementById('step3').value,
+            step4: document.getElementById('step4').value,
+            step5: document.getElementById('step5').value,
+            step6: document.getElementById('step6').value
+        };
+
+        // Check if step 6 is "Yes" (Tender Awarded)
+        if (progressData.step6 === 'Yes') {
+            if (confirm('Mark this tender as awarded? It will be moved to Awarded Tenders.')) {
+                awardTender();
+            } else {
+                document.getElementById('step6').value = '';
+            }
+            return;
+        }
+
+        // Ensure sequential dependency is maintained
+        for (let i = 2; i <= 6; i++) {
+            const currentValue = progressData[`step${i}`];
+            const previousValue = progressData[`step${i - 1}`];
+            if (hasStepValue(currentValue) && !hasStepValue(previousValue)) {
+                alert(`Please complete Step ${i - 1} before updating Step ${i}.`);
+                return;
+            }
+        }
+
+        // Check for removal options
+        for (let i = 1; i <= 6; i++) {
+            const value = progressData[`step${i}`];
+            if (value && REMOVAL_OPTIONS.includes(value)) {
+                if (confirm(`Step ${i} has a removal option selected. This tender will be removed from Shortlisted Tenders. Continue?`)) {
+                    removeTenderFromShortlist(value);
+                } else {
+                    document.getElementById(`step${i}`).value = '';
+                }
+                return;
+            }
+        }
+
+        // Save all steps
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/progress-steps`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(progressData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message || data.success) {
+                alert('✓ Progress saved successfully! All dropdowns and employees are saved.');
+                setLastUpdated(data.last_updated);
+                const stepTimestamps = (data.step_timestamps) || {};
+                for (let i = 1; i <= 6; i++) {
+                    setStepTimestamp(i, stepTimestamps[`step${i}`]);
+                }
+                 updateStepLockStates();
+                // Close the modal automatically after successful save
+                closeProgressModal();
+            } else {
+                alert('Error saving progress: ' + (data.detail || 'Unknown error'));
+                refreshProgressData().catch(() => {});
+            }
+        })
+        .catch(error => {
+            console.error('Error saving progress:', error);
+            alert('Error saving progress. Please try again.');
+            refreshProgressData().catch(() => {});
+        });
+    }
+
+    // Document Upload Functions
+    let currentUploadStep = null;
+    const stepNames = {
+        1: 'Step 1: Pre Bid Meeting',
+        2: 'Step 2: Proposal Submission',
+        3: 'Step 3: Technical Proposal Opening',
+        4: 'Step 4: Financial Proposal',
+        5: 'Step 5: Further Negotiations',
+        6: 'Step 6: Tender Awarded'
+    };
+
+    function openUploadModal(stepNumber) {
+        if (!isStepUnlocked(stepNumber)) {
+            alert(`Please complete Step ${stepNumber - 1} before uploading documents for this step.`);
+            return;
+        }
+
+        currentUploadStep = stepNumber;
+        document.getElementById('uploadStepName').textContent = stepNames[stepNumber];
+        document.getElementById('uploadForm').reset();
+        document.getElementById('uploadModal').style.display = 'flex';
+        document.getElementById('uploadModal').setAttribute('aria-hidden', 'false');
+    }
+
+    function closeUploadModal() {
+        document.getElementById('uploadModal').style.display = 'none';
+        document.getElementById('uploadModal').setAttribute('aria-hidden', 'true');
+        currentUploadStep = null;
+    }
+
+    function submitUpload() {
+        const form = document.getElementById('uploadForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const formData = new FormData(form);
+        formData.append('shortlist_id', currentShortlistId);
+        formData.append('step_number', currentUploadStep);
+
+        const submitBtn = event.target;
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Uploading...';
+
+        fetch('/api/tenders/shortlist/upload-document', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message || data.success) {
+                alert('Document uploaded successfully!');
+                closeUploadModal();
+            } else {
+                alert('Error uploading document: ' + (data.detail || 'Unknown error'));
+            }
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        })
+        .catch(error => {
+            console.error('Error uploading document:', error);
+            alert('Error uploading document. Please try again.');
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        });
+    }
+
+    // Switch between Progress and Documents views
+    function showDocumentsView() {
+        // Hide progress view
+        document.getElementById('progressView').style.display = 'none';
+        document.getElementById('progressFooter').style.display = 'none';
+        document.getElementById('showDocsBtn').style.display = 'none';
+
+        // Show documents view
+        document.getElementById('documentsView').style.display = 'block';
+        document.getElementById('documentsFooter').style.display = 'flex';
+        document.getElementById('backToProgressBtn').style.display = 'block';
+
+        // Update modal title
+        document.getElementById('progressModalTitle').textContent = 'All Uploaded Documents';
+
+        // Load documents
+        loadAllDocuments();
+    }
+
+    function showProgressView() {
+        // Hide documents view
+        document.getElementById('documentsView').style.display = 'none';
+        document.getElementById('documentsFooter').style.display = 'none';
+        document.getElementById('backToProgressBtn').style.display = 'none';
+
+        // Show progress view
+        document.getElementById('progressView').style.display = 'block';
+        document.getElementById('progressFooter').style.display = 'flex';
+        document.getElementById('showDocsBtn').style.display = 'block';
+
+        // Update modal title
+        document.getElementById('progressModalTitle').textContent = 'Tender Progress Tracking';
+    }
+
+    function loadAllDocuments() {
+        const container = document.getElementById('allDocsContainer');
+        container.innerHTML = '<div class="loading-state">Loading documents...</div>';
+
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/documents`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.documents && data.documents.length > 0) {
+                    container.innerHTML = data.documents.map(doc => `
+                        <div class="document-card">
+                            <div class="document-card__header">
+                                <div>
+                                    <h4 class="document-card__title">${doc.title}</h4>
+                                    <span class="document-card__step">${stepNames[doc.step_number] || 'General'}</span>
+                                </div>
+                                <span class="document-card__date">${new Date(doc.uploaded_at).toLocaleDateString()}</span>
+                            </div>
+                            ${doc.notes ? `<p class="document-card__notes">${doc.notes}</p>` : ''}
+                            <div class="document-card__actions">
+                                <a href="/api/tenders/shortlist/document/${doc.id}/download" class="btn btn-sm btn-outline" download>
+                                    Download
+                                </a>
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="deleteDocument(${doc.id})">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state"><p>No documents uploaded yet.</p></div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading documents:', error);
+                container.innerHTML = '<div class="empty-state"><p>Error loading documents.</p></div>';
+            });
+    }
+
+    function deleteDocument(docId) {
+        if (!confirm('Are you sure you want to delete this document?')) return;
+
+        fetch(`/api/tenders/shortlist/document/${docId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message || data.success) {
+                alert('Document deleted successfully!');
+                loadAllDocuments();
+            } else {
+                alert('Error deleting document: ' + (data.detail || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting document:', error);
+            alert('Error deleting document. Please try again.');
+        });
+    }
+
+    // Employee Assignment Variables
+    let allEmployees = [];
+    let stepEmployees = {1: [], 2: [], 3: [], 4: [], 5: [], 6: []};
+    let selectedAutocompleteIndex = -1;
+
+    function fetchAllEmployees() {
+        fetch('/api/employees/list')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    allEmployees = data.employees || [];
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching employees:', error);
+            });
+    }
+
+    // Handle employee input with autocomplete
+    function handleEmployeeInput(stepNumber, value) {
+        if (!isStepUnlocked(stepNumber)) {
+            return;
+        }
+
+        const dropdown = document.getElementById(`autocomplete${stepNumber}`);
+
+        if (!value.trim()) {
+            dropdown.classList.remove('show');
+            selectedAutocompleteIndex = -1;
+            return;
+        }
+
+        // Filter employees based on input
+        const searchTerm = value.toLowerCase();
+        const filteredEmployees = allEmployees.filter(emp => {
+            const alreadyAssigned = stepEmployees[stepNumber].some(e => e.id === emp.id);
+            if (alreadyAssigned) return false;
+
+            return emp.name.toLowerCase().includes(searchTerm) ||
+                   emp.email.toLowerCase().includes(searchTerm);
+        });
+
+        // Display autocomplete results
+        if (filteredEmployees.length > 0) {
+            dropdown.innerHTML = filteredEmployees.map((emp, index) => `
+                <div class="autocomplete-item" data-index="${index}" data-employee='${JSON.stringify(emp)}' onclick="selectEmployee(${stepNumber}, ${index})">
+                    <span class="autocomplete-item__initial">${emp.name.charAt(0).toUpperCase()}</span>
+                    <div style="flex: 1;">
+                        <div class="autocomplete-item__name">${emp.name}</div>
+                        <div class="autocomplete-item__email">${emp.email}${emp.role ? ' • ' + emp.role : ''}</div>
+                    </div>
+                </div>
+            `).join('');
+            dropdown.classList.add('show');
+            selectedAutocompleteIndex = -1;
+        } else {
+            dropdown.innerHTML = '<div class="autocomplete-empty">No employees found</div>';
+            dropdown.classList.add('show');
+        }
+    }
+
+    // Handle keyboard navigation in autocomplete
+    function handleEmployeeKeydown(stepNumber, event) {
+        if (!isStepUnlocked(stepNumber)) {
+            return;
+        }
+
+        const dropdown = document.getElementById(`autocomplete${stepNumber}`);
+        const items = dropdown.querySelectorAll('.autocomplete-item');
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            selectedAutocompleteIndex = Math.min(selectedAutocompleteIndex + 1, items.length - 1);
+            updateAutocompleteSelection(stepNumber);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            selectedAutocompleteIndex = Math.max(selectedAutocompleteIndex - 1, -1);
+            updateAutocompleteSelection(stepNumber);
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            if (selectedAutocompleteIndex >= 0 && items[selectedAutocompleteIndex]) {
+                selectEmployee(stepNumber, selectedAutocompleteIndex);
+            }
+        } else if (event.key === 'Escape') {
+            dropdown.classList.remove('show');
+            selectedAutocompleteIndex = -1;
+        }
+    }
+
+    function updateAutocompleteSelection(stepNumber) {
+        const dropdown = document.getElementById(`autocomplete${stepNumber}`);
+        const items = dropdown.querySelectorAll('.autocomplete-item');
+
+        items.forEach((item, index) => {
+            if (index === selectedAutocompleteIndex) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    // Select employee from autocomplete
+    function selectEmployee(stepNumber, index) {
+        if (!isStepUnlocked(stepNumber)) {
+            return;
+        }
+
+        const dropdown = document.getElementById(`autocomplete${stepNumber}`);
+        const item = dropdown.querySelectorAll('.autocomplete-item')[index];
+
+        if (!item) return;
+
+        const employee = JSON.parse(item.dataset.employee);
+
+        // Assign employee to step
+        assignEmployeeToStep(stepNumber, employee);
+
+        // Clear input and hide dropdown
+        document.getElementById(`employeeInput${stepNumber}`).value = '';
+        dropdown.classList.remove('show');
+        selectedAutocompleteIndex = -1;
+    }
+
+    // Assign employee to step
+    function assignEmployeeToStep(stepNumber, employee) {
+        if (!isStepUnlocked(stepNumber)) {
+            alert(`Please complete Step ${stepNumber - 1} before assigning employees to this step.`);
+            return;
+        }
+
+        // Add to local array
+        stepEmployees[stepNumber].push(employee);
+
+        // Update UI
+        renderEmployeeBadges(stepNumber);
+
+        // Save to backend
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/assign-employee`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                step_number: stepNumber,
+                employee_id: employee.id
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Error assigning employee:', data.detail);
+                alert(data.detail || 'Unable to assign employee to this step.');
+                // Remove from local array on error
+                stepEmployees[stepNumber] = stepEmployees[stepNumber].filter(e => e.id !== employee.id);
+                renderEmployeeBadges(stepNumber);
+            }
+        })
+        .catch(error => {
+            console.error('Error assigning employee:', error);
+            stepEmployees[stepNumber] = stepEmployees[stepNumber].filter(e => e.id !== employee.id);
+            renderEmployeeBadges(stepNumber);
+            alert('Error assigning employee. Please try again.');
+        });
+    }
+
+    // Remove employee from step
+    function removeEmployeeFromStep(stepNumber, employeeId) {
+        if (!isStepUnlocked(stepNumber)) {
+            alert(`Please complete Step ${stepNumber - 1} before modifying employees on this step.`);
+            return;
+        }
+
+        // Remove from local array
+        stepEmployees[stepNumber] = stepEmployees[stepNumber].filter(e => e.id !== employeeId);
+
+        // Update UI
+        renderEmployeeBadges(stepNumber);
+
+        // Remove from backend
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/unassign-employee`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                step_number: stepNumber,
+                employee_id: employeeId
+            })
+        })
+        .then(response => response.json())
+        .catch(error => {
+            console.error('Error unassigning employee:', error);
+            alert('Error unassigning employee. Please try again.');
+        });
+    }
+
+    // Generate consistent color for employee based on their ID
+    function getEmployeeColor(employeeId) {
+        const colors = [
+            '#2563eb', // blue
+            '#7c3aed', // purple
+            '#db2777', // pink
+            '#dc2626', // red
+            '#ea580c', // orange
+            '#ca8a04', // yellow
+            '#16a34a', // green
+            '#0891b2', // cyan
+            '#4f46e5', // indigo
+            '#be123c'  // rose
+        ];
+
+        // Use employee ID to consistently assign same color
+        const hash = employeeId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        return colors[hash % colors.length];
+    }
+
+    // Render employee badges
+    function renderEmployeeBadges(stepNumber) {
+        const container = document.getElementById(`employeeBadges${stepNumber}`);
+        if (!container) return;
+
+        const unlocked = isStepUnlocked(stepNumber);
+
+        if (stepEmployees[stepNumber].length === 0) {
+            container.innerHTML = '';
+            if (!unlocked && stepNumber > 1) {
+                container.setAttribute('title', `Complete Step ${stepNumber - 1} to modify team assignments.`);
+            } else {
+                container.removeAttribute('title');
+            }
+            return;
+        }
+
+        container.innerHTML = stepEmployees[stepNumber].map(emp => `
+            <div class="employee-badge" style="background: ${getEmployeeColor(emp.id)};" title="${emp.name}${emp.role ? ' (' + emp.role + ')' : ''}">
+                <span class="employee-badge__letter">${emp.name.charAt(0).toUpperCase()}</span>
+                ${unlocked ? `<span class="employee-badge__remove" onclick="event.stopPropagation(); removeEmployeeFromStep(${stepNumber}, '${emp.id}')" title="Remove ${emp.name}">×</span>` : ''}
+            </div>
+        `).join('');
+
+        if (!unlocked && stepNumber > 1) {
+            container.setAttribute('title', `Complete Step ${stepNumber - 1} to modify team assignments.`);
+        } else {
+            container.removeAttribute('title');
+        }
+    }
+
+    // Load assigned employees when opening progress modal
+    function loadAssignedEmployees() {
+        console.log('Loading assigned employees for shortlist:', currentShortlistId);
+
+        fetch(`/api/tenders/shortlist/${currentShortlistId}/assigned-employees`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Received employee assignments:', data);
+
+                if (data.success && data.assignments) {
+                    // Clear existing assignments
+                    stepEmployees = {1: [], 2: [], 3: [], 4: [], 5: [], 6: []};
+
+                    // Populate step employees
+                    for (let step = 1; step <= 6; step++) {
+                        stepEmployees[step] = data.assignments[`step${step}`] || [];
+                        console.log(`Step ${step} employees:`, stepEmployees[step]);
+                        renderEmployeeBadges(step);
+                    }
+
+                    updateStepLockStates();
+                }
+            })
+            .catch(error => {
+                console.error('Error loading assigned employees:', error);
+            });
+    }
+
+    // Close autocomplete when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.autocomplete-wrapper')) {
+            document.querySelectorAll('.autocomplete-dropdown').forEach(dropdown => {
+                dropdown.classList.remove('show');
+            });
+            selectedAutocompleteIndex = -1;
+        }
+    });
+
+    // Awarded Section Functions
+    function downloadTenderDoc(tenderId) {
+        // Placeholder for document download functionality
+        console.log('Download tender:', tenderId);
+        alert('Document download feature coming soon!');
+    }
+
+    function deleteAwardedTender(event, tenderId) {
+        if (event) {
+            event.stopPropagation();
+        }
+
+        if (!confirm('Delete this awarded tender? This action cannot be undone.')) {
+            return;
+        }
+
+        fetch(`/api/tender/${tenderId}/award`, {
+            method: 'DELETE'
+        })
+        .then(async response => {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const detail = data.detail || data.message || 'Failed to delete awarded tender.';
+                throw new Error(detail);
+            }
+            return data;
+        })
+        .then(() => {
+            alert('Awarded tender deleted successfully.');
+            window.location.reload();
+        })
+        .catch(error => {
+            console.error('Error deleting awarded tender:', error);
+            alert(error.message || 'Error deleting awarded tender. Please try again.');
+        });
+    }
+
+    // ============================================================================
+    // CERTIFICATE ATTACHMENT FUNCTIONALITY
+    // ============================================================================
+
+    // Load certificate counts for all tenders on page load
+    async function loadCertificateCounts() {
+        const cells = document.querySelectorAll('.certificates-cell');
+
+        for (const cell of cells) {
+            const tenderId = cell.dataset.tenderId;
+            if (!tenderId) continue;
+
+            try {
+                const response = await fetch(`/api/tenders/${tenderId}/attached-certificates`);
+                if (!response.ok) {
+                    console.warn(`Failed to load certificates for tender ${tenderId}`);
+                    continue;
+                }
+
+                const data = await response.json();
+                const count = data.count || 0;
+
+                const btn = cell.querySelector('.view-certificates-btn');
+                const noText = cell.querySelector('.no-certificates-text');
+                const countSpan = cell.querySelector('.cert-count');
+
+                if (count > 0) {
+                    // Show button with count
+                    countSpan.textContent = count;
+                    btn.style.display = 'inline-block';
+                    noText.style.display = 'none';
+                } else {
+                    // Show dash
+                    btn.style.display = 'none';
+                    noText.style.display = 'inline';
+                }
+            } catch (error) {
+                console.error(`Error loading certificates for tender ${tenderId}:`, error);
+            }
+        }
+    }
+
+    // View certificates modal
+    async function viewCertificates(tenderId, event) {
+        if (event) {
+            event.stopPropagation();
+        }
+
+        const modal = document.getElementById('certificatesModal');
+        const container = document.getElementById('certificatesListContainer');
+
+        // Show modal with loading state
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        container.innerHTML = '<div class="loading-state" style="text-align: center; padding: 2rem;"><p>Loading certificates...</p></div>';
+
+        try {
+            const response = await fetch(`/api/tenders/${tenderId}/attached-certificates`);
+            if (!response.ok) {
+                throw new Error('Failed to load certificates');
+            }
+
+            const data = await response.json();
+            const certificates = data.certificates || [];
+
+            if (certificates.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No certificates attached to this tender.</p></div>';
+                return;
+            }
+
+            // Build certificates list HTML
+            let html = '<div class="certificates-list" style="display: flex; flex-direction: column; gap: 1rem;">';
+
+            certificates.forEach((cert, index) => {
+                const services = Array.isArray(cert.services_rendered) ? cert.services_rendered : [];
+                const servicesText = services.length > 0 ? services.join(', ') : 'N/A';
+
+                // Use formatted INR values if available, otherwise use numeric values with formatting
+                const projectValue = cert.project_value_inr ||
+                                    (cert.project_value ? `₹ ${cert.project_value.toLocaleString('en-IN')}` : 'N/A');
+
+                const consultancyFee = cert.consultancy_fee_inr ||
+                                      (cert.consultancy_fee ? `₹ ${cert.consultancy_fee.toLocaleString('en-IN')}` : 'N/A');
+
+                html += `
+                    <div class="certificate-item" style="border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+                            <h3 style="margin: 0; font-size: 1rem; font-weight: 600; color: var(--text-primary);">
+                                ${cert.project_name || 'Unnamed Project'}
+                            </h3>
+                            <span class="badge badge--neutral" style="font-size: 0.75rem;">#${index + 1}</span>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; font-size: 0.875rem;">
+                            <div>
+                                <strong style="color: var(--text-muted);">Client:</strong>
+                                <span style="color: var(--text-primary);">${cert.client_name || 'N/A'}</span>
+                            </div>
+                            <div>
+                                <strong style="color: var(--text-muted);">Completion Date:</strong>
+                                <span style="color: var(--text-primary);">${cert.completion_date ? new Date(cert.completion_date).toLocaleDateString() : 'N/A'}</span>
+                            </div>
+                            <div>
+                                <strong style="color: var(--text-muted);">Project Value:</strong>
+                                <span style="color: var(--text-primary);">${projectValue}</span>
+                            </div>
+                            <div>
+                                <strong style="color: var(--text-muted);">Consultancy Fee:</strong>
+                                <span style="color: var(--text-primary);">${consultancyFee}</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 0.75rem;">
+                            <strong style="color: var(--text-muted); font-size: 0.875rem;">Services:</strong>
+                            <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; color: var(--text-primary);">${servicesText}</p>
+                        </div>
+
+                        ${cert.notes ? `
+                        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
+                            <strong style="color: var(--text-muted); font-size: 0.875rem;">Notes:</strong>
+                            <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; color: var(--text-primary); font-style: italic;">${cert.notes}</p>
+                        </div>
+                        ` : ''}
+
+                        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-muted);">
+                            Attached by ${cert.attached_by || 'Unknown'} on ${new Date(cert.attached_at).toLocaleString()}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error('Error loading certificates:', error);
+            container.innerHTML = '<div class="error-state" style="text-align: center; padding: 2rem; color: var(--error);"><p>Error loading certificates. Please try again.</p></div>';
+        }
+    }
+
+    // Close certificates modal
+    function closeCertificatesModal() {
+        const modal = document.getElementById('certificatesModal');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    // Load certificate counts on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadCertificateCounts();
+    });
+</script>
+
+<style>
+    /* Tab Switching Animations */
+    .tab-content {
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Stats Card Styling */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: var(--space-6);
+        margin-bottom: var(--space-8);
+    }
+
+    .stat-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: white;
+        border-radius: var(--radius);
+        padding: var(--space-6);
+        box-shadow: var(--shadow-sm);
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+    .stat-card--clickable {
+        cursor: pointer;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+
+    .stat-card.active {
+        border-color: var(--primary-500);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%);
+    }
+
+    .stat-card__body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .stat-card__label {
+        font-size: var(--text-sm);
+        color: var(--neutral-500);
+        font-weight: 500;
+    }
+
+    .stat-card__value {
+        font-size: var(--text-4xl);
+        font-weight: 700;
+        color: var(--neutral-900);
+    }
+
+    .stat-card__icon {
+        width: 56px;
+        height: 56px;
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: var(--text-2xl);
+    }
+
+    .stat-card__icon--primary {
+        background: var(--primary-50);
+    }
+
+    .stat-card__icon--success {
+        background: #dcdc47;
+    }
+
+    .stat-card__icon--accent {
+        background: #fef3c7;
+    }
+
+    /* Table Styling */
+    .table-container {
+        overflow-x: auto;
+        margin-top: var(--space-6);
+        max-width: 100%;
+    }
+
+    .tender-table {
+        width: 100%;
+        border-collapse: collapse;
+        white-space: nowrap;
+        min-width: 3000px;
+    }
+
+    .tender-table thead {
+        background: var(--neutral-50);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .tender-table th {
+        padding: var(--space-4);
+        text-align: left;
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--neutral-700);
+        border-bottom: 2px solid var(--neutral-200);
+    }
+
+    .tender-table td {
+        padding: var(--space-4);
+        border-bottom: 1px solid var(--neutral-200);
+        font-size: var(--text-sm);
+        color: var(--neutral-700);
+        vertical-align: middle;
+    }
+
+    .tender-row {
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+
+    .tender-row:hover {
+        background: var(--neutral-50);
+    }
+
+    .tender-title-cell {
+        font-weight: 500;
+        color: var(--primary-600);
+        white-space: normal;
+        max-width: 300px;
+    }
+
+    .tender-actions-cell {
+        vertical-align: middle !important;
+    }
+
+    .tender-actions-cell > div {
+        display: flex;
+        gap: var(--space-2);
+        align-items: center;
+        justify-content: center;
+    }
+
+    .empty-state {
+        padding: var(--space-12) var(--space-6);
+        text-align: center;
+    }
+
+    .empty-state__message {
+        font-size: var(--text-base);
+        color: var(--neutral-500);
+    }
+
+    /* Admin field input styling */
+    .admin-field-cell {
+        padding: var(--space-2);
+    }
+
+    .admin-field-input {
+        width: 100%;
+        padding: var(--space-2) var(--space-3);
+        border: 1px solid var(--neutral-300);
+        border-radius: var(--radius-sm);
+        font-size: var(--text-sm);
+        color: var(--neutral-700);
+        background: white;
+        transition: all 0.2s ease;
+    }
+
+    .admin-field-input:focus {
+        outline: none;
+        border-color: var(--primary-500);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .admin-field-input.saving {
+        border-color: var(--primary-400);
+        background: #fffbeb;
+    }
+
+    .admin-field-input.saved {
+        border-color: #10b981;
+        background: #d1fae5;
+    }
+
+    .admin-field-input.error {
+        border-color: #ef4444;
+        background: #fee2e2;
+    }
+
+    .documents-cell {
+        cursor: pointer;
+    }
+
+    .doc-count {
+        color: var(--primary-600);
+        font-weight: 500;
+    }
+
+    .doc-count:hover {
+        text-decoration: underline;
+    }
+
+    .reason-cell {
+        white-space: normal;
+        max-width: 300px;
+    }
+
+    /* Card Grid for Awarded */
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: var(--space-6);
+        margin-top: var(--space-6);
+    }
+
+    .surface-card {
+        background: white;
+        border-radius: var(--radius);
+        padding: var(--space-6);
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s ease;
+    }
+
+    .surface-card--clickable {
+        cursor: pointer;
+    }
+
+    .surface-card--clickable:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+
+    .surface-card__header {
+        margin-bottom: var(--space-4);
+    }
+
+    .surface-card__title {
+        font-size: var(--text-lg);
+        font-weight: 600;
+        color: var(--neutral-900);
+        margin: 0;
+    }
+
+    .surface-card__footer {
+        display: flex;
+        gap: var(--space-3);
+        margin-top: var(--space-4);
+    }
+
+    .definition-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-3);
+    }
+
+    .definition-item {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+    }
+
+    .definition-term {
+        font-size: var(--text-xs);
+        color: var(--neutral-500);
+        font-weight: 500;
+    }
+
+    .definition-value {
+        font-size: var(--text-sm);
+        color: var(--neutral-900);
+        font-weight: 500;
+    }
+
+    .d-flex {
+        display: flex;
+    }
+
+    .align-items-center {
+        align-items: center;
+    }
+
+    .gap-2 {
+        gap: 0.5rem;
+    }
+
+    .mt-3 {
+        margin-top: 1rem;
+    }
+
+    .mt-4 {
+        margin-top: 1.5rem;
+    }
+
+    .text-muted {
+        color: var(--neutral-500);
+    }
+
+    .empty-state__icon {
+        font-size: 4rem;
+        margin-bottom: var(--space-4);
+    }
+
+    .empty-state__title {
+        font-size: var(--text-xl);
+        font-weight: 600;
+        color: var(--neutral-900);
+        margin-bottom: var(--space-2);
+    }
+
+    .empty-state__actions {
+        display: flex;
+        gap: var(--space-3);
+        justify-content: center;
+        margin-top: var(--space-6);
+    }
+
+    /* Progress Modal Styles */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.is-visible {
+        display: flex;
+    }
+
+    .modal__overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+    }
+
+    .modal__dialog {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        width: 90%;
+        max-width: 600px;
+        max-height: 85vh;
+        overflow-y: auto;
+        position: relative;
+        z-index: 2001;
+    }
+
+    .modal__header {
+        padding: 1.5rem 1.5rem 1rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .modal__title {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-color);
+    }
+
+    .modal__close {
+        background: none;
+        border: none;
+        font-size: 1.75rem;
+        cursor: pointer;
+        color: var(--text-muted);
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        transition: all 0.2s ease;
+    }
+
+    .modal__close:hover {
+        background: var(--surface-muted);
+        color: var(--text-color);
+    }
+
+    .modal__body {
+        padding: 1.5rem;
+    }
+
+    .modal__footer {
+        padding: 1rem 1.5rem 1.5rem 1.5rem;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+    }
+
+    /* Progress Steps */
+    .progress-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .progress-step {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .progress-step:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .progress-step__label {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--text-color);
+    }
+
+    .progress-step__select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 0.95rem;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .progress-step__select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+
+    .progress-step__select option.removal-option {
+        color: #dc2626;
+        font-weight: 500;
+    }
+
+    .progress-step__meta {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .progress-step__status {
+        font-weight: 600;
+        color: #d97706;
+        display: none;
+    }
+
+    .progress-step__timestamp {
+        display: inline-block;
+    }
+
+    .progress-step--locked {
+        opacity: 0.85;
+    }
+
+    .progress-step--locked .progress-step__select,
+    .progress-step--locked .btn,
+    .progress-step--locked .employee-input {
+        cursor: not-allowed;
+    }
+
+    /* Form Controls */
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-color);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        resize: vertical;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-hint {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    /* Document Cards */
+    .document-card {
+        background: var(--surface-muted);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .document-card__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
+    }
+
+    .document-card__title {
+        font-weight: 600;
+        font-size: 1rem;
+        margin: 0;
+        color: var(--text-color);
+    }
+
+    .document-card__step {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        background: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+    }
+
+    .document-card__date {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    .document-card__notes {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin: 0.5rem 0;
+    }
+
+    .document-card__actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+
+    /* Employee Assignment Styles */
+    .employee-assignment {
+        margin-top: 1rem;
+        padding: 0.75rem;
+        background: var(--surface-muted);
+        border-radius: 12px;
+    }
+
+    .employee-assignment-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .employee-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        min-height: 32px;
+    }
+
+    .employee-badge {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 56px;
+        height: 56px;
+        background: #2563eb;
+        color: white;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        cursor: default;
+    }
+
+    .employee-badge__letter {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #ffffff;
+        user-select: none;
+        line-height: 1;
+    }
+
+    .employee-badge__remove {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        background: #dc3545;
+        color: white;
+        border-radius: 50%;
+        font-size: 0.9rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s, background-color 0.2s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .employee-badge__remove:hover {
+        background: #c82333;
+        transform: scale(1.1);
+    }
+
+    .autocomplete-wrapper {
+        position: relative;
+    }
+
+    .employee-input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 0.9rem;
+        transition: border-color 0.2s;
+    }
+
+    .employee-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+
+    .autocomplete-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-top: none;
+        border-radius: 0 0 12px 12px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .autocomplete-dropdown.show {
+        display: block;
+    }
+
+    .autocomplete-item {
+        padding: 0.65rem 0.75rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: background-color 0.15s;
+    }
+
+    .autocomplete-item:hover,
+    .autocomplete-item.selected {
+        background: var(--surface-muted);
+    }
+
+    .autocomplete-item__initial {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        background: var(--primary-color);
+        color: white;
+        border-radius: 50%;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .autocomplete-item__name {
+        flex: 1;
+        font-size: 0.9rem;
+    }
+
+    .autocomplete-item__email {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .autocomplete-empty {
+        padding: 0.75rem;
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    .loading-state {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-muted);
+    }
+
+    /* Dark Mode Styles */
+    body.dark-mode .stat-card__icon--success,
+    body.dark-mode .stat-card__icon--accent {
+        filter: invert(100);
+    }
+
+    /* Tender Cards Styling (from tender_searching.html) */
+    .tender-cards-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .tender-card-new {
+        background: var(--card-bg, #ffffff);
+        border-radius: 12px;
+        border: 1px solid var(--card-border, #e5e7eb);
+        box-shadow: 0 20px 40px rgba(99, 102, 241, 0.08);
+        padding: 1.75rem;
+        display: grid;
+        gap: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .tender-card-new:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 24px 48px rgba(99, 102, 241, 0.15);
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    /* Header Section */
+    .tender-card-new__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .tender-card-new__title-block {
+        flex: 1;
+    }
+
+    .tender-card-new__title {
+        margin: 0;
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: var(--text-primary, #1a1a1a);
+        line-height: 1.4;
+    }
+
+    .tender-card-new__subtitle {
+        margin: 0.3rem 0 0;
+        color: var(--text-secondary, #6b7280);
+        font-size: 0.95rem;
+    }
+
+    .tender-card-new__status {
+        padding: 0.35rem 0.9rem;
+        border-radius: 999px;
+        background: rgba(99, 102, 241, 0.12);
+        color: var(--primary-color, #6366f1);
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    /* Divider */
+    .tender-card-new__divider {
+        border-top: 1px dashed var(--card-border, #e5e7eb);
+        margin: 0.5rem 0;
+    }
+
+    /* Info Grid with Pills */
+    .tender-card-new__grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1rem;
+    }
+
+    .tender-pill {
+        padding: 0.75rem 1rem;
+        background: rgba(99, 102, 241, 0.04);
+        border-radius: 12px;
+        border: 1px solid rgba(99, 102, 241, 0.1);
+        transition: all 0.2s ease;
+    }
+
+    .tender-pill:hover {
+        background: rgba(99, 102, 241, 0.08);
+        border-color: rgba(99, 102, 241, 0.2);
+    }
+
+    .tender-pill__label {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-secondary, #6b7280);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+    }
+
+    .tender-pill__value {
+        display: block;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary, #1a1a1a);
+    }
+
+    /* Summary */
+    .tender-card-new__summary {
+        color: var(--text-secondary, #6b7280);
+        margin: 0.5rem 0;
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+
+    /* Footer */
+    .tender-card-new__footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 0.5rem;
+    }
+
+    .tender-card-new__chips {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        flex: 1;
+    }
+
+    .tender-chip {
+        border: 1px solid var(--card-border, #e5e7eb);
+        border-radius: 12px;
+        padding: 0.4rem 0.85rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--text-secondary, #6b7280);
+        background: var(--surface-bg, #f8f9fa);
+        transition: all 0.2s ease;
+    }
+
+    .tender-chip:hover {
+        border-color: var(--primary-color, #6366f1);
+        color: var(--primary-color, #6366f1);
+    }
+
+    .tender-card-new__actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .tender-btn {
+        border: none;
+        border-radius: 12px;
+        padding: 0.6rem 1.5rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .tender-btn--primary {
+        background: linear-gradient(135deg, #6366f1, #4338ca);
+        color: white;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .tender-btn--primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+    }
+
+    .tender-btn--secondary {
+        background: white;
+        color: var(--primary-color, #6366f1);
+        border: 2px solid var(--primary-color, #6366f1);
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+    }
+
+    .tender-btn--secondary:hover {
+        background: rgba(99, 102, 241, 0.05);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    }
+
+    /* Deadline Display Styling */
+    .deadline-display {
+        font-size: 0.875rem;
+        font-weight: 600;
+        padding: 0.5rem 0.75rem;
+        border-radius: 12px;
+        margin-bottom: 0.5rem;
+        display: inline-block;
+    }
+
+    /* Red - ≤2 days remaining or overdue */
+    .deadline-critical {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+    }
+
+    /* Yellow - 3-5 days remaining */
+    .deadline-warning {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fcd34d;
+    }
+
+    /* Green - >5 days remaining */
+    .deadline-safe {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
+    }
+
+    /* Gray - No deadline found/set */
+    .deadline-none {
+        background: #f1f5f9;
+        color: #64748b;
+        border: 1px solid #cbd5e1;
+        font-style: italic;
+    }
+
+    /* Manual Deadline Input Controls */
+    .deadline-manual-input {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        margin: 0.75rem 0;
+        padding: 0.5rem;
+        background: #f8fafc;
+        border-radius: 12px;
+    }
+
+    .deadline-manual-input label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #475569;
+        white-space: nowrap;
+    }
+
+    .deadline-input {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        font-size: 0.875rem;
+        flex: 1;
+        max-width: 200px;
+    }
+
+    .deadline-input:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .deadline-btn {
+        padding: 0.5rem 1rem;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .deadline-btn:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+
+    .deadline-btn:active {
+        transform: translateY(0);
+    }
+
+    /* Badge Styles for Worked By Attribution */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .badge--primary {
+        background-color: rgba(59, 130, 246, 0.12);
+        color: #3b82f6;
+    }
+
+    .badge--neutral {
+        background-color: rgba(107, 114, 128, 0.12);
+        color: #6b7280;
+    }
+
+    /* Task Template Modal Styles */
+    .stage-tabs {
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 0.5rem;
+    }
+
+    .stage-tab {
+        padding: 0.5rem 1rem;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-weight: 500;
+        color: var(--text-muted);
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .stage-tab:hover {
+        color: var(--primary-color);
+    }
+
+    .stage-tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+
+    .stage-content {
+        display: none;
+    }
+
+    .stage-content.active {
+        display: block;
+    }
+
+    .task-template-card {
+        background: #fff;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .task-template-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .task-template-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .subtask-list {
+        margin-left: 2rem;
+        margin-top: 1rem;
+        padding-left: 1rem;
+        border-left: 2px solid var(--border-color);
+    }
+
+    .subtask-card {
+        background: #f8fafc;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+</style>
+
+<!-- Task Template Management JavaScript -->
+{% if is_admin %}
+<script src="{{ url_for('static', path='/js/task_template_management.js') }}"></script>
+{% endif %}
+{% endblock %}

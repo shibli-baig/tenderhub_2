@@ -1,0 +1,821 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Opportunities - TenderHub Expert-Verse{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h1 class="section-title">Tender Opportunities</h1>
+            <p class="section-subtitle">Discover and apply to tenders matching your expertise</p>
+        </div>
+        <div class="section-actions">
+            <a href="/expert/dashboard" class="btn btn-outline">Back to Dashboard</a>
+        </div>
+    </div>
+</section>
+
+<!-- Tabs -->
+<section class="panel" style="margin-bottom: 1.5rem;">
+    <div style="display: flex; gap: 0.5rem; border-bottom: 2px solid #e5e7eb;">
+        <button class="tab-btn active" data-tab-button="tenders" onclick="switchOpportunityTab('tenders', event)" style="padding: 0.75rem 1.5rem; border: none; background: transparent; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px;">
+            Tender Opportunities
+        </button>
+        <button class="tab-btn" data-tab-button="requests" onclick="switchOpportunityTab('requests', event)" style="padding: 0.75rem 1.5rem; border: none; background: transparent; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; display: flex; align-items: center; gap: 0.5rem;">
+            Hiring Requests
+            {% if open_request_count and open_request_count > 0 %}
+            <span class="tab-count-badge">{{ open_request_count }}</span>
+            {% endif %}
+        </button>
+    </div>
+</section>
+
+<!-- Search and Filters for Tenders -->
+<section id="tendersFilters" class="panel" style="margin-bottom: 1.5rem;">
+    <form method="get" action="/expert/opportunities" class="filters-form">
+        <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end;">
+            <div class="form-group" style="margin: 0;">
+                <label for="search" class="form-label">Search Tenders</label>
+                <input type="text" id="search" name="search" value="{{ search }}" placeholder="Search by title, organization, sector...">
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+                <label for="sector" class="form-label">Filter by Sector</label>
+                <select id="sector" name="sector">
+                    <option value="">All Sectors</option>
+                    {% for sec in sectors %}
+                    <option value="{{ sec }}" {% if selected_sector == sec %}selected{% endif %}>{{ sec }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+        </div>
+    </form>
+</section>
+
+<!-- Search and Filters for Hiring Requests -->
+<section id="requestsFilters" class="panel" style="margin-bottom: 1.5rem; display: none;">
+    <form id="requestsFilterForm" class="filters-form">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end;">
+            <div class="form-group" style="margin: 0;">
+                <label for="requestSearch" class="form-label">Search</label>
+                <input type="text" id="requestSearch" placeholder="Search requests...">
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+                <label for="requestLocation" class="form-label">Location</label>
+                <select id="requestLocation">
+                    <option value="">All Locations</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+                <label for="requestSector" class="form-label">Sector</label>
+                <select id="requestSector">
+                    <option value="">All Sectors</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+                <label for="requestBudget" class="form-label">Budget Range</label>
+                <input type="text" id="requestBudget" placeholder="Min - Max (₹)">
+            </div>
+
+            <button type="button" onclick="loadHiringRequests()" class="btn btn-primary">Apply Filters</button>
+        </div>
+    </form>
+</section>
+
+<!-- Tenders List -->
+<section id="tendersSection" class="panel">
+    <div class="profile-card__header" style="margin-bottom: 1.5rem;">
+        <div>
+            <h2 class="surface-card__title">Available Opportunities</h2>
+            <p class="panel-subtitle">{{ total_tenders }} tenders found</p>
+        </div>
+    </div>
+
+    {% if tenders and tenders|length > 0 %}
+    <div class="tenders-grid" style="display: grid; gap: 1.5rem;">
+        {% for tender in tenders %}
+        <div class="tender-card surface-card" style="padding: 1.5rem; border-left: 4px solid var(--primary-color);">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                <div style="flex: 1;">
+                    <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">
+                        <a href="/expert/tender/{{ tender.id }}" style="text-decoration: none; color: inherit; hover: color: var(--primary-color);">
+                            {{ tender.title }}
+                        </a>
+                    </h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 0.75rem;">{{ tender.authority }}</p>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+                        <span class="badge badge-primary">{{ tender.category }}</span>
+                        {% if tender.state %}
+                        <span class="badge badge-secondary">{{ tender.state }}</span>
+                        {% endif %}
+                        {% if tender.id in applied_tender_ids %}
+                        <span class="badge badge-success">Applied</span>
+                        {% endif %}
+                        {% if tender.id in favorite_tender_ids %}
+                        <span class="badge badge-info">★ Favorited</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                <div>
+                    <span class="detail-label">Deadline</span>
+                    <span class="detail-value" style="display: block; margin-top: 0.25rem; color: var(--text-primary);">
+                        {{ tender.deadline.strftime('%b %d, %Y') if tender.deadline else 'Not specified' }}
+                    </span>
+                </div>
+
+                {% if tender.estimated_value %}
+                <div>
+                    <span class="detail-label">Estimated Value</span>
+                    <span class="detail-value" style="display: block; margin-top: 0.25rem; color: var(--text-primary);">
+                        {{ tender.estimated_value }}
+                    </span>
+                </div>
+                {% endif %}
+
+                <div>
+                    <span class="detail-label">Published</span>
+                    <span class="detail-value" style="display: block; margin-top: 0.25rem; color: var(--text-primary);">
+                        {{ tender.scraped_at.strftime('%b %d, %Y') if tender.scraped_at else 'N/A' }}
+                    </span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                <button onclick="toggleFavorite('{{ tender.id }}')" class="btn btn-sm btn-outline favorite-btn-{{ tender.id }}">
+                    {% if tender.id in favorite_tender_ids %}★ Favorited{% else %}☆ Favorite{% endif %}
+                </button>
+                <a href="/expert/tender/{{ tender.id }}" class="btn btn-sm btn-primary">View Details</a>
+                {% if tender.id not in applied_tender_ids %}
+                <a href="/expert/tender/{{ tender.id }}#apply" class="btn btn-sm btn-success">Apply Now</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination" style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem;">
+        {% if has_prev %}
+        <a href="?page={{ page - 1 }}&search={{ search }}&sector={{ selected_sector }}" class="btn btn-sm btn-outline">← Previous</a>
+        {% endif %}
+
+        <span class="btn btn-sm btn-primary" style="pointer-events: none;">Page {{ page }} of {{ total_pages }}</span>
+
+        {% if has_next %}
+        <a href="?page={{ page + 1 }}&search={{ search }}&sector={{ selected_sector }}" class="btn btn-sm btn-outline">Next →</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state" style="text-align: center; padding: 3rem 1rem;">
+        <div class="empty-state__icon" style="font-size: 4rem; margin-bottom: 1rem;">📭</div>
+        <h3 class="empty-state__title" style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.75rem;">No Opportunities Available</h3>
+        {% if open_request_count and open_request_count > 0 %}
+        <p class="empty-state__description" style="color: var(--text-secondary); font-size: 1rem; line-height: 1.6; max-width: 600px; margin: 0 auto 1.5rem;">
+            New manager hiring requests are available in the Hiring Requests tab. Switch tabs to view every open opportunity and apply instantly.
+        </p>
+        {% else %}
+        <p class="empty-state__description" style="color: var(--text-secondary); font-size: 1rem; line-height: 1.6; max-width: 600px; margin: 0 auto 1.5rem;">
+            Opportunities are only shown when companies specifically request your expertise for a tender. 
+            Once a company requests your services, those tenders will appear here.
+        </p>
+        {% endif %}
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a href="/expert/dashboard" class="btn btn-primary">Go to Dashboard</a>
+            <a href="/expert/profile" class="btn btn-outline">Update Profile</a>
+        </div>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Hiring Requests List -->
+<section id="requestsSection" class="panel" style="display: none;">
+    <div class="profile-card__header" style="margin-bottom: 1.5rem;">
+        <div>
+            <h2 class="surface-card__title">Available Hiring Requests</h2>
+            <p class="panel-subtitle" id="requestsCount">Loading...</p>
+        </div>
+    </div>
+
+    <div id="requestsLoading" style="text-align: center; padding: 3rem 1rem;">
+        <div style="border: 3px solid #f3f4f6; border-top: 3px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+        <p>Loading hiring requests...</p>
+    </div>
+
+    <div id="requestsList" style="display: none;">
+        <!-- Requests loaded dynamically -->
+    </div>
+
+    <div id="requestsEmpty" class="empty-state" style="text-align: center; padding: 3rem 1rem; display: none;">
+        <div class="empty-state__icon" style="font-size: 4rem; margin-bottom: 1rem;">📭</div>
+        <h3 class="empty-state__title" style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.75rem;">No Hiring Requests Available</h3>
+        <p class="empty-state__description" style="color: var(--text-secondary); font-size: 1rem; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+            Companies haven't created any hiring requests yet. Check back later for new opportunities.
+        </p>
+    </div>
+</section>
+
+<!-- Apply Modal -->
+<div id="applyModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.75); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 700;">Apply to Hiring Request</h2>
+            <button onclick="closeApplyModal()" style="background: transparent; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+        <form id="applyForm" onsubmit="submitApplication(event)">
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label class="form-label">Cover Letter <span style="color: #ef4444;">*</span></label>
+                <textarea id="coverLetter" required rows="6" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;" placeholder="Write your cover letter explaining why you're a good fit for this request..."></textarea>
+            </div>
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label class="form-label">Proposed Rate (₹)</label>
+                <input type="number" id="proposedRate" min="0" step="0.01" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;" placeholder="Optional">
+            </div>
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label class="form-label">Estimated Timeline</label>
+                <input type="text" id="estimatedTimeline" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;" placeholder="e.g., 2-3 weeks">
+            </div>
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label class="form-label">Relevant Experience</label>
+                <textarea id="relevantExperience" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 12px;" placeholder="Describe your relevant experience for this request..."></textarea>
+            </div>
+            <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 2rem;">
+                <button type="button" onclick="closeApplyModal()" class="btn btn-outline">Cancel</button>
+                <button type="submit" class="btn btn-primary">Submit Application</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Request Detail Modal -->
+<div id="requestDetailModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.75); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; width: 95%; max-width: 900px; max-height: 92vh; overflow-y: auto; padding: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+            <div>
+                <span class="badge badge-secondary" style="margin-bottom: 0.5rem;">Hiring Request</span>
+                <h2 id="detailRequestTitle" style="font-size: 1.5rem; margin-bottom: 0.35rem;">Hiring Request</h2>
+                <p id="detailRequestMeta" style="margin: 0; color: var(--text-secondary);"></p>
+            </div>
+            <button onclick="closeRequestDetailModal()" style="background: transparent; border: none; font-size: 1.75rem; cursor: pointer;">&times;</button>
+        </div>
+
+        <div class="detail-grid" style="margin-top: 1.5rem;">
+            <div class="detail-card">
+                <span class="detail-label">Budget</span>
+                <span class="detail-value" id="detailBudgetDisplay">Not specified</span>
+                <p class="detail-hint" id="detailBudgetType"></p>
+            </div>
+            <div class="detail-card">
+                <span class="detail-label">Company</span>
+                <span class="detail-value" id="detailCompanyName">-</span>
+                <p class="detail-hint" id="detailCompanyLocation"></p>
+            </div>
+            <div class="detail-card">
+                <span class="detail-label">Posted On</span>
+                <span class="detail-value" id="detailRequestPosted">-</span>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h3>Opportunity Overview</h3>
+            <p id="detailRequestDescription" style="color: var(--text-secondary); line-height: 1.6;">No description provided.</p>
+        </div>
+
+        <div class="detail-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                <h3 style="margin: 0;">Tender Snapshot</h3>
+                <a id="detailTenderLink" href="#" target="_blank" rel="noopener" class="btn btn-sm btn-outline" style="display: none;">Open tender link</a>
+            </div>
+            <div class="detail-grid" style="margin-top: 1rem;">
+                <div class="detail-card">
+                    <span class="detail-label">Tender Title</span>
+                    <span class="detail-value" id="detailTenderTitle">-</span>
+                </div>
+                <div class="detail-card">
+                    <span class="detail-label">Authority</span>
+                    <span class="detail-value" id="detailTenderAuthority">-</span>
+                </div>
+                <div class="detail-card">
+                    <span class="detail-label">Location</span>
+                    <span class="detail-value" id="detailTenderLocation">-</span>
+                </div>
+                <div class="detail-card">
+                    <span class="detail-label">Sector</span>
+                    <span class="detail-value" id="detailTenderSector">-</span>
+                </div>
+                <div class="detail-card">
+                    <span class="detail-label">Deadline</span>
+                    <span class="detail-value" id="detailTenderDeadline">-</span>
+                </div>
+                <div class="detail-card">
+                    <span class="detail-label">Estimated Value</span>
+                    <span class="detail-value" id="detailTenderValue">-</span>
+                </div>
+                <div class="detail-card">
+                    <span class="detail-label">Reference #</span>
+                    <span class="detail-value" id="detailTenderReference">-</span>
+                </div>
+                <div class="detail-card">
+                    <span class="detail-label">Organisation Chain</span>
+                    <span class="detail-value" id="detailTenderOrg">-</span>
+                </div>
+                <div class="detail-card">
+                    <span class="detail-label">Documents</span>
+                    <span class="detail-value" id="detailTenderDocuments">-</span>
+                </div>
+            </div>
+            <div class="detail-section" style="margin-top: 1rem;">
+                <h4 style="margin-bottom: 0.5rem;">Tender Summary</h4>
+                <p id="detailTenderSummary" style="color: var(--text-secondary); line-height: 1.6;">No tender summary provided.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.tab-btn.active {
+    border-bottom-color: #667eea !important;
+    color: #667eea;
+}
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const OPEN_REQUEST_COUNT = {{ open_request_count or 0 }};
+let currentRequestId = null;
+let allHiringRequests = [];
+
+// Tab switching
+function switchOpportunityTab(tab, evt) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    const targetButton = evt?.currentTarget || evt?.target || document.querySelector(`[data-tab-button="${tab}"]`);
+    if (targetButton) {
+        targetButton.classList.add('active');
+    }
+    
+    if (tab === 'tenders') {
+        document.getElementById('tendersFilters').style.display = 'block';
+        document.getElementById('tendersSection').style.display = 'block';
+        document.getElementById('requestsFilters').style.display = 'none';
+        document.getElementById('requestsSection').style.display = 'none';
+    } else {
+        document.getElementById('tendersFilters').style.display = 'none';
+        document.getElementById('tendersSection').style.display = 'none';
+        document.getElementById('requestsFilters').style.display = 'block';
+        document.getElementById('requestsSection').style.display = 'block';
+        loadHiringRequests();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (OPEN_REQUEST_COUNT > 0) {
+        switchOpportunityTab('requests');
+    } else {
+        switchOpportunityTab('tenders');
+    }
+});
+
+// Load hiring requests
+async function loadHiringRequests() {
+    const loadingEl = document.getElementById('requestsLoading');
+    const listEl = document.getElementById('requestsList');
+    const emptyEl = document.getElementById('requestsEmpty');
+    const countEl = document.getElementById('requestsCount');
+    
+    loadingEl.style.display = 'block';
+    listEl.style.display = 'none';
+    emptyEl.style.display = 'none';
+    listEl.innerHTML = '';
+    
+    try {
+        const search = document.getElementById('requestSearch').value;
+        const location = document.getElementById('requestLocation').value;
+        const sector = document.getElementById('requestSector').value;
+        const budget = document.getElementById('requestBudget').value;
+        
+        let budgetMin = null, budgetMax = null;
+        if (budget) {
+            const parts = budget.split('-').map(p => p.trim().replace(/[₹,]/g, ''));
+            if (parts.length === 2) {
+                budgetMin = parseFloat(parts[0]);
+                budgetMax = parseFloat(parts[1]);
+            } else if (parts.length === 1) {
+                budgetMin = parseFloat(parts[0]);
+            }
+        }
+        
+        const params = new URLSearchParams({
+            page: 1,
+            per_page: 50
+        });
+        if (search) params.append('search', search);
+        if (location) params.append('location', location);
+        if (sector) params.append('sector', sector);
+        if (budgetMin) params.append('budget_min', budgetMin);
+        if (budgetMax) params.append('budget_max', budgetMax);
+        
+        const response = await fetch(`/api/expert/opportunities/requests?${params}`);
+        if (!response.ok) throw new Error('Failed to load requests');
+        
+        const data = await response.json();
+        allHiringRequests = data.requests || [];
+        
+        // Populate filter options
+        if (data.filter_options) {
+            const locationSelect = document.getElementById('requestLocation');
+            locationSelect.innerHTML = '<option value="">All Locations</option>';
+            data.filter_options.locations.forEach(loc => {
+                locationSelect.innerHTML += `<option value="${loc}">${loc}</option>`;
+            });
+            
+            const sectorSelect = document.getElementById('requestSector');
+            sectorSelect.innerHTML = '<option value="">All Sectors</option>';
+            data.filter_options.sectors.forEach(sec => {
+                sectorSelect.innerHTML += `<option value="${sec}">${sec}</option>`;
+            });
+        }
+        
+        loadingEl.style.display = 'none';
+        countEl.textContent = `${data.total_requests} requests found`;
+        
+        if (allHiringRequests.length === 0) {
+            emptyEl.style.display = 'block';
+        } else {
+            listEl.style.display = 'block';
+            renderHiringRequests(allHiringRequests);
+        }
+    } catch (error) {
+        console.error('Error loading requests:', error);
+        loadingEl.style.display = 'none';
+        listEl.innerHTML = '<p style="color: #ef4444; text-align: center;">Error loading requests. Please try again.</p>';
+    }
+}
+
+// Render hiring requests
+function renderHiringRequests(requests) {
+    const listEl = document.getElementById('requestsList');
+    
+    listEl.innerHTML = requests.map((req) => {
+        const tender = req.tender_details || {};
+        const tenderLocation = req.tender_location || tender.state || 'Location not specified';
+        const estimatedValue = tender.estimated_value ? formatCurrencyValue(tender.estimated_value, tender.currency) : 'Not specified';
+        const tenderDeadline = tender.deadline ? formatDate(tender.deadline) : 'Not specified';
+        const postedOn = formatDate(req.created_at);
+        const tenderSummary = truncateText(tender.summary || req.description || '', 220);
+        
+        return `
+        <div class="tender-card surface-card" style="padding: 1.5rem; border-left: 4px solid #667eea; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                <div style="flex: 1;">
+                    <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.35rem;">
+                        ${escapeHtml(req.request_name)}
+                    </h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 0.35rem;">
+                        ${escapeHtml(req.company_name)} • ${escapeHtml(req.company_location || 'Location not specified')}
+                    </p>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        ${req.tender_sector ? `<span class="badge badge-primary">${escapeHtml(req.tender_sector)}</span>` : ''}
+                        <span class="badge badge-secondary">📍 ${escapeHtml(tenderLocation)}</span>
+                        ${req.has_applied ? `<span class="badge badge-success">Applied</span>` : ''}
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                    <span class="badge badge-info">${req.budget_display}</span>
+                    <span class="detail-label">Posted ${postedOn}</span>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <span class="detail-label">Tender</span>
+                    <span class="detail-value" style="display:block; margin-top:0.25rem;">${escapeHtml(tender.title || req.tender_title || 'Not linked to tender')}</span>
+                </div>
+                <div>
+                    <span class="detail-label">Estimated Value</span>
+                    <span class="detail-value" style="display:block; margin-top:0.25rem;">${estimatedValue}</span>
+                </div>
+                <div>
+                    <span class="detail-label">Deadline</span>
+                    <span class="detail-value" style="display:block; margin-top:0.25rem;">${tenderDeadline}</span>
+                </div>
+                <div>
+                    <span class="detail-label">Applications</span>
+                    <span class="detail-value" style="display:block; margin-top:0.25rem;">${req.application_count} ${req.application_count === 1 ? 'application' : 'applications'}</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.2rem; padding: 1rem; background: #f9fafb; border-radius: 12px;">
+                <p style="color: var(--text-secondary); line-height: 1.6; margin: 0;">
+                    ${escapeHtml(tenderSummary)}
+                </p>
+            </div>
+            
+            <div style="display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap;">
+                <button class="btn btn-sm btn-outline" type="button" onclick="openRequestDetails('${req.id}')">View Details</button>
+                ${!req.has_applied ? `
+                    <button onclick="openApplyModal('${req.id}')" class="btn btn-sm btn-success">Apply Now</button>
+                ` : `
+                    <button class="btn btn-sm btn-outline" disabled>Already Applied</button>
+                `}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// Open apply modal
+function openApplyModal(requestId) {
+    currentRequestId = requestId;
+    document.getElementById('applyModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+// Close apply modal
+function closeApplyModal() {
+    document.getElementById('applyModal').style.display = 'none';
+    document.body.style.overflow = '';
+    document.getElementById('applyForm').reset();
+    currentRequestId = null;
+}
+
+// Submit application
+async function submitApplication(event) {
+    event.preventDefault();
+    
+    if (!currentRequestId) {
+        alert('Error: Request ID not found');
+        return;
+    }
+    
+    const data = {
+        cover_letter: document.getElementById('coverLetter').value,
+        proposed_rate: document.getElementById('proposedRate').value ? parseFloat(document.getElementById('proposedRate').value) : null,
+        estimated_timeline: document.getElementById('estimatedTimeline').value || null,
+        relevant_experience: document.getElementById('relevantExperience').value || null
+    };
+    
+    try {
+        const response = await fetch(`/api/expert/request/${currentRequestId}/apply`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.detail || 'Failed to submit application');
+        }
+        
+        alert('Application submitted successfully!');
+        closeApplyModal();
+        loadHiringRequests();
+    } catch (error) {
+        console.error('Error submitting application:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+// Utility functions
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function formatCurrencyValue(amount, currency = 'INR') {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+        return 'Not specified';
+    }
+    try {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: currency || 'INR',
+            maximumFractionDigits: 0
+        }).format(amount);
+    } catch (error) {
+        return `₹${Number(amount).toLocaleString('en-IN')}`;
+    }
+}
+
+function truncateText(text, limit = 220) {
+    if (!text) return '';
+    return text.length > limit ? `${text.slice(0, limit)}…` : text;
+}
+
+function openRequestDetails(requestId) {
+    const data = allHiringRequests.find(req => req.id === requestId);
+    if (!data) return;
+
+    const tender = data.tender_details || {};
+    const modal = document.getElementById('requestDetailModal');
+
+    document.getElementById('detailRequestTitle').textContent = data.request_name || 'Hiring Request';
+    document.getElementById('detailRequestMeta').textContent = [
+        data.company_name || 'Company',
+        data.tender_sector || tender.category || 'General',
+        data.created_at ? `Posted ${formatDate(data.created_at)}` : null
+    ].filter(Boolean).join(' • ');
+    document.getElementById('detailBudgetDisplay').textContent = data.budget_display || 'Not specified';
+    document.getElementById('detailBudgetType').textContent = data.budget_type === 'fixed' ? 'Fixed budget' : 'Negotiable budget';
+    document.getElementById('detailRequestDescription').textContent = data.description || 'No description provided.';
+    document.getElementById('detailCompanyName').textContent = data.company_name || 'Not specified';
+    document.getElementById('detailCompanyLocation').textContent = data.company_location || 'Not specified';
+    document.getElementById('detailRequestPosted').textContent = formatDate(data.created_at);
+
+    document.getElementById('detailTenderTitle').textContent = tender.title || data.tender_title || 'Not specified';
+    document.getElementById('detailTenderAuthority').textContent = tender.authority || 'Not specified';
+    document.getElementById('detailTenderLocation').textContent = data.tender_location || tender.state || 'Not specified';
+    document.getElementById('detailTenderSector').textContent = data.tender_sector || tender.category || 'Not specified';
+    document.getElementById('detailTenderDeadline').textContent = tender.deadline ? formatDate(tender.deadline) : 'Not specified';
+    document.getElementById('detailTenderValue').textContent = tender.estimated_value ? formatCurrencyValue(tender.estimated_value, tender.currency) : 'Not specified';
+    document.getElementById('detailTenderReference').textContent = tender.tender_reference_number || tender.tender_id || 'Not specified';
+    document.getElementById('detailTenderOrg').textContent = tender.organisation_chain || 'Not specified';
+    document.getElementById('detailTenderSummary').textContent = tender.summary || 'No tender summary provided.';
+
+    const tenderDocuments = tender.tender_documents;
+    let documentCount = 0;
+    if (Array.isArray(tenderDocuments)) {
+        documentCount = tenderDocuments.length;
+    } else if (tenderDocuments && typeof tenderDocuments === 'object') {
+        documentCount = Object.keys(tenderDocuments).length;
+    }
+    document.getElementById('detailTenderDocuments').textContent = documentCount
+        ? `${documentCount} document${documentCount === 1 ? '' : 's'} attached`
+        : 'Not provided';
+
+    const tenderLink = document.getElementById('detailTenderLink');
+    if (tender.source_url) {
+        tenderLink.href = tender.source_url;
+        tenderLink.textContent = 'Open official tender link';
+        tenderLink.style.display = 'inline-flex';
+    } else if (data.tender_id) {
+        tenderLink.href = `/tender/${data.tender_id}`;
+        tenderLink.textContent = 'View tender on TenderHub';
+        tenderLink.style.display = 'inline-flex';
+    } else {
+        tenderLink.style.display = 'none';
+    }
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeRequestDetailModal() {
+    const modal = document.getElementById('requestDetailModal');
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+async function toggleFavorite(tenderId) {
+    try {
+        const response = await fetch(`/api/expert/favorite/${tenderId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            const btn = document.querySelector(`.favorite-btn-${tenderId}`);
+            if (data.is_favorited) {
+                btn.textContent = '★ Favorited';
+                btn.classList.add('btn-info');
+            } else {
+                btn.textContent = '☆ Favorite';
+                btn.classList.remove('btn-info');
+            }
+        }
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+        alert('Failed to update favorite status');
+    }
+}
+</script>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.empty-state__icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.empty-state__description {
+    color: var(--text-secondary);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.badge-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.badge-secondary {
+    background-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.badge-success {
+    background-color: #10b981;
+    color: white;
+}
+
+.badge-info {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.detail-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.detail-value {
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.detail-card {
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 12px;
+    padding: 1rem;
+    background: var(--card-bg, #ffffff);
+}
+
+.detail-hint {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.35rem;
+}
+
+.detail-section {
+    margin-top: 1.5rem;
+}
+
+.tab-count-badge {
+    background: #e0e7ff;
+    color: #4338ca;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    padding: 0.1rem 0.6rem;
+    font-weight: 600;
+}
+</style>
+{% endblock %}
