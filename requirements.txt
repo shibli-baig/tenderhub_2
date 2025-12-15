@@ -26,7 +26,7 @@ bcrypt==4.1.2
 tenacity==8.2.3
 openpyxl==3.1.5
 fuzzywuzzy==0.18.0
-python-Levenshtein==0.25.1
+# python-Levenshtein==0.25.1  # REMOVED: incompatible with Python 3.13, fuzzywuzzy works without it (slower)
 
 # Optional: For production deployment
 gunicorn==21.2.0
