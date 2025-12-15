@@ -436,6 +436,16 @@ except RuntimeError:
 # Resolve base directory so static/template paths work in any CWD
 BASE_DIR = Path(__file__).resolve().parent
 
+# Create necessary directories if they don't exist
+uploads_dir = BASE_DIR / "uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
+(uploads_dir / "projects").mkdir(parents=True, exist_ok=True)
+(uploads_dir / "certificates").mkdir(parents=True, exist_ok=True)
+(uploads_dir / "stage_documents").mkdir(parents=True, exist_ok=True)
+(uploads_dir / "response_documents").mkdir(parents=True, exist_ok=True)
+(uploads_dir / "response_pdfs").mkdir(parents=True, exist_ok=True)
+(uploads_dir / "signatures").mkdir(parents=True, exist_ok=True)
+
 # Initialize FastAPI app
 app = FastAPI(title="TenderHub", description="Government Tender Management System")
 
