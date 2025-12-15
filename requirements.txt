@@ -15,7 +15,7 @@ requests==2.31.0
 
 # PDF processing (needed for certificate processing)
 pdf2image==1.17.0  # PDF to image conversion
-PyMuPDF==1.23.26  # PDF processing via fitz module
+# PyMuPDF==1.23.26  # PDF processing via fitz module - REMOVED: requires compilation, using PyPDF2 instead
 
 # PDF generation
 reportlab==4.0.7
