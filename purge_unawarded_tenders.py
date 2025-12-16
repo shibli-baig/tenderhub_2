@@ -69,20 +69,21 @@ def list_tender_s3_files(tender_id: str) -> List[str]:
         
     Returns:
         List of S3 keys (file paths) for the tender
+        
+    Raises:
+        Exception: If S3 is not available or listing fails
     """
     if not s3_manager.enabled:
-        logger.debug(f"S3 storage not enabled, skipping file listing for tender {tender_id}")
-        return []
+        raise RuntimeError(f"S3 storage not enabled - cannot list files for tender {tender_id}")
+    
+    s3_client = s3_manager.s3_client
+    if not s3_client:
+        raise RuntimeError(f"S3 client not available - cannot list files for tender {tender_id}")
     
     s3_files = []
     prefix = f"tenders/{tender_id}/"
     
     try:
-        s3_client = s3_manager.s3_client
-        if not s3_client:
-            logger.warning(f"S3 client not available, cannot list files for tender {tender_id}")
-            return []
-        
         # List all objects with the tender prefix
         paginator = s3_client.get_paginator('list_objects_v2')
         pages = paginator.paginate(
@@ -99,11 +100,14 @@ def list_tender_s3_files(tender_id: str) -> List[str]:
         return s3_files
         
     except ClientError as e:
-        logger.error(f"Error listing S3 files for tender {tender_id}: {e}")
-        return []
+        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+        error_msg = f"Failed to list S3 files for tender {tender_id}: {error_code} - {e}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg) from e
     except Exception as e:
-        logger.error(f"Unexpected error listing S3 files for tender {tender_id}: {e}")
-        return []
+        error_msg = f"Unexpected error listing S3 files for tender {tender_id}: {e}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg) from e
 
 
 def delete_tender_s3_files(tender_id: str, dry_run: bool = False) -> Tuple[int, int]:
@@ -116,10 +120,15 @@ def delete_tender_s3_files(tender_id: str, dry_run: bool = False) -> Tuple[int, 
         
     Returns:
         Tuple of (success_count, failed_count)
+        
+    Raises:
+        RuntimeError: If S3 is not available or deletion fails critically
     """
     if not s3_manager.enabled:
-        logger.debug(f"S3 storage not enabled, skipping file deletion for tender {tender_id}")
-        return (0, 0)
+        raise RuntimeError(f"S3 storage not enabled - cannot delete files for tender {tender_id}")
+    
+    if not s3_manager.s3_client:
+        raise RuntimeError(f"S3 client not available - cannot delete files for tender {tender_id}")
     
     s3_files = list_tender_s3_files(tender_id)
     
@@ -135,6 +144,7 @@ def delete_tender_s3_files(tender_id: str, dry_run: bool = False) -> Tuple[int, 
     
     success_count = 0
     failed_count = 0
+    failed_keys = []
     
     for s3_key in s3_files:
         try:
@@ -143,15 +153,22 @@ def delete_tender_s3_files(tender_id: str, dry_run: bool = False) -> Tuple[int, 
                 logger.debug(f"    Deleted S3 file: {s3_key}")
             else:
                 failed_count += 1
-                logger.warning(f"    Failed to delete S3 file: {s3_key}")
+                failed_keys.append(s3_key)
+                logger.error(f"    FAILED to delete S3 file: {s3_key}")
         except Exception as e:
             failed_count += 1
-            logger.error(f"    Error deleting S3 file {s3_key}: {e}")
+            failed_keys.append(s3_key)
+            logger.error(f"    ERROR deleting S3 file {s3_key}: {e}")
     
     if failed_count > 0:
-        logger.warning(f"  Deleted {success_count}/{len(s3_files)} S3 files for tender {tender_id} ({failed_count} failed)")
-    else:
-        logger.info(f"  Deleted {success_count}/{len(s3_files)} S3 files for tender {tender_id}")
+        error_msg = f"Failed to delete {failed_count}/{len(s3_files)} S3 files for tender {tender_id}"
+        logger.error(f"  {error_msg}")
+        logger.error(f"  Failed files: {failed_keys[:5]}{'...' if len(failed_keys) > 5 else ''}")
+        # Don't raise exception here - log and continue, but track failures
+        # The script will report total failures at the end
+    
+    if success_count > 0:
+        logger.info(f"  Successfully deleted {success_count}/{len(s3_files)} S3 files for tender {tender_id}")
     
     return (success_count, failed_count)
 
@@ -197,7 +214,7 @@ def purge_non_awarded_tenders(db: Session, dry_run: bool = False) -> Dict[str, A
     
     tender_ids = [t.id for t in tenders]
     
-    # Delete S3 files for each tender
+    # Delete S3 files for each tender - MANDATORY
     logger.info("Deleting S3 files for non-awarded tenders...")
     for idx, tender in enumerate(tenders, 1):
         logger.info(f"Processing tender {tender.id}... ({idx}/{tender_count})")
@@ -206,10 +223,25 @@ def purge_non_awarded_tenders(db: Session, dry_run: bool = False) -> Dict[str, A
             success, failed = delete_tender_s3_files(tender.id, dry_run=dry_run)
             stats['s3_files_deleted'] += success
             stats['s3_files_failed'] += failed
+            
+            # If we have failures and this is not a dry run, log as error
+            if failed > 0 and not dry_run:
+                error_msg = f"Failed to delete {failed} S3 file(s) for tender {tender.id}"
+                logger.error(error_msg)
+                stats['errors'].append(error_msg)
+        except RuntimeError as e:
+            # RuntimeError means S3 is not available - this is CRITICAL
+            error_msg = f"CRITICAL: S3 deletion failed for tender {tender.id}: {e}"
+            logger.error(error_msg)
+            stats['errors'].append(error_msg)
+            # Don't continue if S3 is completely unavailable
+            if "not enabled" in str(e) or "not available" in str(e):
+                raise RuntimeError(f"Cannot proceed: S3 is required but not available. {e}")
         except Exception as e:
             error_msg = f"Error deleting S3 files for tender {tender.id}: {e}"
             logger.error(error_msg)
             stats['errors'].append(error_msg)
+            # For other exceptions, continue but track the error
     
     if not dry_run:
         logger.info(f"Completed S3 file deletion: {stats['s3_files_deleted']} deleted, {stats['s3_files_failed']} failed")
@@ -328,6 +360,7 @@ def purge_non_awarded_tenders(db: Session, dry_run: bool = False) -> Dict[str, A
 def verify_connections() -> Tuple[bool, bool]:
     """
     Verify database and S3 connections are available.
+    S3 connection is MANDATORY - script will fail if S3 is not available.
     
     Returns:
         Tuple of (db_connected, s3_connected)
@@ -350,21 +383,110 @@ def verify_connections() -> Tuple[bool, bool]:
         logger.error(f"✗ Database connection failed: {e}")
         return (False, False)
     
-    # Verify S3 connection
-    if s3_manager.enabled:
+    # Verify S3 connection - MANDATORY for this script
+    if not s3_manager.enabled:
+        logger.error("=" * 60)
+        logger.error("S3 STORAGE NOT ENABLED - THIS IS REQUIRED!")
+        logger.error("=" * 60)
+        logger.error("S3 file deletion is a core function and MUST work.")
+        logger.error("Please set USE_S3_STORAGE=True and configure AWS credentials.")
+        logger.error("Required environment variables:")
+        logger.error("  - USE_S3_STORAGE=True")
+        logger.error("  - AWS_ACCESS_KEY_ID")
+        logger.error("  - AWS_SECRET_ACCESS_KEY")
+        logger.error("  - AWS_S3_BUCKET_NAME")
+        logger.error("  - AWS_REGION")
+        return (db_connected, False)
+    
+    if not s3_manager.s3_client:
+        logger.error("=" * 60)
+        logger.error("S3 CLIENT NOT INITIALIZED - THIS IS REQUIRED!")
+        logger.error("=" * 60)
+        logger.error("S3 file deletion is a core function and MUST work.")
+        logger.error("Please check your AWS credentials and configuration.")
+        return (db_connected, False)
+    
+    # Test S3 bucket access with multiple methods
+    s3_client = s3_manager.s3_client
+    bucket_name = s3_manager.bucket_name
+    
+    logger.info(f"Testing S3 connection to bucket: {bucket_name}")
+    logger.info(f"S3 Region: {os.getenv('AWS_REGION', 'us-east-1')}")
+    
+    try:
+        # Method 1: Try head_bucket first (most reliable)
         try:
-            s3_client = s3_manager.s3_client
-            if s3_client:
-                # Test bucket access
-                s3_client.head_bucket(Bucket=s3_manager.bucket_name)
-                s3_connected = True
-                logger.info(f"✓ S3 connection verified (bucket: {s3_manager.bucket_name})")
+            s3_client.head_bucket(Bucket=bucket_name)
+            s3_connected = True
+            logger.info(f"✓ S3 connection verified (bucket: {bucket_name})")
+        except ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+            error_message = e.response.get('Error', {}).get('Message', str(e))
+            
+            if error_code == '404':
+                logger.error("=" * 60)
+                logger.error("S3 BUCKET NOT FOUND - THIS IS REQUIRED!")
+                logger.error("=" * 60)
+                logger.error(f"Bucket '{bucket_name}' does not exist or is in a different region.")
+                logger.error(f"Error: {error_message}")
+                logger.error("")
+                logger.error("Possible solutions:")
+                logger.error("  1. Check if bucket name is correct (current: {})".format(bucket_name))
+                logger.error("  2. Verify bucket exists in region: {}".format(os.getenv('AWS_REGION', 'us-east-1')))
+                logger.error("  3. Try listing all buckets to verify access:")
+                logger.error("     aws s3 ls")
+                logger.error("  4. Check AWS credentials have s3:ListBucket and s3:DeleteObject permissions")
+                
+                # Try to list buckets to help diagnose
+                try:
+                    logger.info("Attempting to list available buckets...")
+                    response = s3_client.list_buckets()
+                    available_buckets = [b['Name'] for b in response.get('Buckets', [])]
+                    logger.info(f"Available buckets: {', '.join(available_buckets) if available_buckets else 'None found'}")
+                    if bucket_name not in available_buckets:
+                        logger.error(f"Bucket '{bucket_name}' is NOT in the list of available buckets!")
+                except Exception as list_error:
+                    logger.error(f"Could not list buckets: {list_error}")
+                
+                return (db_connected, False)
+                
+            elif error_code == '403':
+                logger.error("=" * 60)
+                logger.error("S3 ACCESS DENIED - THIS IS REQUIRED!")
+                logger.error("=" * 60)
+                logger.error(f"Access denied to bucket '{bucket_name}'.")
+                logger.error(f"Error: {error_message}")
+                logger.error("")
+                logger.error("Possible solutions:")
+                logger.error("  1. Verify AWS credentials are correct")
+                logger.error("  2. Check IAM policy has s3:ListBucket and s3:DeleteObject permissions")
+                logger.error("  3. Verify bucket policy allows your AWS account access")
+                return (db_connected, False)
             else:
-                logger.warning("⚠ S3 client not initialized (S3 operations will be skipped)")
-        except Exception as e:
-            logger.warning(f"⚠ S3 connection failed: {e} (S3 operations will be skipped)")
-    else:
-        logger.warning("⚠ S3 storage not enabled (S3 operations will be skipped)")
+                # Try alternative method: list_objects_v2
+                logger.warning(f"head_bucket failed ({error_code}), trying list_objects_v2...")
+                try:
+                    s3_client.list_objects_v2(Bucket=bucket_name, MaxKeys=1)
+                    s3_connected = True
+                    logger.info(f"✓ S3 connection verified via list_objects_v2 (bucket: {bucket_name})")
+                except ClientError as e2:
+                    error_code2 = e2.response.get('Error', {}).get('Code', 'Unknown')
+                    logger.error("=" * 60)
+                    logger.error("S3 CONNECTION FAILED - THIS IS REQUIRED!")
+                    logger.error("=" * 60)
+                    logger.error(f"Both head_bucket and list_objects_v2 failed.")
+                    logger.error(f"Error code: {error_code2}")
+                    logger.error(f"Error: {e2}")
+                    return (db_connected, False)
+                    
+    except Exception as e:
+        logger.error("=" * 60)
+        logger.error("S3 CONNECTION FAILED - THIS IS REQUIRED!")
+        logger.error("=" * 60)
+        logger.error(f"Unexpected error testing S3 connection: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return (db_connected, False)
     
     return (db_connected, s3_connected)
 
@@ -409,7 +531,13 @@ Examples:
         sys.exit(1)
     
     if not s3_connected:
-        logger.warning("S3 connection not available - will only delete database records")
+        logger.error("=" * 60)
+        logger.error("CRITICAL ERROR: S3 CONNECTION FAILED")
+        logger.error("=" * 60)
+        logger.error("S3 file deletion is a CORE FUNCTION and MUST work.")
+        logger.error("This script cannot proceed without S3 access.")
+        logger.error("Please fix the S3 configuration and try again.")
+        sys.exit(1)
     
     # Safety check: require confirmation for actual deletion
     if not args.dry_run and not args.confirm:
