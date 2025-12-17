@@ -9,6 +9,9 @@ This script:
 - Provides detailed logging and error handling for production use
 
 Usage:
+    # Scan S3 bucket to see what files exist (diagnostic mode)
+    python purge_unawarded_tenders.py --scan-s3
+    
     # Preview what would be deleted (dry run)
     python purge_unawarded_tenders.py --dry-run
     
@@ -60,9 +63,85 @@ from database import (
 from core.s3_storage import s3_manager
 
 
+def scan_s3_bucket_for_tenders(tender_ids: List[str]) -> Dict[str, List[str]]:
+    """
+    Scan entire S3 bucket for files belonging to given tender IDs.
+    This is a comprehensive scan that finds files even if prefix structure varies.
+    
+    Args:
+        tender_ids: List of tender IDs to search for
+        
+    Returns:
+        Dictionary mapping tender_id -> list of S3 keys
+    """
+    if not s3_manager.enabled:
+        raise RuntimeError("S3 storage not enabled - cannot scan bucket")
+    
+    s3_client = s3_manager.s3_client
+    if not s3_client:
+        raise RuntimeError("S3 client not available - cannot scan bucket")
+    
+    logger.info("Scanning S3 bucket for tender files...")
+    logger.info(f"Searching for {len(tender_ids)} tender ID(s)")
+    
+    # Create set for fast lookup
+    tender_id_set = set(tender_ids)
+    
+    # Map to store results
+    tender_files: Dict[str, List[str]] = {tid: [] for tid in tender_ids}
+    
+    try:
+        # List all objects with 'tenders/' prefix
+        paginator = s3_client.get_paginator('list_objects_v2')
+        pages = paginator.paginate(
+            Bucket=s3_manager.bucket_name,
+            Prefix='tenders/'
+        )
+        
+        total_objects = 0
+        matched_objects = 0
+        
+        for page in pages:
+            if 'Contents' in page:
+                for obj in page['Contents']:
+                    total_objects += 1
+                    key = obj['Key']
+                    
+                    # Extract tender_id from key
+                    # Expected formats: tenders/{tender_id}/filename or tender/{tender_id}/filename
+                    parts = key.split('/')
+                    if len(parts) >= 2:
+                        # Try to match tender_id from second part
+                        potential_tender_id = parts[1]
+                        if potential_tender_id in tender_id_set:
+                            tender_files[potential_tender_id].append(key)
+                            matched_objects += 1
+        
+        logger.info(f"Scanned {total_objects} total objects in S3 bucket")
+        logger.info(f"Matched {matched_objects} files to {len([tid for tid, files in tender_files.items() if files])} tender(s)")
+        
+        # Log summary per tender
+        for tender_id, files in tender_files.items():
+            if files:
+                logger.info(f"  Tender {tender_id}: {len(files)} files found via bucket scan")
+        
+        return tender_files
+        
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+        error_msg = f"Failed to scan S3 bucket: {error_code} - {e}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg) from e
+    except Exception as e:
+        error_msg = f"Unexpected error scanning S3 bucket: {e}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg) from e
+
+
 def list_tender_s3_files(tender_id: str) -> List[str]:
     """
     List all S3 files associated with a tender.
+    Tries multiple prefix patterns to find files.
     
     Args:
         tender_id: The tender ID to list files for
@@ -81,22 +160,49 @@ def list_tender_s3_files(tender_id: str) -> List[str]:
         raise RuntimeError(f"S3 client not available - cannot list files for tender {tender_id}")
     
     s3_files = []
-    prefix = f"tenders/{tender_id}/"
+    all_prefixes = [
+        f"tenders/{tender_id}/",
+        f"tender/{tender_id}/",
+        f"docs/{tender_id}/",
+    ]
     
     try:
-        # List all objects with the tender prefix
-        paginator = s3_client.get_paginator('list_objects_v2')
-        pages = paginator.paginate(
-            Bucket=s3_manager.bucket_name,
-            Prefix=prefix
-        )
+        # Try each prefix pattern
+        for prefix in all_prefixes:
+            logger.info(f"  Searching S3 for files with prefix: {prefix}")
+            page_count = 0
+            files_in_prefix = []
+            
+            paginator = s3_client.get_paginator('list_objects_v2')
+            pages = paginator.paginate(
+                Bucket=s3_manager.bucket_name,
+                Prefix=prefix
+            )
+            
+            for page in pages:
+                page_count += 1
+                if 'Contents' in page:
+                    for obj in page['Contents']:
+                        key = obj['Key']
+                        if key not in s3_files:  # Avoid duplicates
+                            s3_files.append(key)
+                            files_in_prefix.append(key)
+            
+            if files_in_prefix:
+                logger.info(f"  Found {len(files_in_prefix)} files with prefix '{prefix}'")
+                # Log first 3 files as samples
+                for sample_key in files_in_prefix[:3]:
+                    logger.info(f"    Sample file: {sample_key}")
+                if len(files_in_prefix) > 3:
+                    logger.info(f"    ... and {len(files_in_prefix) - 3} more files")
+            else:
+                logger.info(f"  No files found with prefix '{prefix}'")
         
-        for page in pages:
-            if 'Contents' in page:
-                for obj in page['Contents']:
-                    s3_files.append(obj['Key'])
+        if s3_files:
+            logger.info(f"  Total unique S3 files found for tender {tender_id}: {len(s3_files)}")
+        else:
+            logger.info(f"  No S3 files found for tender {tender_id} with any prefix pattern")
         
-        logger.debug(f"Found {len(s3_files)} S3 files for tender {tender_id}")
         return s3_files
         
     except ClientError as e:
@@ -110,13 +216,15 @@ def list_tender_s3_files(tender_id: str) -> List[str]:
         raise RuntimeError(error_msg) from e
 
 
-def delete_tender_s3_files(tender_id: str, dry_run: bool = False) -> Tuple[int, int]:
+def delete_tender_s3_files(tender_id: str, dry_run: bool = False, scanned_files: Optional[List[str]] = None) -> Tuple[int, int]:
     """
     Delete all S3 files associated with a tender.
+    Uses both prefix-based listing and scanned files for comprehensive coverage.
     
     Args:
         tender_id: The tender ID whose files should be deleted
         dry_run: If True, only log what would be deleted without actually deleting
+        scanned_files: Optional list of files found via bucket scan (to ensure nothing is missed)
         
     Returns:
         Tuple of (success_count, failed_count)
@@ -130,35 +238,99 @@ def delete_tender_s3_files(tender_id: str, dry_run: bool = False) -> Tuple[int, 
     if not s3_manager.s3_client:
         raise RuntimeError(f"S3 client not available - cannot delete files for tender {tender_id}")
     
+    # Get files from prefix-based search
     s3_files = list_tender_s3_files(tender_id)
     
+    # Also include files from bucket scan if provided
+    if scanned_files:
+        for scanned_file in scanned_files:
+            if scanned_file not in s3_files:
+                s3_files.append(scanned_file)
+                logger.info(f"  Added file from bucket scan: {scanned_file}")
+    
     if not s3_files:
-        logger.debug(f"No S3 files found for tender {tender_id}")
+        logger.info(f"  No S3 files found for tender {tender_id}")
         return (0, 0)
+    
+    logger.info(f"  Found {len(s3_files)} total S3 files for tender {tender_id}")
     
     if dry_run:
         logger.info(f"  [DRY RUN] Would delete {len(s3_files)} S3 files for tender {tender_id}")
-        for s3_key in s3_files:
-            logger.debug(f"    [DRY RUN] Would delete: {s3_key}")
+        for idx, s3_key in enumerate(s3_files, 1):
+            logger.info(f"    [DRY RUN] File {idx}/{len(s3_files)}: {s3_key}")
         return (len(s3_files), 0)
     
     success_count = 0
     failed_count = 0
     failed_keys = []
     
-    for s3_key in s3_files:
+    # Use batch delete for efficiency (up to 1000 files at once)
+    s3_client = s3_manager.s3_client
+    bucket_name = s3_manager.bucket_name
+    
+    # Process in batches of 1000 (S3 batch delete limit)
+    batch_size = 1000
+    for batch_start in range(0, len(s3_files), batch_size):
+        batch = s3_files[batch_start:batch_start + batch_size]
+        batch_num = (batch_start // batch_size) + 1
+        total_batches = (len(s3_files) + batch_size - 1) // batch_size
+        
         try:
-            if s3_manager.delete_file(s3_key):
+            # Try batch delete
+            delete_objects = [{'Key': key} for key in batch]
+            response = s3_client.delete_objects(
+                Bucket=bucket_name,
+                Delete={
+                    'Objects': delete_objects,
+                    'Quiet': False
+                }
+            )
+            
+            # Process results
+            deleted = response.get('Deleted', [])
+            errors = response.get('Errors', [])
+            
+            for deleted_obj in deleted:
                 success_count += 1
-                logger.debug(f"    Deleted S3 file: {s3_key}")
-            else:
+                logger.info(f"    Deleted file {success_count}/{len(s3_files)}: {deleted_obj['Key']}")
+            
+            for error_obj in errors:
                 failed_count += 1
-                failed_keys.append(s3_key)
-                logger.error(f"    FAILED to delete S3 file: {s3_key}")
+                failed_key = error_obj['Key']
+                failed_keys.append(failed_key)
+                error_code = error_obj.get('Code', 'Unknown')
+                error_msg = error_obj.get('Message', 'Unknown error')
+                logger.error(f"    FAILED to delete S3 file {failed_key}: {error_code} - {error_msg}")
+            
+            if len(batch) > 1:
+                logger.info(f"  Batch {batch_num}/{total_batches}: Deleted {len(deleted)}/{len(batch)} files")
+                
         except Exception as e:
-            failed_count += 1
-            failed_keys.append(s3_key)
-            logger.error(f"    ERROR deleting S3 file {s3_key}: {e}")
+            # Fall back to individual deletion if batch fails
+            logger.warning(f"  Batch delete failed for batch {batch_num}, falling back to individual deletion: {e}")
+            for s3_key in batch:
+                try:
+                    if s3_manager.delete_file(s3_key):
+                        success_count += 1
+                        logger.info(f"    Deleted file {success_count}/{len(s3_files)}: {s3_key}")
+                    else:
+                        failed_count += 1
+                        failed_keys.append(s3_key)
+                        logger.error(f"    FAILED to delete S3 file: {s3_key}")
+                except Exception as e2:
+                    failed_count += 1
+                    failed_keys.append(s3_key)
+                    logger.error(f"    ERROR deleting S3 file {s3_key}: {e2}")
+    
+    # Verify deletion for a sample of files
+    if success_count > 0:
+        sample_size = min(5, len(s3_files))
+        verified_count = 0
+        for sample_key in s3_files[:sample_size]:
+            if not s3_manager.file_exists(sample_key):
+                verified_count += 1
+        if verified_count == sample_size:
+            logger.info(f"  Verified deletion: {sample_size} sample files confirmed deleted")
     
     if failed_count > 0:
         error_msg = f"Failed to delete {failed_count}/{len(s3_files)} S3 files for tender {tender_id}"
@@ -214,13 +386,31 @@ def purge_non_awarded_tenders(db: Session, dry_run: bool = False) -> Dict[str, A
     
     tender_ids = [t.id for t in tenders]
     
+    # First, scan entire S3 bucket to find all files (comprehensive discovery)
+    logger.info("Scanning S3 bucket for tender files...")
+    scanned_tender_files: Dict[str, List[str]] = {}
+    try:
+        scanned_tender_files = scan_s3_bucket_for_tenders(tender_ids)
+        total_scanned = sum(len(files) for files in scanned_tender_files.values())
+        logger.info(f"Bucket scan found {total_scanned} total files across {len([tid for tid, files in scanned_tender_files.items() if files])} tender(s)")
+    except Exception as e:
+        logger.warning(f"Bucket scan failed, will use prefix-based search only: {e}")
+        # Continue with prefix-based search
+    
     # Delete S3 files for each tender - MANDATORY
     logger.info("Deleting S3 files for non-awarded tenders...")
     for idx, tender in enumerate(tenders, 1):
         logger.info(f"Processing tender {tender.id}... ({idx}/{tender_count})")
         
+        # Get scanned files for this tender if available
+        scanned_files = scanned_tender_files.get(tender.id, [])
+        
         try:
-            success, failed = delete_tender_s3_files(tender.id, dry_run=dry_run)
+            success, failed = delete_tender_s3_files(
+                tender.id, 
+                dry_run=dry_run,
+                scanned_files=scanned_files if scanned_files else None
+            )
             stats['s3_files_deleted'] += success
             stats['s3_files_failed'] += failed
             
@@ -498,6 +688,9 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Scan S3 bucket to see what files exist (diagnostic, no changes)
+  python purge_unawarded_tenders.py --scan-s3
+  
   # Preview what would be deleted (safe, no changes)
   python purge_unawarded_tenders.py --dry-run
   
@@ -514,6 +707,11 @@ Examples:
         '--confirm',
         action='store_true',
         help='Confirm that you want to proceed with the purge (required for actual deletion)'
+    )
+    parser.add_argument(
+        '--scan-s3',
+        action='store_true',
+        help='Diagnostic mode: Scan and list all S3 files without deleting anything'
     )
     
     args = parser.parse_args()
@@ -538,6 +736,75 @@ Examples:
         logger.error("This script cannot proceed without S3 access.")
         logger.error("Please fix the S3 configuration and try again.")
         sys.exit(1)
+    
+    # Handle diagnostic scan mode
+    if args.scan_s3:
+        logger.info("=" * 60)
+        logger.info("S3 BUCKET SCAN MODE (Diagnostic)")
+        logger.info("=" * 60)
+        logger.info("This will list all files in S3 bucket with 'tenders/' prefix")
+        logger.info("No deletions will be performed.")
+        logger.info("")
+        
+        if not s3_manager.enabled or not s3_manager.s3_client:
+            logger.error("S3 is not available. Cannot perform scan.")
+            sys.exit(1)
+        
+        try:
+            s3_client = s3_manager.s3_client
+            bucket_name = s3_manager.bucket_name
+            
+            logger.info(f"Scanning bucket: {bucket_name}")
+            logger.info("Listing all objects with 'tenders/' prefix...")
+            
+            paginator = s3_client.get_paginator('list_objects_v2')
+            pages = paginator.paginate(
+                Bucket=bucket_name,
+                Prefix='tenders/'
+            )
+            
+            all_files: Dict[str, List[str]] = {}  # tender_id -> files
+            total_files = 0
+            
+            for page in pages:
+                if 'Contents' in page:
+                    for obj in page['Contents']:
+                        total_files += 1
+                        key = obj['Key']
+                        parts = key.split('/')
+                        if len(parts) >= 2:
+                            tender_id = parts[1]
+                            if tender_id not in all_files:
+                                all_files[tender_id] = []
+                            all_files[tender_id].append(key)
+            
+            logger.info("")
+            logger.info("=" * 60)
+            logger.info("S3 BUCKET SCAN RESULTS")
+            logger.info("=" * 60)
+            logger.info(f"Total files found: {total_files}")
+            logger.info(f"Tenders with files: {len(all_files)}")
+            logger.info("")
+            
+            # Show summary by tender
+            for tender_id, files in sorted(all_files.items()):
+                logger.info(f"Tender {tender_id}: {len(files)} files")
+                for file_key in files[:3]:  # Show first 3
+                    logger.info(f"  - {file_key}")
+                if len(files) > 3:
+                    logger.info(f"  ... and {len(files) - 3} more files")
+                logger.info("")
+            
+            logger.info("=" * 60)
+            logger.info("Scan complete. Use --dry-run to preview deletions or --confirm to purge.")
+            
+        except Exception as e:
+            logger.error(f"Error during S3 scan: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            sys.exit(1)
+        
+        sys.exit(0)
     
     # Safety check: require confirmation for actual deletion
     if not args.dry_run and not args.confirm:
