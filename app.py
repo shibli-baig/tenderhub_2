@@ -7478,12 +7478,16 @@ async def list_tender_documents(tender_id: str, db: Session = Depends(get_db)):
         
         doc_list = []
         for doc in documents:
-            # Determine URL (S3 first, then fallback)
-            if doc.s3_url:
-                download_url = doc.s3_url
-            elif doc.s3_key:
+            # Always prioritize s3_key to generate presigned URL (direct S3 URLs don't work without public access)
+            if doc.s3_key:
                 presigned_url = get_presigned_url(doc.s3_key, expiration=3600)
                 download_url = presigned_url if presigned_url else f"/api/tender/document/{doc.id}"
+            elif doc.s3_url and '?' in doc.s3_url:
+                # s3_url is already a presigned URL (contains query params)
+                download_url = doc.s3_url
+            elif doc.s3_url:
+                # s3_url is a direct S3 URL, which won't work - fall back to endpoint
+                download_url = f"/api/tender/document/{doc.id}"
             else:
                 download_url = f"/api/tender/document/{doc.id}"
             
@@ -7519,16 +7523,16 @@ async def download_tender_document_by_id(document_id: int, db: Session = Depends
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        # Priority 1: Use S3 URL if available
-        if document.s3_url:
-            return RedirectResponse(url=document.s3_url, status_code=302)
-        
-        # Priority 2: Generate presigned URL if s3_key exists
+        # Priority 1: Generate presigned URL from s3_key (direct S3 URLs don't work without public access)
         if document.s3_key:
             from s3_utils import get_presigned_url
             presigned_url = get_presigned_url(document.s3_key, expiration=3600)
             if presigned_url:
                 return RedirectResponse(url=presigned_url, status_code=302)
+        
+        # Priority 2: Use s3_url only if it's already a presigned URL (contains query params)
+        if document.s3_url and '?' in document.s3_url:
+            return RedirectResponse(url=document.s3_url, status_code=302)
         
         # Priority 3: Fall back to file_data
         if document.file_data:
@@ -7574,12 +7578,16 @@ async def serve_tender_screenshots(tender_id: str, db: Session = Depends(get_db)
         
         available_screenshots = []
         for screenshot in screenshots:
-            # Use S3 URL if available, otherwise fall back to endpoint
-            if screenshot.s3_url:
-                url = screenshot.s3_url
-            elif screenshot.s3_key:
+            # Always prioritize s3_key to generate presigned URL (direct S3 URLs don't work without public access)
+            if screenshot.s3_key:
                 presigned_url = get_presigned_url(screenshot.s3_key, expiration=3600)
                 url = presigned_url if presigned_url else f"/api/tender/{tender_id}/screenshot/{screenshot.id}"
+            elif screenshot.s3_url and '?' in screenshot.s3_url:
+                # s3_url is already a presigned URL (contains query params)
+                url = screenshot.s3_url
+            elif screenshot.s3_url:
+                # s3_url is a direct S3 URL, which won't work - fall back to endpoint
+                url = f"/api/tender/{tender_id}/screenshot/{screenshot.id}"
             else:
                 url = f"/api/tender/{tender_id}/screenshot/{screenshot.id}"
             
@@ -7618,16 +7626,16 @@ async def serve_tender_screenshot_file(tender_id: str, screenshot_id: int, db: S
         if not screenshot:
             raise HTTPException(status_code=404, detail="Screenshot not found")
 
-        # Priority 1: Use S3 URL if available
-        if screenshot.s3_url:
-            return RedirectResponse(url=screenshot.s3_url, status_code=302)
-        
-        # Priority 2: Generate presigned URL if s3_key exists
+        # Priority 1: Generate presigned URL from s3_key (direct S3 URLs don't work without public access)
         if screenshot.s3_key:
             from s3_utils import get_presigned_url
             presigned_url = get_presigned_url(screenshot.s3_key, expiration=3600)
             if presigned_url:
                 return RedirectResponse(url=presigned_url, status_code=302)
+        
+        # Priority 2: Use s3_url only if it's already a presigned URL (contains query params)
+        if screenshot.s3_url and '?' in screenshot.s3_url:
+            return RedirectResponse(url=screenshot.s3_url, status_code=302)
         
         # Priority 3: Fall back to file_data (backwards compatibility)
         if screenshot.file_data:
