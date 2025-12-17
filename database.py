@@ -229,8 +229,13 @@ class TenderDocumentDB(Base):
     mime_type = Column(String, nullable=False)  # image/png, application/pdf, etc.
     file_size = Column(Integer, nullable=False)  # Size in bytes
 
-    # Binary document data
-    file_data = Column(LargeBinary, nullable=False)
+    # Binary document data (nullable if stored in S3)
+    file_data = Column(LargeBinary, nullable=True)
+
+    # S3 storage fields
+    s3_key = Column(String, nullable=True, index=True)  # S3 object key (e.g., 'tenders/123/document.pdf')
+    s3_url = Column(String, nullable=True)  # S3 URL (for reference)
+    migrated_to_s3 = Column(Boolean, default=False, nullable=False)  # Flag indicating file is in S3
 
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -254,6 +259,9 @@ class TenderDocumentDB(Base):
             'filename': self.filename,
             'mime_type': self.mime_type,
             'file_size': self.file_size,
+            's3_key': self.s3_key,
+            's3_url': self.s3_url,
+            'migrated_to_s3': self.migrated_to_s3,
             'created_at': self.created_at.isoformat() if self.created_at else None, #type: ignore
             'display_order': self.display_order,
         }
