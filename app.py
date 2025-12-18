@@ -6848,7 +6848,7 @@ async def tender_management_page(request: Request, db: Session = Depends(get_db)
     except Exception as e:
         logger.warning(f"Cleanup of expired tenders and orphaned records failed: {e}")
 
-    # Determine IDs to query based on user type
+    # Determine IDs to query based on user type (for shortlisted and awarded)
     if entity_type == 'user':
         # Admin: Get all BD employee IDs + their own ID
         bd_employee_ids = get_all_bd_employee_ids_for_company(entity_id, db)
@@ -6857,14 +6857,35 @@ async def tender_management_page(request: Request, db: Session = Depends(get_db)
         # BD Employee: Only their own ID
         all_ids = [entity_id]
 
+    # Get user_id for database queries (company owner's user_id for BD employees)
+    from core.dependencies import get_user_id_for_queries
+    user_id_for_query, _ = get_user_id_for_queries(request, db)
+    if not user_id_for_query:
+        return RedirectResponse(url="/login", status_code=302)
+
     now = datetime.utcnow()
 
     # Get favorite tenders with tender details
-    all_favorites = db.query(FavoriteDB).options(
-        joinedload(FavoriteDB.tender)
-    ).filter(
-        FavoriteDB.user_id.in_(all_ids)
-    ).order_by(desc(FavoriteDB.created_at)).all()
+    # For admins: Get all favorites (admin's own + BD employees')
+    # For BD employees: Get only their own favorites (filtered by worked_by fields)
+    if entity_type == 'user':
+        # Admin: Get all favorites for this user_id (includes both admin's and BD employees')
+        all_favorites = db.query(FavoriteDB).options(
+            joinedload(FavoriteDB.tender)
+        ).filter(
+            FavoriteDB.user_id == user_id_for_query
+        ).order_by(desc(FavoriteDB.created_at)).all()
+    else:
+        # BD Employee: Get only their own favorites
+        all_favorites = db.query(FavoriteDB).options(
+            joinedload(FavoriteDB.tender)
+        ).filter(
+            and_(
+                FavoriteDB.user_id == user_id_for_query,
+                FavoriteDB.worked_by_type == 'bd_employee',
+                FavoriteDB.worked_by_name == entity.name
+            )
+        ).order_by(desc(FavoriteDB.created_at)).all()
 
     # Filter out expired tenders (unless awarded)
     favorites = []
@@ -6897,12 +6918,42 @@ async def tender_management_page(request: Request, db: Session = Depends(get_db)
             _prepare_tender_display_fields(shortlisted.tender)
 
         # Try to find the corresponding favorite
-        favorite = db.query(FavoriteDB).filter(
-            and_(
-                FavoriteDB.user_id == shortlisted.user_id,  # Use shortlist owner's ID
-                FavoriteDB.tender_id == shortlisted.tender_id
-            )
-        ).first()
+        # Note: shortlisted.user_id might be a BD employee ID, but favorites are stored with company owner's user_id
+        # So we need to check by user_id_for_query and worked_by fields if it's a BD employee
+        if entity_type == 'user' and shortlisted.user_id != user_id_for_query:
+            # This is a BD employee's shortlist (admin viewing), find favorite by worked_by fields
+            # We need to get the BD employee's name from their ID
+            from database import EmployeeDB
+            bd_employee = db.query(EmployeeDB).filter(EmployeeDB.id == shortlisted.user_id).first()
+            if bd_employee:
+                favorite = db.query(FavoriteDB).filter(
+                    and_(
+                        FavoriteDB.user_id == user_id_for_query,
+                        FavoriteDB.tender_id == shortlisted.tender_id,
+                        FavoriteDB.worked_by_type == 'bd_employee',
+                        FavoriteDB.worked_by_name == bd_employee.name
+                    )
+                ).first()
+            else:
+                favorite = None
+        elif entity_type == 'bd_employee':
+            # BD employee viewing their own shortlist, find their favorite
+            favorite = db.query(FavoriteDB).filter(
+                and_(
+                    FavoriteDB.user_id == user_id_for_query,
+                    FavoriteDB.tender_id == shortlisted.tender_id,
+                    FavoriteDB.worked_by_type == 'bd_employee',
+                    FavoriteDB.worked_by_name == entity.name
+                )
+            ).first()
+        else:
+            # Admin viewing their own shortlist
+            favorite = db.query(FavoriteDB).filter(
+                and_(
+                    FavoriteDB.user_id == user_id_for_query,
+                    FavoriteDB.tender_id == shortlisted.tender_id
+                )
+            ).first()
         shortlisted_with_favorites.append({
             'shortlisted': shortlisted,
             'favorite': favorite
@@ -7212,12 +7263,15 @@ async def tender_detail(request: Request, tender_id: str, db: Session = Depends(
     _prepare_tender_display_fields(tender)
 
     # Get authenticated entity (user or BD employee)
-    from core.dependencies import get_id_for_tender_management
+    from core.dependencies import get_id_for_tender_management, get_user_id_for_queries
     entity_id, entity, entity_type = get_id_for_tender_management(request, db)
     
     # Set context variables for templates
     current_user = entity if entity_type == 'user' else None
     current_employee = entity if entity_type == 'bd_employee' else None
+
+    # Get user_id for database queries (company owner's user_id for BD employees)
+    user_id_for_query, _ = get_user_id_for_queries(request, db) if entity_id else (None, None)
 
     # Check if entity has favorited this tender
     is_favorited = False
@@ -7226,19 +7280,30 @@ async def tender_detail(request: Request, tender_id: str, db: Session = Depends(
     is_expired = False
     is_awarded = tender.awarded if tender.awarded else False
 
-    if entity_id:
-        favorite = db.query(FavoriteDB).filter(
-            and_(FavoriteDB.user_id == entity_id, FavoriteDB.tender_id == tender.id)
-        ).first()
+    if entity_id and user_id_for_query:
+        # Check favorite - for BD employees, check by worked_by fields
+        if entity_type == 'bd_employee':
+            favorite = db.query(FavoriteDB).filter(
+                and_(
+                    FavoriteDB.user_id == user_id_for_query,
+                    FavoriteDB.tender_id == tender.id,
+                    FavoriteDB.worked_by_type == 'bd_employee',
+                    FavoriteDB.worked_by_name == entity.name
+                )
+            ).first()
+        else:
+            favorite = db.query(FavoriteDB).filter(
+                and_(FavoriteDB.user_id == user_id_for_query, FavoriteDB.tender_id == tender.id)
+            ).first()
         is_favorited = favorite is not None
 
-        # Check if shortlisted
+        # Check if shortlisted (shortlisted still uses entity_id directly)
         shortlisted = db.query(ShortlistedTenderDB).filter(
             and_(ShortlistedTenderDB.user_id == entity_id, ShortlistedTenderDB.tender_id == tender.id)
         ).first()
         is_shortlisted = shortlisted is not None
 
-        # Check if rejected
+        # Check if rejected (rejected still uses entity_id directly)
         rejected = db.query(RejectedTenderDB).filter(
             and_(RejectedTenderDB.user_id == entity_id, RejectedTenderDB.tender_id == tender.id)
         ).first()
@@ -10596,10 +10661,15 @@ async def add_favorite(
     db: Session = Depends(get_db)
 ):
     """Add tender to favorites."""
-    from core.dependencies import get_id_for_tender_management
+    from core.dependencies import get_id_for_tender_management, get_user_id_for_queries
 
     entity_id, entity, entity_type = get_id_for_tender_management(request, db)
     if not entity_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Get user_id for database storage (company owner's user_id for BD employees)
+    user_id_for_storage, _ = get_user_id_for_queries(request, db)
+    if not user_id_for_storage:
         raise HTTPException(status_code=401, detail="Authentication required")
 
     # Check if tender exists
@@ -10607,17 +10677,29 @@ async def add_favorite(
     if not tender:
         raise HTTPException(status_code=404, detail="Tender not found")
 
-    # Check if already favorited
-    existing_favorite = db.query(FavoriteDB).filter(
-        and_(FavoriteDB.user_id == entity_id, FavoriteDB.tender_id == tender_id)
-    ).first()
+    # Check if already favorited by this entity
+    # For BD employees, check by worked_by fields; for users, check by user_id
+    if entity_type == 'bd_employee':
+        existing_favorite = db.query(FavoriteDB).filter(
+            and_(
+                FavoriteDB.user_id == user_id_for_storage,
+                FavoriteDB.tender_id == tender_id,
+                FavoriteDB.worked_by_type == 'bd_employee',
+                FavoriteDB.worked_by_name == entity.name
+            )
+        ).first()
+    else:
+        existing_favorite = db.query(FavoriteDB).filter(
+            and_(FavoriteDB.user_id == user_id_for_storage, FavoriteDB.tender_id == tender_id)
+        ).first()
 
     if existing_favorite:
         raise HTTPException(status_code=400, detail="Already favorited")
 
-    # Create favorite
+    # Create favorite - use user_id_for_storage (company owner's user_id for BD employees)
+    # but track who actually favorited it using worked_by fields
     favorite = FavoriteDB(
-        user_id=entity_id,
+        user_id=user_id_for_storage,
         tender_id=tender_id,
         notes=notes,
         worked_by_name=entity.name,
@@ -10628,7 +10710,7 @@ async def add_favorite(
     db.add(favorite)
     db.commit()
 
-    # Create deadline notifications for this tender
+    # Create deadline notifications for this tender (use entity_id for notifications)
     create_deadline_notifications(entity_id, tender_id, db)
 
     return {"message": "Added to favorites"}
@@ -10636,23 +10718,38 @@ async def add_favorite(
 @app.delete("/api/favorites/{tender_id}")
 async def remove_favorite(request: Request, tender_id: str, db: Session = Depends(get_db)):
     """Remove tender from favorites."""
-    from core.dependencies import get_id_for_tender_management
+    from core.dependencies import get_id_for_tender_management, get_user_id_for_queries
 
     entity_id, entity, entity_type = get_id_for_tender_management(request, db)
     if not entity_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    # Find and delete favorite
-    favorite = db.query(FavoriteDB).filter(
-        and_(FavoriteDB.user_id == entity_id, FavoriteDB.tender_id == tender_id)
-    ).first()
+    # Get user_id for database queries (company owner's user_id for BD employees)
+    user_id_for_query, _ = get_user_id_for_queries(request, db)
+    if not user_id_for_query:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Find and delete favorite - for BD employees, check by worked_by fields
+    if entity_type == 'bd_employee':
+        favorite = db.query(FavoriteDB).filter(
+            and_(
+                FavoriteDB.user_id == user_id_for_query,
+                FavoriteDB.tender_id == tender_id,
+                FavoriteDB.worked_by_type == 'bd_employee',
+                FavoriteDB.worked_by_name == entity.name
+            )
+        ).first()
+    else:
+        favorite = db.query(FavoriteDB).filter(
+            and_(FavoriteDB.user_id == user_id_for_query, FavoriteDB.tender_id == tender_id)
+        ).first()
 
     if not favorite:
         raise HTTPException(status_code=404, detail="Favorite not found")
 
     db.delete(favorite)
 
-    # Delete associated notifications
+    # Delete associated notifications (use entity_id for notifications)
     db.query(NotificationDB).filter(
         NotificationDB.user_id == entity_id,
         NotificationDB.tender_id == tender_id
@@ -10670,16 +10767,31 @@ async def update_favorite_data(
     db: Session = Depends(get_db)
 ):
     """Update user-filled data for a favorite."""
-    from core.dependencies import get_id_for_tender_management
+    from core.dependencies import get_id_for_tender_management, get_user_id_for_queries
 
     entity_id, entity, entity_type = get_id_for_tender_management(request, db)
     if not entity_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    # Find the favorite
-    favorite = db.query(FavoriteDB).filter(
-        and_(FavoriteDB.id == favorite_id, FavoriteDB.user_id == entity_id)
-    ).first()
+    # Get user_id for database queries (company owner's user_id for BD employees)
+    user_id_for_query, _ = get_user_id_for_queries(request, db)
+    if not user_id_for_query:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Find the favorite - for BD employees, check by worked_by fields
+    if entity_type == 'bd_employee':
+        favorite = db.query(FavoriteDB).filter(
+            and_(
+                FavoriteDB.id == favorite_id,
+                FavoriteDB.user_id == user_id_for_query,
+                FavoriteDB.worked_by_type == 'bd_employee',
+                FavoriteDB.worked_by_name == entity.name
+            )
+        ).first()
+    else:
+        favorite = db.query(FavoriteDB).filter(
+            and_(FavoriteDB.id == favorite_id, FavoriteDB.user_id == user_id_for_query)
+        ).first()
 
     if not favorite:
         raise HTTPException(status_code=404, detail="Favorite not found")
