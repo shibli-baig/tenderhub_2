@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Home - TenderHub{% endblock %}
+{% block title %}Home - BidSuite{% endblock %}
 
 {% block content %}
 <style>
@@ -260,7 +260,7 @@
                 {% elif current_user.company %}
                     {{ current_user.company }}
                 {% else %}
-                    TenderHub User
+                    BidSuite User
                 {% endif %}
                 <br>
                 {{ current_user.email }}

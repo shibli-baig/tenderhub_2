@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Login - TenderHub{% endblock %}
+{% block title %}Login - BidSuite{% endblock %}
 
 {% block content %}
 <section class="section">
     <div class="auth-layout">
         <div class="auth-info">
-            <h3 class="surface-card__title">Why leaders choose TenderHub</h3>
+            <h3 class="surface-card__title">Why leaders choose BidSuite</h3>
             <p class="text-muted">Purpose-built for procurement command centres across infrastructure, utilities, smart cities and EPC organisations.</p>
             <ul>
                 <li>Search thousands of government tenders with executive-grade filters and watchlists.</li>
@@ -15,12 +15,12 @@
                 <li>Orchestrate pursuit teams with task assignments, comments and live messaging.</li>
                 <li>Maintain a single source of truth for portfolio performance and award outcomes.</li>
             </ul>
-            <p class="panel-subtitle mt-4">Need enterprise onboarding? <a href="mailto:support@tenderhub.com">Contact our team</a>.</p>
+            <p class="panel-subtitle mt-4">Need enterprise onboarding? <a href="mailto:support@bidsuite.com">Contact our team</a>.</p>
         </div>
 
         <div class="auth-panels">
             <form id="loginForm" method="post" action="/api/auth/login" class="auth-card">
-                <h2 class="surface-card__title">Login to TenderHub</h2>
+                <h2 class="surface-card__title">Login to BidSuite</h2>
                 <p class="panel-subtitle mb-4">Access your procurement workspace and resume where you left off.</p>
 
                 {% if error %}
@@ -53,7 +53,7 @@
             </form>
 
             <form id="signupForm" method="post" action="/api/auth/signup" class="auth-card hidden">
-                <h2 class="surface-card__title">Create a TenderHub account</h2>
+                <h2 class="surface-card__title">Create a BidSuite account</h2>
                 <p class="panel-subtitle mb-4">Set up your organisation and start monitoring tenders instantly.</p>
 
                 {% if signup_error %}

@@ -1,5 +1,5 @@
 /**
- * TenderHub Analytics Dashboard - Chart Rendering and Interactions
+ * BidSuite Analytics Dashboard - Chart Rendering and Interactions
  * Handles ApexCharts initialization, data visualization, and user interactions
  */
 

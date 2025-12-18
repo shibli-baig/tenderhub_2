@@ -2644,7 +2644,7 @@
 </style>
 {% endblock %}
 
-{% block title %}{{ tender.title }} - TenderHub{% endblock %}
+{% block title %}{{ tender.title }} - BidSuite{% endblock %}
 
 {% block content %}
 <section class="section">
@@ -2669,7 +2669,7 @@
 
         <!-- Action Icons Row -->
         <div class="tender-hero__actions">
-            {% if current_user %}
+            {% if current_user or current_employee %}
             <!-- Hide favorite button for awarded tenders -->
             {% if not is_awarded %}
             <div class="action-btn-wrapper">

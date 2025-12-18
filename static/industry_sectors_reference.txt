@@ -2,7 +2,7 @@ INDUSTRY SECTORS AND SUB-SECTORS REFERENCE LIST
 ================================================
 
 This file contains the original pre-defined industry sectors that were available
-in the TenderHub application before switching to user-defined sectors.
+in the BidSuite application before switching to user-defined sectors.
 
 Created: 2025-10-05
 Purpose: Reference for future use

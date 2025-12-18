@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Power TenderHub - Awesome Government Tender Management{% endblock %}</title>
+    <title>{% block title %}Power BidSuite - Awesome Government Tender Management{% endblock %}</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
     <!-- Meta tags -->
     <meta name="description" content="Government tender management system for tracking and managing public tenders">
     <meta name="keywords" content="government, tenders, public procurement, bidding">
-    <meta name="author" content="TenderHub">
+    <meta name="author" content="BidSuite">
     
     {% block extra_head %}{% endblock %}
     {% block extra_styles %}{% endblock %}
@@ -33,7 +33,7 @@
 <body class="page-shell">
     <header>
         <div class="header-container">
-            <a href="{% if current_user %}/dashboard{% elif current_employee %}/employee/dashboard{% elif current_expert %}/expert/dashboard{% else %}/{% endif %}" class="logo"><span>Tender</span>Hub</a>
+            <a href="{% if current_user %}/dashboard{% elif current_employee %}/employee/dashboard{% elif current_expert %}/expert/dashboard{% else %}/{% endif %}" class="logo"><span>Bid</span>Suite</a>
 
             <nav class="nav">
                 <!-- Dark Mode Toggle (visible for all users) -->
@@ -264,7 +264,7 @@
 
     <footer>
         <div class="container text-center">
-            <p>&copy; 2025 TenderHub. Government Tender Intelligence for modern enterprises.</p>
+            <p>&copy; 2025 BidSuite. Government Tender Intelligence for modern enterprises.</p>
             <p class="text-muted mt-2">Built to empower procurement leaders with real-time visibility and team coordination.</p>
         </div>
     </footer>

@@ -1,4 +1,4 @@
-// TenderHub - Main JavaScript File
+// BidSuite - Main JavaScript File
 
 // Dark Mode Theme Toggle
 const THEME_STORAGE_KEY = 'theme';
@@ -630,7 +630,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    console.log('TenderHub initialized successfully');
+    console.log('BidSuite initialized successfully');
 });
 
 // Global functions for HTML onclick handlers

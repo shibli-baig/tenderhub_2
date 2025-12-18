@@ -54,7 +54,7 @@ os.environ.setdefault("DB_POOL_RECYCLE", "1800")
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, desc, String, cast, func, inspect, text
 from datetime import datetime, timedelta, date
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Set
 import uuid
 import re
 from pathlib import Path
@@ -313,7 +313,7 @@ def get_company_name_for_user(user: UserDB, db: Session) -> str:
     return ""
 
 
-def get_next_project_number(user_id: str, company_initials: str, db: Session) -> int:
+def get_next_project_number(user_id: str, company_initials: str, db: Session, in_memory_project_ids: Optional[Set[str]] = None) -> int:
     """
     Get the next project number for a user's company initials.
     Handles overflow beyond 999999 by detecting existing longer numbers.
@@ -322,6 +322,7 @@ def get_next_project_number(user_id: str, company_initials: str, db: Session) ->
         user_id: User ID
         company_initials: Company initials (e.g., "PCPL")
         db: Database session
+        in_memory_project_ids: Optional set of project IDs already generated in this session (not yet committed)
         
     Returns:
         Next project number (starting from 1)
@@ -336,7 +337,7 @@ def get_next_project_number(user_id: str, company_initials: str, db: Session) ->
     max_number = 0
     max_digits = 6  # Default to 6 digits
     
-    # Extract numbers from existing project_ids
+    # Extract numbers from existing project_ids in database
     for (project_id,) in existing_projects:
         if not project_id:
             continue
@@ -350,6 +351,21 @@ def get_next_project_number(user_id: str, company_initials: str, db: Session) ->
             num_digits = len(match.group(1))
             max_digits = max(max_digits, num_digits)
     
+    # Also check in-memory project IDs (from current bulk upload session)
+    if in_memory_project_ids:
+        for project_id in in_memory_project_ids:
+            if not project_id:
+                continue
+            
+            # Match pattern: {INITIALS}-{NUMBER}
+            match = re.match(rf'^{re.escape(company_initials)}-(\d+)$', project_id)
+            if match:
+                number = int(match.group(1))
+                max_number = max(max_number, number)
+                # Track maximum digits needed
+                num_digits = len(match.group(1))
+                max_digits = max(max_digits, num_digits)
+    
     next_number = max_number + 1
     
     # If next number exceeds 6 digits, we'll format with more digits
@@ -357,7 +373,7 @@ def get_next_project_number(user_id: str, company_initials: str, db: Session) ->
     return next_number
 
 
-def generate_project_id(user_id: str, db: Session, existing_id: Optional[str] = None) -> str:
+def generate_project_id(user_id: str, db: Session, existing_id: Optional[str] = None, in_memory_project_ids: Optional[Set[str]] = None) -> str:
     """
     Generate a project ID in format {COMPANY_INITIALS}-{NUMBER}.
     
@@ -365,6 +381,7 @@ def generate_project_id(user_id: str, db: Session, existing_id: Optional[str] = 
         user_id: User ID
         db: Database session
         existing_id: Optional existing project ID to validate/use
+        in_memory_project_ids: Optional set of project IDs already generated in this session (not yet committed)
         
     Returns:
         Project ID string (e.g., "PCPL-000001")
@@ -374,12 +391,13 @@ def generate_project_id(user_id: str, db: Session, existing_id: Optional[str] = 
         existing_id = existing_id.strip()
         # Validate format: {INITIALS}-{NUMBER}
         if re.match(r'^[A-Z]{2,10}-\d{6,}$', existing_id):
-            # Check uniqueness for this user
+            # Check uniqueness in database
             existing = db.query(ProjectDB).filter(
                 ProjectDB.user_id == user_id,
                 ProjectDB.project_id == existing_id
             ).first()
-            if not existing:
+            # Also check in-memory set
+            if not existing and (not in_memory_project_ids or existing_id not in in_memory_project_ids):
                 return existing_id
             # If duplicate, fall through to generate new one
             logger.warning(f"Duplicate project_id '{existing_id}' for user {user_id}, generating new one")
@@ -397,8 +415,8 @@ def generate_project_id(user_id: str, db: Session, existing_id: Optional[str] = 
     # Extract initials
     company_initials = extract_company_initials(company_name)
     
-    # Get next project number
-    next_number = get_next_project_number(user_id, company_initials, db)
+    # Get next project number (passing in_memory_project_ids)
+    next_number = get_next_project_number(user_id, company_initials, db, in_memory_project_ids)
     
     # Determine number of digits needed
     # If number >= 999999, use 7 digits; if >= 9999999, use 8, etc.
@@ -412,16 +430,20 @@ def generate_project_id(user_id: str, db: Session, existing_id: Optional[str] = 
     # Format project ID
     project_id = f"{company_initials}-{next_number:0{num_digits}d}"
     
-    # Double-check uniqueness (race condition protection)
+    # Double-check uniqueness against database and in-memory set
     existing = db.query(ProjectDB).filter(ProjectDB.project_id == project_id).first()
-    if existing:
-        # If collision, increment and try again
+    in_memory_collision = in_memory_project_ids and project_id in in_memory_project_ids
+    
+    # If collision found, increment and retry until unique
+    while existing or in_memory_collision:
         next_number += 1
         if next_number >= 9999999:
             num_digits = 8
         elif next_number >= 999999:
             num_digits = 7
         project_id = f"{company_initials}-{next_number:0{num_digits}d}"
+        existing = db.query(ProjectDB).filter(ProjectDB.project_id == project_id).first()
+        in_memory_collision = in_memory_project_ids and project_id in in_memory_project_ids
     
     return project_id
 
@@ -7189,34 +7211,40 @@ async def tender_detail(request: Request, tender_id: str, db: Session = Depends(
 
     _prepare_tender_display_fields(tender)
 
-    current_user = get_current_user(request, db)
+    # Get authenticated entity (user or BD employee)
+    from core.dependencies import get_id_for_tender_management
+    entity_id, entity, entity_type = get_id_for_tender_management(request, db)
+    
+    # Set context variables for templates
+    current_user = entity if entity_type == 'user' else None
+    current_employee = entity if entity_type == 'bd_employee' else None
 
-    # Check if user has favorited this tender
+    # Check if entity has favorited this tender
     is_favorited = False
     is_shortlisted = False
     is_rejected = False
     is_expired = False
     is_awarded = tender.awarded if tender.awarded else False
 
-    if current_user:
+    if entity_id:
         favorite = db.query(FavoriteDB).filter(
-            and_(FavoriteDB.user_id == current_user.id, FavoriteDB.tender_id == tender.id)
+            and_(FavoriteDB.user_id == entity_id, FavoriteDB.tender_id == tender.id)
         ).first()
         is_favorited = favorite is not None
 
         # Check if shortlisted
         shortlisted = db.query(ShortlistedTenderDB).filter(
-            and_(ShortlistedTenderDB.user_id == current_user.id, ShortlistedTenderDB.tender_id == tender.id)
+            and_(ShortlistedTenderDB.user_id == entity_id, ShortlistedTenderDB.tender_id == tender.id)
         ).first()
         is_shortlisted = shortlisted is not None
 
         # Check if rejected
         rejected = db.query(RejectedTenderDB).filter(
-            and_(RejectedTenderDB.user_id == current_user.id, RejectedTenderDB.tender_id == tender.id)
+            and_(RejectedTenderDB.user_id == entity_id, RejectedTenderDB.tender_id == tender.id)
         ).first()
         is_rejected = rejected is not None
 
-        # Check if tender has expired and user had it favorited/shortlisted
+        # Check if tender has expired and entity had it favorited/shortlisted
         if tender.deadline:
             now = datetime.utcnow()
             if tender.deadline < now and (is_favorited or is_shortlisted):
@@ -7232,6 +7260,7 @@ async def tender_detail(request: Request, tender_id: str, db: Session = Depends(
         "request": request,
         "tender": tender,
         "current_user": current_user,
+        "current_employee": current_employee,
         "is_favorited": is_favorited,
         "is_shortlisted": is_shortlisted,
         "is_rejected": is_rejected,
@@ -13040,6 +13069,7 @@ async def upload_projects_bulk(
     warning_messages: List[str] = []  # Track auto-corrections
     new_projects: List[ProjectDB] = []
     all_unmatched_files: set = set()  # Track unique unmatched filenames
+    generated_project_ids: Set[str] = set()  # Track project IDs generated in this bulk upload session
 
     for row_number, row in extracted_rows:
         project_name_raw = row.get("project_name")
@@ -13213,28 +13243,31 @@ async def upload_projects_bulk(
             if project_id_from_excel:
                 # Validate format before using
                 if re.match(r'^[A-Z]{2,10}-\d{6,}$', project_id_from_excel):
-                    # Check uniqueness
+                    # Check uniqueness in database and in-memory set
                     existing = db.query(ProjectDB).filter(
                         ProjectDB.user_id == current_user.id,
                         ProjectDB.project_id == project_id_from_excel
                     ).first()
-                    if existing:
+                    if existing or project_id_from_excel in generated_project_ids:
                         # Duplicate found, generate new one
-                        project_id_value = generate_project_id(current_user.id, db)
+                        project_id_value = generate_project_id(current_user.id, db, in_memory_project_ids=generated_project_ids)
                         logger.warning(f"Row {row_number}: Duplicate project_id '{project_id_from_excel}', generated new: {project_id_value}")
                     else:
                         project_id_value = project_id_from_excel
                 else:
                     # Invalid format, generate new one
-                    project_id_value = generate_project_id(current_user.id, db)
+                    project_id_value = generate_project_id(current_user.id, db, in_memory_project_ids=generated_project_ids)
                     logger.warning(f"Row {row_number}: Invalid project_id format '{project_id_from_excel}', generated new: {project_id_value}")
             else:
                 # No project_id in Excel, generate one
-                project_id_value = generate_project_id(current_user.id, db)
+                project_id_value = generate_project_id(current_user.id, db, in_memory_project_ids=generated_project_ids)
         except Exception as e:
             logger.error(f"Row {row_number}: Error generating project_id: {e}")
             # Fallback: generate ID even if there's an error
-            project_id_value = generate_project_id(current_user.id, db)
+            project_id_value = generate_project_id(current_user.id, db, in_memory_project_ids=generated_project_ids)
+        
+        # Add generated project_id to tracking set to ensure uniqueness within this bulk upload
+        generated_project_ids.add(project_id_value)
 
         new_project = ProjectDB(
             user_id=current_user.id,
@@ -14784,16 +14817,25 @@ async def delete_awarded_tender(request: Request, tender_id: str, db: Session = 
 # Notification API endpoints
 @app.get("/api/notifications")
 async def get_notifications(request: Request, db: Session = Depends(get_db)):
-    """Get all unread notifications for the current user."""
-    from core.dependencies import get_user_id_for_queries
+    """Get all unread notifications for the current user or BD employee."""
+    from core.dependencies import get_id_for_tender_management, get_all_bd_employee_ids_for_company
 
-    user_id, entity = get_user_id_for_queries(request, db)
-    if not user_id:
+    entity_id, entity, entity_type = get_id_for_tender_management(request, db)
+    if not entity_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    # Get all unread notifications for the user, ordered by creation date (newest first)
+    # Determine IDs to query based on user type
+    if entity_type == 'user':
+        # Admin: Get all BD employee IDs + their own ID
+        bd_employee_ids = get_all_bd_employee_ids_for_company(entity_id, db)
+        all_ids = [entity_id] + bd_employee_ids
+    else:
+        # BD Employee: Only their own ID
+        all_ids = [entity_id]
+
+    # Get all unread notifications for the entity(ies), ordered by creation date (newest first)
     notifications = db.query(NotificationDB).filter(
-        NotificationDB.user_id == user_id,
+        NotificationDB.user_id.in_(all_ids),
         NotificationDB.is_read == False
     ).order_by(desc(NotificationDB.created_at)).all()
 
@@ -14847,14 +14889,25 @@ async def get_notifications(request: Request, db: Session = Depends(get_db)):
 @app.post("/api/notifications/{notification_id}/mark-read")
 async def mark_notification_read(request: Request, notification_id: int, db: Session = Depends(get_db)):
     """Mark a specific notification as read."""
-    current_user = get_current_user(request, db)
-    if not current_user:
+    from core.dependencies import get_id_for_tender_management, get_all_bd_employee_ids_for_company
+    
+    entity_id, entity, entity_type = get_id_for_tender_management(request, db)
+    if not entity_id:
         raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Determine IDs to query based on user type
+    if entity_type == 'user':
+        # Admin: Can mark notifications for all BD employees + their own
+        bd_employee_ids = get_all_bd_employee_ids_for_company(entity_id, db)
+        all_ids = [entity_id] + bd_employee_ids
+    else:
+        # BD Employee: Only their own ID
+        all_ids = [entity_id]
 
     # Find the notification
     notification = db.query(NotificationDB).filter(
         NotificationDB.id == notification_id,
-        NotificationDB.user_id == current_user.id
+        NotificationDB.user_id.in_(all_ids)
     ).first()
 
     if not notification:
@@ -14868,14 +14921,25 @@ async def mark_notification_read(request: Request, notification_id: int, db: Ses
 
 @app.post("/api/notifications/mark-all-read")
 async def mark_all_notifications_read(request: Request, db: Session = Depends(get_db)):
-    """Mark all notifications as read for the current user."""
-    current_user = get_current_user(request, db)
-    if not current_user:
+    """Mark all notifications as read for the current user or BD employee."""
+    from core.dependencies import get_id_for_tender_management, get_all_bd_employee_ids_for_company
+    
+    entity_id, entity, entity_type = get_id_for_tender_management(request, db)
+    if not entity_id:
         raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Determine IDs to query based on user type
+    if entity_type == 'user':
+        # Admin: Can mark all notifications for BD employees + their own
+        bd_employee_ids = get_all_bd_employee_ids_for_company(entity_id, db)
+        all_ids = [entity_id] + bd_employee_ids
+    else:
+        # BD Employee: Only their own ID
+        all_ids = [entity_id]
 
     # Update all unread notifications
     db.query(NotificationDB).filter(
-        NotificationDB.user_id == current_user.id,
+        NotificationDB.user_id.in_(all_ids),
         NotificationDB.is_read == False
     ).update({"is_read": True})
 
@@ -14992,8 +15056,10 @@ async def check_deadline_notifications_endpoint(db: Session = Depends(get_db)):
 @app.post("/api/reminders")
 async def create_reminder(request: Request, db: Session = Depends(get_db)):
     """Create a new reminder for a tender."""
-    current_user = get_current_user(request, db)
-    if not current_user:
+    from core.dependencies import get_id_for_tender_management
+    
+    entity_id, entity, entity_type = get_id_for_tender_management(request, db)
+    if not entity_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
     try:
@@ -15026,11 +15092,13 @@ async def create_reminder(request: Request, db: Session = Depends(get_db)):
         # Create reminder
         from database import ReminderDB
         reminder = ReminderDB(
-            user_id=current_user.id,
+            user_id=entity_id,
             tender_id=tender_id,
             reminder_datetime=reminder_datetime,
             title=tender_title or tender.title,
-            note=note
+            note=note,
+            worked_by_name=entity.name,
+            worked_by_type=entity_type
         )
 
         db.add(reminder)
@@ -15058,18 +15126,29 @@ async def create_reminder(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/api/reminders")
 async def get_reminders(request: Request, db: Session = Depends(get_db)):
-    """Get all reminders for the current user."""
-    current_user = get_current_user(request, db)
-    if not current_user:
+    """Get all reminders for the current user or BD employee."""
+    from core.dependencies import get_id_for_tender_management, get_all_bd_employee_ids_for_company
+    
+    entity_id, entity, entity_type = get_id_for_tender_management(request, db)
+    if not entity_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
     try:
         from database import ReminderDB
         from datetime import datetime
 
-        # Get all pending reminders for the user
+        # Determine IDs to query based on user type
+        if entity_type == 'user':
+            # Admin: Get all BD employee IDs + their own ID
+            bd_employee_ids = get_all_bd_employee_ids_for_company(entity_id, db)
+            all_ids = [entity_id] + bd_employee_ids
+        else:
+            # BD Employee: Only their own ID
+            all_ids = [entity_id]
+
+        # Get all pending reminders for the entity(ies)
         reminders = db.query(ReminderDB).filter(
-            ReminderDB.user_id == current_user.id,
+            ReminderDB.user_id.in_(all_ids),
             ReminderDB.is_dismissed == False
         ).order_by(ReminderDB.reminder_datetime).all()
 
@@ -15082,7 +15161,9 @@ async def get_reminders(request: Request, db: Session = Depends(get_db)):
                 "reminder_datetime": reminder.reminder_datetime.isoformat(),
                 "note": reminder.note,
                 "is_triggered": reminder.is_triggered,
-                "created_at": reminder.created_at.isoformat()
+                "created_at": reminder.created_at.isoformat(),
+                "worked_by_name": reminder.worked_by_name,
+                "worked_by_type": reminder.worked_by_type
             })
 
         return {"reminders": result}
@@ -15095,8 +15176,10 @@ async def get_reminders(request: Request, db: Session = Depends(get_db)):
 @app.post("/api/reminders/{reminder_id}/dismiss")
 async def dismiss_reminder(request: Request, reminder_id: int, db: Session = Depends(get_db)):
     """Dismiss a reminder."""
-    current_user = get_current_user(request, db)
-    if not current_user:
+    from core.dependencies import get_id_for_tender_management
+    
+    entity_id, entity, entity_type = get_id_for_tender_management(request, db)
+    if not entity_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
     try:
@@ -15104,7 +15187,7 @@ async def dismiss_reminder(request: Request, reminder_id: int, db: Session = Dep
 
         reminder = db.query(ReminderDB).filter(
             ReminderDB.id == reminder_id,
-            ReminderDB.user_id == current_user.id
+            ReminderDB.user_id == entity_id
         ).first()
 
         if not reminder:
@@ -15125,8 +15208,10 @@ async def dismiss_reminder(request: Request, reminder_id: int, db: Session = Dep
 @app.delete("/api/reminders/{reminder_id}")
 async def delete_reminder(request: Request, reminder_id: int, db: Session = Depends(get_db)):
     """Delete a reminder."""
-    current_user = get_current_user(request, db)
-    if not current_user:
+    from core.dependencies import get_id_for_tender_management
+    
+    entity_id, entity, entity_type = get_id_for_tender_management(request, db)
+    if not entity_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
     try:
@@ -15134,7 +15219,7 @@ async def delete_reminder(request: Request, reminder_id: int, db: Session = Depe
 
         reminder = db.query(ReminderDB).filter(
             ReminderDB.id == reminder_id,
-            ReminderDB.user_id == current_user.id
+            ReminderDB.user_id == entity_id
         ).first()
 
         if not reminder:

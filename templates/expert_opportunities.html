@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Browse Opportunities - TenderHub Expert-Verse{% endblock %}
+{% block title %}Browse Opportunities - BidSuite Expert-Verse{% endblock %}
 
 {% block content %}
 <section class="section">
@@ -675,7 +675,7 @@ function openRequestDetails(requestId) {
         tenderLink.style.display = 'inline-flex';
     } else if (data.tender_id) {
         tenderLink.href = `/tender/${data.tender_id}`;
-        tenderLink.textContent = 'View tender on TenderHub';
+        tenderLink.textContent = 'View tender on BidSuite';
         tenderLink.style.display = 'inline-flex';
     } else {
         tenderLink.style.display = 'none';

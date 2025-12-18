@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ tender.title }} - TenderHub Expert-Verse{% endblock %}
+{% block title %}{{ tender.title }} - BidSuite Expert-Verse{% endblock %}
 
 {% block content %}
 <section class="section">
@@ -249,7 +249,7 @@ function shareTender() {
     if (navigator.share) {
         navigator.share({
             title: '{{ tender.title }}',
-            text: 'Check out this tender opportunity on TenderHub',
+            text: 'Check out this tender opportunity on BidSuite',
             url: url
         }).catch(err => console.log('Error sharing:', err));
     } else {
