@@ -51,14 +51,20 @@ def sanitize_filename(filename: str) -> str:
     return (safe or "certificate") + ext
 
 
-def save_file_to_batch(dest_dir: Path, original_filename: str, content: bytes) -> str:
-    """Persist uploaded certificate bytes to the batch-specific directory."""
+def save_file_to_batch(dest_dir: Path, original_filename: str, content: bytes, user_id: str, batch_id: str) -> tuple[str, Optional[str], Optional[str]]:
+    """
+    Persist uploaded certificate bytes to the batch-specific directory and S3.
+    
+    Returns:
+        Tuple of (local_file_path, s3_key, s3_url)
+        s3_key and s3_url will be None if S3 upload fails
+    """
     dest_dir.mkdir(parents=True, exist_ok=True)
     sanitized = sanitize_filename(original_filename)
     unique_name = f"{uuid.uuid4()}_{sanitized}"
     full_path = dest_dir / unique_name
     
-    # Write file
+    # Write file locally
     with open(full_path, "wb") as buffer:
         buffer.write(content)
     
@@ -69,8 +75,46 @@ def save_file_to_batch(dest_dir: Path, original_filename: str, content: bytes) -
     if os.path.getsize(full_path) != len(content):
         raise IOError(f"File size mismatch after save: {full_path}")
     
+    # Upload to S3 immediately
+    s3_key = None
+    s3_url = None
+    try:
+        from s3_utils import upload_to_s3
+        import mimetypes
+        
+        # Generate S3 key: certificates/user_id/batch_id/filename
+        s3_key = f"certificates/{user_id}/{batch_id}/{unique_name}"
+        
+        # Detect content type
+        content_type, _ = mimetypes.guess_type(original_filename)
+        if not content_type:
+            content_type = 'application/octet-stream'
+        
+        # Upload to S3
+        success, result = upload_to_s3(
+            file_data=content,
+            s3_key=s3_key,
+            content_type=content_type,
+            metadata={
+                'user_id': user_id,
+                'batch_id': batch_id,
+                'original_filename': original_filename,
+                'uploaded_at': datetime.utcnow().isoformat()
+            }
+        )
+        
+        if success:
+            s3_url = result
+            logger.info(f"✅ Certificate uploaded to S3: {s3_key}")
+        else:
+            logger.warning(f"⚠️ Failed to upload certificate to S3: {result}")
+            # Continue with local file - don't fail the upload
+    except Exception as e:
+        logger.error(f"Error uploading certificate to S3: {e}")
+        # Continue with local file - don't fail the upload
+    
     # Return absolute path to avoid path resolution issues
-    return str(full_path.resolve())
+    return str(full_path.resolve()), s3_key, s3_url
 
 
 def compute_file_hash(file_content: bytes) -> str:
@@ -326,10 +370,23 @@ async def certificate_detail_page(request: Request, certificate_id: str, db: Ses
     if not certificate:
         raise HTTPException(status_code=404, detail="Certificate not found")
 
+    # Generate presigned URL for certificate file if stored in S3
+    certificate_file_url = None
+    if certificate.s3_key:
+        try:
+            from s3_utils import get_presigned_url
+            certificate_file_url = get_presigned_url(certificate.s3_key, expiration=3600)
+        except Exception as e:
+            logger.warning(f"Failed to generate presigned URL for certificate {certificate_id}: {e}")
+    elif certificate.file_path and os.path.exists(certificate.file_path):
+        # Fallback to local file if S3 not available
+        certificate_file_url = f"/{certificate.file_path}"
+
     return templates.TemplateResponse("certificate_detail.html", {
         "request": request,
         "current_user": current_user,
-        "certificate": certificate
+        "certificate": certificate,
+        "certificate_file_url": certificate_file_url
     })
 
 
@@ -430,6 +487,7 @@ async def upload_certificates_bulk(
                     file_content,
                     batch_dir,
                     current_user.id,
+                    batch_id,
                     db
                 )
                 # Separate duplicates from files to process
@@ -458,10 +516,12 @@ async def upload_certificates_bulk(
                     continue  # Skip this file entirely
 
                 # Only save and queue non-duplicate files
-                file_path = save_file_to_batch(batch_dir, filename, file_content)
+                file_path, s3_key, s3_url = save_file_to_batch(batch_dir, filename, file_content, current_user.id, batch_id)
 
                 files_to_process.append({
                     'file_path': file_path,
+                    's3_key': s3_key,
+                    's3_url': s3_url,
                     'filename': filename,
                     'file_hash': file_hash,
                     'file_size': file_size
@@ -509,7 +569,9 @@ async def upload_certificates_bulk(
                 filename=file_info['filename'],
                 batch_id=batch_id,
                 file_hash=file_info.get('file_hash'),
-                file_size=file_info.get('file_size')
+                file_size=file_info.get('file_size'),
+                s3_key=file_info.get('s3_key'),
+                s3_url=file_info.get('s3_url')
             )
             task_ids.append(task_id)
 
@@ -553,6 +615,7 @@ async def extract_certificates_from_zip(
     zip_content: bytes,
     dest_dir: Path,
     user_id: str,
+    batch_id: str,
     db: Session
 ) -> List[Dict[str, Any]]:
     """
@@ -600,10 +663,12 @@ async def extract_certificates_from_zip(
                     logger.info(f"⏭️ Skipping duplicate from zip: {original_filename} (matches existing: {existing_cert.id})")
                     continue
 
-                permanent_path = save_file_to_batch(dest_dir, original_filename, file_bytes)
+                permanent_path, s3_key, s3_url = save_file_to_batch(dest_dir, original_filename, file_bytes, user_id, batch_id)
 
                 files.append({
                     'file_path': permanent_path,
+                    's3_key': s3_key,
+                    's3_url': s3_url,
                     'filename': original_filename,
                     'file_hash': file_hash,
                     'file_size': file_size,

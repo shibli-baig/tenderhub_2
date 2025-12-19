@@ -807,17 +807,21 @@ class CertificateProcessor:
         file_path: str,
         filename: str,
         file_hash: Optional[str] = None,
-        file_size: Optional[int] = None
+        file_size: Optional[int] = None,
+        s3_key: Optional[str] = None,
+        s3_url: Optional[str] = None
     ) -> str:
         """
         Complete certificate processing pipeline.
 
         Args:
             user_id: ID of the user uploading the certificate
-            file_path: Path to the uploaded file
+            file_path: Path to the uploaded file (local, may not exist)
             filename: Original filename
             file_hash: Optional SHA256 hash for duplicate detection
             file_size: Optional file size in bytes
+            s3_key: Optional S3 object key for the file
+            s3_url: Optional S3 URL for the file
 
         Returns:
             Certificate ID
@@ -827,19 +831,54 @@ class CertificateProcessor:
         attempts_used = 0
         extraction_model_used = EXTRACTION_MODEL
         certificate_id = str(uuid.uuid4())
+        
+        # Determine actual file path - download from S3 if local doesn't exist
+        actual_file_path = file_path
+        temp_file = None
 
         try:
             logger.info(f"📄 Preparing document for extraction: {filename}")
             
-            # Verify file exists before processing
-            if not os.path.exists(file_path):
-                raise FileNotFoundError(f"Certificate file not found at path: {file_path}")
+            # Prioritize S3 if available (Render has ephemeral filesystem)
+            if s3_key:
+                logger.info(f"Downloading certificate from S3: {s3_key}")
+                try:
+                    from s3_utils import download_from_s3
+                    success, file_data, content_type = download_from_s3(s3_key)
+                    if success:
+                        # Create temporary file
+                        import tempfile
+                        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix)
+                        temp_file.write(file_data)
+                        temp_file.close()
+                        actual_file_path = temp_file.name
+                        logger.info(f"✅ Downloaded certificate from S3 to temporary file: {actual_file_path}")
+                    else:
+                        # S3 download failed, try local file as fallback
+                        logger.warning(f"S3 download failed: {file_data}, trying local file")
+                        if os.path.exists(file_path) and os.access(file_path, os.R_OK):
+                            actual_file_path = file_path
+                            logger.info(f"Using local file as fallback: {file_path}")
+                        else:
+                            raise FileNotFoundError(f"Certificate file not found in S3 and local file not available: {file_path}")
+                except FileNotFoundError:
+                    raise
+                except Exception as e:
+                    logger.error(f"Failed to download from S3: {e}")
+                    # Try local file as fallback
+                    if os.path.exists(file_path) and os.access(file_path, os.R_OK):
+                        actual_file_path = file_path
+                        logger.info(f"Using local file as fallback after S3 error: {file_path}")
+                    else:
+                        raise FileNotFoundError(f"Certificate file not found in S3 and local file not available: {file_path}")
+            elif os.path.exists(file_path) and os.access(file_path, os.R_OK):
+                # No S3 key, use local file
+                actual_file_path = file_path
+                logger.info(f"Using local file: {file_path}")
+            else:
+                raise FileNotFoundError(f"Certificate file not found at path: {file_path} and no S3 key provided")
             
-            # Verify file is readable
-            if not os.access(file_path, os.R_OK):
-                raise PermissionError(f"Cannot read certificate file: {file_path}")
-            
-            image_payload = self._load_document_images(file_path)
+            image_payload = self._load_document_images(actual_file_path)
 
             # Determine if Claude alternation is available
             claude_available = USE_CLAUDE_ALTERNATION and ANTHROPIC_API_KEY and anthropic_client
@@ -954,6 +993,8 @@ class CertificateProcessor:
                 verbatim_certificate=normalized_payload.get("verbatim_certificate"),
                 original_filename=filename,
                 file_path=file_path,
+                s3_key=s3_key,
+                s3_url=s3_url,
                 file_hash=file_hash,
                 file_size=file_size,
                 extracted_text=extracted_text,
@@ -1066,6 +1107,8 @@ class CertificateProcessor:
                         project_name=f"Processing Failed: {filename}",
                         original_filename=filename,
                         file_path=file_path,
+                        s3_key=s3_key if 's3_key' in locals() else None,
+                        s3_url=s3_url if 's3_url' in locals() else None,
                         file_hash=file_hash,
                         file_size=file_size,
                         extracted_text="",
@@ -1086,6 +1129,13 @@ class CertificateProcessor:
 
             raise
         finally:
+            # Clean up temporary file if we downloaded from S3
+            if 'temp_file' in locals() and temp_file and os.path.exists(temp_file):
+                try:
+                    os.unlink(temp_file)
+                    logger.debug(f"Cleaned up temporary file: {temp_file}")
+                except Exception as e:
+                    logger.warning(f"Failed to clean up temporary file {temp_file}: {e}")
             db.close()
 
     def _parse_date(self, date_str: Optional[str]) -> Optional[datetime]:

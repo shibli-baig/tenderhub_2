@@ -920,7 +920,9 @@ class CertificateDB(Base):
 
     # Additional metadata
     original_filename = Column(String)
-    file_path = Column(String)
+    file_path = Column(String)  # Local file path (legacy, may not exist on Render)
+    s3_key = Column(String, nullable=True, index=True)  # S3 object key (e.g., 'certificates/user_id/batch_id/filename')
+    s3_url = Column(String, nullable=True)  # S3 URL for direct access
     file_hash = Column(String, index=True)  # SHA256 hash for duplicate detection
     file_size = Column(Integer)  # File size in bytes
     extracted_text = Column(Text)

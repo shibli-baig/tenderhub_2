@@ -815,10 +815,12 @@
         <div class="preview-card">
             <h2><span class="card-icon">📄</span> Certificate Preview</h2>
             <div class="preview-container">
-                {% set file_ext = certificate.file_path.lower() %}
-                {% if file_ext.endswith('.pdf') %}
+                {% set file_path_lower = (certificate.file_path or '').lower() %}
+                {% set file_ext = file_path_lower.split('.')[-1] if '.' in file_path_lower else '' %}
+                {# Always use API endpoint which handles S3 and local files #}
+                {% if file_ext == 'pdf' %}
                     <iframe class="preview-pdf" src="/api/certificates/{{ certificate.id }}/file#toolbar=0" type="application/pdf"></iframe>
-                {% elif file_ext.endswith(('.jpg', '.jpeg', '.png')) %}
+                {% elif file_ext in ['jpg', 'jpeg', 'png'] %}
                     <img class="preview-image" src="/api/certificates/{{ certificate.id }}/file" alt="Certificate Preview">
                 {% else %}
                     <div class="preview-placeholder">

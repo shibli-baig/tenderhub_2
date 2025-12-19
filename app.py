@@ -18297,28 +18297,51 @@ async def get_certificate_file(
     if not certificate:
         raise HTTPException(status_code=404, detail="Certificate not found")
 
+    # Try S3 first, then fall back to local file
+    if certificate.s3_key:
+        try:
+            from s3_utils import get_presigned_url, download_from_s3
+            # Generate presigned URL for 1 hour access
+            presigned_url = get_presigned_url(certificate.s3_key, expiration=3600)
+            if presigned_url:
+                # Redirect to presigned URL for direct access
+                return RedirectResponse(url=presigned_url, status_code=302)
+            else:
+                # If presigned URL fails, download and serve
+                success, file_data, content_type = download_from_s3(certificate.s3_key)
+                if success:
+                    return Response(
+                        content=file_data,
+                        media_type=content_type,
+                        headers={"Content-Disposition": "inline"}
+                    )
+        except Exception as e:
+            logger.error(f"Error accessing S3 file: {e}")
+            # Fall through to local file check
+
+    # Fall back to local file if S3 is not available
     file_path = certificate.file_path
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Certificate file not found on server")
-
-    # Determine media type based on file extension
-    file_extension = os.path.splitext(file_path)[1].lower()
-    media_types = {
-        '.pdf': 'application/pdf',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.png': 'image/png'
-    }
-    media_type = media_types.get(file_extension, 'application/octet-stream')
-
-    # Return file for inline viewing (not download)
-    return FileResponse(
-        path=file_path,
-        media_type=media_type,
-        headers={
-            "Content-Disposition": "inline"
+    if file_path and os.path.exists(file_path):
+        # Determine media type based on file extension
+        file_extension = os.path.splitext(file_path)[1].lower()
+        media_types = {
+            '.pdf': 'application/pdf',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png'
         }
-    )
+        media_type = media_types.get(file_extension, 'application/octet-stream')
+
+        # Return file for inline viewing (not download)
+        return FileResponse(
+            path=file_path,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": "inline"
+            }
+        )
+
+    raise HTTPException(status_code=404, detail="Certificate file not found")
 
 @app.get("/api/certificates/{certificate_id}/download")
 async def download_certificate_file(
@@ -18338,16 +18361,55 @@ async def download_certificate_file(
     if not certificate:
         raise HTTPException(status_code=404, detail="Certificate not found")
 
-    file_path = certificate.file_path
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Certificate file not found on server")
+    # Try S3 first, then fall back to local file
+    if certificate.s3_key:
+        try:
+            from s3_utils import get_presigned_url, download_from_s3
+            # Generate presigned URL for download (1 hour access)
+            presigned_url = get_presigned_url(
+                certificate.s3_key,
+                expiration=3600,
+                filename=certificate.original_filename or "certificate"
+            )
+            if presigned_url:
+                # Redirect to presigned URL for direct download
+                return RedirectResponse(url=presigned_url, status_code=302)
+            else:
+                # If presigned URL fails, download and serve
+                success, file_data, content_type = download_from_s3(certificate.s3_key)
+                if success:
+                    return Response(
+                        content=file_data,
+                        media_type=content_type,
+                        headers={
+                            "Content-Disposition": f'attachment; filename="{certificate.original_filename or "certificate"}"'
+                        }
+                    )
+        except Exception as e:
+            logger.error(f"Error accessing S3 file: {e}")
+            # Fall through to local file check
 
-    return FileResponse(
-        path=file_path,
-        media_type='application/octet-stream',
-        filename=certificate.original_filename,
-        headers={"Content-Disposition": f'attachment; filename="{certificate.original_filename}"'}
-    )
+    # Fall back to local file if S3 is not available
+    file_path = certificate.file_path
+    if file_path and os.path.exists(file_path):
+        # Determine media type based on file extension
+        file_extension = os.path.splitext(file_path)[1].lower()
+        media_types = {
+            '.pdf': 'application/pdf',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png'
+        }
+        media_type = media_types.get(file_extension, 'application/octet-stream')
+        
+        return FileResponse(
+            path=file_path,
+            media_type=media_type,
+            filename=certificate.original_filename or "certificate",
+            headers={"Content-Disposition": f'attachment; filename="{certificate.original_filename or "certificate"}"'}
+        )
+
+    raise HTTPException(status_code=404, detail="Certificate file not found")
 
 
 # ============================================================

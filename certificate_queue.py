@@ -87,6 +87,8 @@ class CertificateTask:
         batch_id: Optional[str] = None,
         file_hash: Optional[str] = None,
         file_size: Optional[int] = None,
+        s3_key: Optional[str] = None,
+        s3_url: Optional[str] = None,
         retry_count: int = 0,
         created_at: Optional[str] = None,
         last_error: Optional[str] = None
@@ -98,6 +100,8 @@ class CertificateTask:
         self.batch_id = batch_id
         self.file_hash = file_hash
         self.file_size = file_size
+        self.s3_key = s3_key
+        self.s3_url = s3_url
         self.retry_count = retry_count
         self.created_at = created_at or datetime.utcnow().isoformat()
         self.last_error = last_error
@@ -112,6 +116,8 @@ class CertificateTask:
             'batch_id': self.batch_id,
             'file_hash': self.file_hash,
             'file_size': self.file_size,
+            's3_key': self.s3_key,
+            's3_url': self.s3_url,
             'retry_count': self.retry_count,
             'created_at': self.created_at,
             'last_error': self.last_error
@@ -128,6 +134,8 @@ class CertificateTask:
             batch_id=data.get('batch_id'),
             file_hash=data.get('file_hash'),
             file_size=data.get('file_size'),
+            s3_key=data.get('s3_key'),
+            s3_url=data.get('s3_url'),
             retry_count=data.get('retry_count', 0),
             created_at=data.get('created_at'),
             last_error=data.get('last_error')
@@ -180,6 +188,8 @@ def process_certificate_task(task: CertificateTask) -> bool:
             project_name=f"Processing {task.filename}",
             original_filename=task.filename,
             file_path=task.file_path,
+            s3_key=task.s3_key,
+            s3_url=task.s3_url,
             processing_status="processing",
             created_at=datetime.utcnow()
         )
@@ -192,7 +202,11 @@ def process_certificate_task(task: CertificateTask) -> bool:
             file_path=task.file_path,
             filename=task.filename,
             file_hash=task.file_hash,
-            file_size=task.file_size
+            file_size=task.file_size,
+            s3_key=task.s3_key,
+            s3_url=task.s3_url
+            s3_key=task.s3_key,
+            s3_url=task.s3_url
         )
 
         # Update the batch on success
@@ -518,18 +532,22 @@ def enqueue_certificate(
     filename: str,
     batch_id: Optional[str] = None,
     file_hash: Optional[str] = None,
-    file_size: Optional[int] = None
+    file_size: Optional[int] = None,
+    s3_key: Optional[str] = None,
+    s3_url: Optional[str] = None
 ) -> str:
     """
     Add a certificate to the Redis processing queue.
 
     Args:
         user_id: ID of the user uploading the certificate
-        file_path: Path to the saved certificate file
+        file_path: Path to the saved certificate file (local, may not exist)
         filename: Original filename
         batch_id: Optional batch ID for tracking bulk uploads
         file_hash: Optional SHA256 hash for duplicate detection
         file_size: Optional file size in bytes
+        s3_key: Optional S3 object key for the file
+        s3_url: Optional S3 URL for the file
 
     Returns:
         Task ID for tracking
@@ -542,7 +560,9 @@ def enqueue_certificate(
         filename=filename,
         batch_id=batch_id,
         file_hash=file_hash,
-        file_size=file_size
+        file_size=file_size,
+        s3_key=s3_key,
+        s3_url=s3_url
     )
 
     try:
