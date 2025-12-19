@@ -2,6 +2,15 @@
 
 {% block title %}BidSuite - Government Tender Management{% endblock %}
 
+{# SEO Meta Tags #}
+{% set seo_meta = {
+    'title': 'BidSuite - Government Tender Management & Procurement Intelligence Platform',
+    'description': 'Operational command centre for government tender strategy. BidSuite unifies discovery, evaluation, collaboration, and compliance into a single experience built for leadership teams navigating high-value public infrastructure opportunities.',
+    'keywords': 'government tenders, public procurement, tender management, bidding platform, government contracts, procurement software, tender intelligence, BidSuite, procurement intelligence, AI-powered tenders',
+    'url': request.url.scheme + '://' + request.url.netloc + request.url.path,
+    'image': request.url.scheme + '://' + request.url.netloc + '/static/images/og-default.jpg'
+} %}
+
 {% block extra_css %}
 <style>
 /* Dark Mode - ONLY Card Backgrounds */
@@ -212,5 +221,207 @@ body.dark-mode .hero-metric {
         <a href="/login" class="btn btn-primary btn-lg">Launch your BidSuite workspace</a>
     </div>
 </section>
+
+{# FAQ Section with Schema #}
+<section class="section" id="faq">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            <p class="section-subtitle">Common questions about BidSuite and government tender management.</p>
+        </div>
+    </div>
+    
+    <div class="faq-list">
+        <article class="faq-item">
+            <h3 class="faq-question">What is BidSuite?</h3>
+            <p class="faq-answer">BidSuite is an operational command centre for government tender strategy. It unifies discovery, evaluation, collaboration, and compliance into a single experience built for leadership teams navigating high-value public infrastructure opportunities.</p>
+        </article>
+        
+        <article class="faq-item">
+            <h3 class="faq-question">How many government tenders does BidSuite track?</h3>
+            <p class="faq-answer">BidSuite indexes over 30,000 government tenders from central, state, and PSU portals, providing comprehensive coverage of public procurement opportunities across India.</p>
+        </article>
+        
+        <article class="faq-item">
+            <h3 class="faq-question">What industries does BidSuite support?</h3>
+            <p class="faq-answer">BidSuite provides industry vertical blueprints for 19+ sectors including Water Supply, Healthcare, Transport, Urban Development, Energy, Education, and more.</p>
+        </article>
+        
+        <article class="faq-item">
+            <h3 class="faq-question">How does AI assist in tender management?</h3>
+            <p class="faq-answer">BidSuite uses GPT-powered processors and enterprise-grade vector search to extract structured details from certificates, tender PDFs, and scanned images, enabling AI-driven tender recommendations and automated diligence.</p>
+        </article>
+        
+        <article class="faq-item">
+            <h3 class="faq-question">Is BidSuite suitable for enterprise use?</h3>
+            <p class="faq-answer">Yes, BidSuite is designed for enterprise use with role-based access control, company-code onboarding, audit-ready logs, encryption, and data residency controls built for enterprise governance.</p>
+        </article>
+    </div>
+</section>
+
+{# Structured Data - FAQ Schema #}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "What is BidSuite?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "BidSuite is an operational command centre for government tender strategy. It unifies discovery, evaluation, collaboration, and compliance into a single experience built for leadership teams navigating high-value public infrastructure opportunities."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How many government tenders does BidSuite track?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "BidSuite indexes over 30,000 government tenders from central, state, and PSU portals, providing comprehensive coverage of public procurement opportunities across India."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "What industries does BidSuite support?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "BidSuite provides industry vertical blueprints for 19+ sectors including Water Supply, Healthcare, Transport, Urban Development, Energy, Education, and more."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How does AI assist in tender management?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "BidSuite uses GPT-powered processors and enterprise-grade vector search to extract structured details from certificates, tender PDFs, and scanned images, enabling AI-driven tender recommendations and automated diligence."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Is BidSuite suitable for enterprise use?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, BidSuite is designed for enterprise use with role-based access control, company-code onboarding, audit-ready logs, encryption, and data residency controls built for enterprise governance."
+            }
+        }
+    ]
+}
+</script>
+
+{# Structured Data - HowTo Schema (Getting Started) #}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "Getting Started with BidSuite",
+    "description": "Learn how to set up and start using BidSuite for government tender management",
+    "step": [
+        {
+            "@type": "HowToStep",
+            "position": 1,
+            "name": "Sign Up",
+            "text": "Create your BidSuite account and complete the onboarding process to set up your workspace."
+        },
+        {
+            "@type": "HowToStep",
+            "position": 2,
+            "name": "Add Projects",
+            "text": "Capture your credentials, past performance, and JV history to build reusable project profiles."
+        },
+        {
+            "@type": "HowToStep",
+            "position": 3,
+            "name": "Explore Tenders",
+            "text": "Browse and search through 30,000+ government tenders using multi-dimensional filters and AI-powered recommendations."
+        },
+        {
+            "@type": "HowToStep",
+            "position": 4,
+            "name": "Manage Responses",
+            "text": "Assign responsibilities, track responses, and supervise approvals with real-time visibility into team progress."
+        }
+    ]
+}
+</script>
+
+{# Structured Data - Service Schema #}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "name": "Government Tender Management Platform",
+    "description": "BidSuite provides comprehensive government tender management services including discovery, evaluation, collaboration, and compliance tools.",
+    "provider": {
+        "@type": "Organization",
+        "name": "BidSuite",
+        "url": "{{ request.url.scheme }}://{{ request.url.netloc }}"
+    },
+    "areaServed": "IN",
+    "serviceType": "Software as a Service"
+}
+</script>
+
+{# Structured Data - SoftwareApplication Schema #}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "BidSuite",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "description": "Operational command centre for government tender strategy. BidSuite unifies discovery, evaluation, collaboration, and compliance into a single experience.",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "INR",
+        "availability": "https://schema.org/InStock"
+    }
+}
+</script>
+
+<style>
+.faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.faq-item {
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: box-shadow 0.2s ease;
+}
+
+.faq-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.faq-question {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary, #1e293b);
+    margin: 0 0 0.75rem 0;
+}
+
+.faq-answer {
+    color: var(--text-secondary, #64748b);
+    line-height: 1.6;
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .faq-list {
+        gap: 1rem;
+    }
+    
+    .faq-item {
+        padding: 1.25rem;
+    }
+}
+</style>
 
 {% endblock %}

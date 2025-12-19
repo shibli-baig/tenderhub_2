@@ -1,0 +1,96 @@
+{#
+Breadcrumb Component with Schema.org Support
+
+Usage:
+{% set breadcrumb_items = [
+    {'name': 'Home', 'url': '/'},
+    {'name': 'Tenders', 'url': '/procurement'},
+    {'name': tender.title, 'url': '/tender/' + tender.id|string}
+] %}
+{% include 'components/breadcrumbs.html' %}
+#}
+
+{% if breadcrumb_items and breadcrumb_items|length > 0 %}
+<nav aria-label="Breadcrumb" class="breadcrumb-nav">
+    <ol class="breadcrumb-list" itemscope itemtype="https://schema.org/BreadcrumbList">
+        {% for item in breadcrumb_items %}
+        <li class="breadcrumb-item" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+            {% if loop.last %}
+            <span itemprop="name" class="breadcrumb-current">{{ item.name }}</span>
+            {% else %}
+            <a href="{{ item.url }}" itemprop="item">
+                <span itemprop="name">{{ item.name }}</span>
+            </a>
+            {% endif %}
+            <meta itemprop="position" content="{{ loop.index }}">
+        </li>
+        {% if not loop.last %}
+        <li class="breadcrumb-separator" aria-hidden="true">/</li>
+        {% endif %}
+        {% endfor %}
+    </ol>
+</nav>
+
+{# JSON-LD Structured Data for Breadcrumbs #}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {% for item in breadcrumb_items %}
+        {
+            "@type": "ListItem",
+            "position": {{ loop.index }},
+            "name": "{{ item.name|e }}",
+            "item": "{{ request.url.scheme }}://{{ request.url.netloc }}{{ item.url }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+}
+</script>
+
+<style>
+.breadcrumb-nav {
+    margin-bottom: 1.5rem;
+}
+
+.breadcrumb-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary, #64748b);
+}
+
+.breadcrumb-item {
+    display: inline-flex;
+    align-items: center;
+}
+
+.breadcrumb-item a {
+    color: var(--text-secondary, #64748b);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-item a:hover {
+    color: var(--primary, #3b82f6);
+    text-decoration: underline;
+}
+
+.breadcrumb-current {
+    color: var(--text-primary, #1e293b);
+    font-weight: 500;
+}
+
+.breadcrumb-separator {
+    margin: 0 0.5rem;
+    color: var(--text-muted, #94a3b8);
+    user-select: none;
+}
+</style>
+{% endif %}
+

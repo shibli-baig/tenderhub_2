@@ -823,11 +823,22 @@ class CertificateProcessor:
             Certificate ID
         """
         db = SessionLocal()
+        # Initialize variables early to avoid undefined variable errors
+        attempts_used = 0
+        extraction_model_used = EXTRACTION_MODEL
+        certificate_id = str(uuid.uuid4())
 
         try:
-            certificate_id = str(uuid.uuid4())
-
             logger.info(f"📄 Preparing document for extraction: {filename}")
+            
+            # Verify file exists before processing
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"Certificate file not found at path: {file_path}")
+            
+            # Verify file is readable
+            if not os.access(file_path, os.R_OK):
+                raise PermissionError(f"Cannot read certificate file: {file_path}")
+            
             image_payload = self._load_document_images(file_path)
 
             # Determine if Claude alternation is available
@@ -844,8 +855,7 @@ class CertificateProcessor:
             normalized_payload: Optional[Dict[str, Any]] = None
             extracted_text = ""
             validation_reason = ""
-            attempts_used = 0
-            extraction_model_used = EXTRACTION_MODEL
+            # attempts_used and extraction_model_used already initialized above
 
             # Build extraction sequence with preferred model first for load balancing
             # If preferred is GPT: GPT1 → Claude1 → GPT2 → Claude2
@@ -1037,13 +1047,19 @@ class CertificateProcessor:
 
             # Update certificate status to failed
             if 'certificate' in locals():
-                certificate.processing_status = "failed" # type: ignore
-                certificate.processing_error = str(e) # type: ignore
-                db.commit()
+                try:
+                    certificate.processing_status = "failed" # type: ignore
+                    certificate.processing_error = str(e) # type: ignore
+                    db.commit()
+                except Exception as update_error:
+                    logger.error(f"Failed to update certificate status: {update_error}")
+                    db.rollback()
             else:
                 try:
                     # Use the model that was last tried, or default to GPT
                     failed_model = extraction_model_used if 'extraction_model_used' in locals() else EXTRACTION_MODEL
+                    # Ensure attempts_used is defined (should be 0 if extraction never started)
+                    attempts_value = attempts_used if 'attempts_used' in locals() else 1
                     failure_record = CertificateDB(
                         id=certificate_id,
                         user_id=user_id,
@@ -1058,7 +1074,7 @@ class CertificateProcessor:
                         extraction_method="vision_direct",
                         parsing_method=f"{failed_model}_json",
                         extraction_quality_score=0.0,
-                        extraction_attempts=attempts_used or 1,
+                        extraction_attempts=attempts_value,
                         created_at=datetime.utcnow(),
                         processed_at=datetime.utcnow()
                     )
@@ -1066,6 +1082,7 @@ class CertificateProcessor:
                     db.commit()
                 except Exception as record_error:
                     logger.error(f"Failed to record certificate failure state: {record_error}")
+                    db.rollback()
 
             raise
         finally:

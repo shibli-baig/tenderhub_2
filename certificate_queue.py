@@ -156,16 +156,21 @@ def process_certificate_task(task: CertificateTask) -> bool:
 
         # Update batch status to in_progress
         if task.batch_id:
-            batch = db.query(BulkUploadBatchDB).filter(
-                BulkUploadBatchDB.id == task.batch_id
-            ).with_for_update().first()  # Row-level locking
+            try:
+                batch = db.query(BulkUploadBatchDB).filter(
+                    BulkUploadBatchDB.id == task.batch_id
+                ).with_for_update().first()  # Row-level locking
 
-            if batch:
-                batch.in_progress_count += 1
-                if batch.status == 'queued':
-                    batch.status = 'processing'
-                    batch.started_at = datetime.utcnow()
-                db.commit()
+                if batch:
+                    batch.in_progress_count += 1
+                    if batch.status == 'queued':
+                        batch.status = 'processing'
+                        batch.started_at = datetime.utcnow()
+                    db.commit()
+            except Exception as batch_error:
+                logger.error(f"Failed to update batch status: {batch_error}")
+                db.rollback()
+                # Continue processing even if batch update fails
 
         # Create initial certificate record with processing status
         certificate = CertificateDB(
@@ -192,21 +197,25 @@ def process_certificate_task(task: CertificateTask) -> bool:
 
         # Update the batch on success
         if task.batch_id:
-            batch = db.query(BulkUploadBatchDB).filter(
-                BulkUploadBatchDB.id == task.batch_id
-            ).with_for_update().first()
+            try:
+                batch = db.query(BulkUploadBatchDB).filter(
+                    BulkUploadBatchDB.id == task.batch_id
+                ).with_for_update().first()
 
-            if batch:
-                batch.in_progress_count = max(0, batch.in_progress_count - 1)
-                batch.processed_count += 1
-                batch.success_count += 1
+                if batch:
+                    batch.in_progress_count = max(0, batch.in_progress_count - 1)
+                    batch.processed_count += 1
+                    batch.success_count += 1
 
-                # Check if batch is complete
-                if batch.processed_count >= batch.total_files:
-                    batch.status = 'completed'
-                    batch.completed_at = datetime.utcnow()
+                    # Check if batch is complete
+                    if batch.processed_count >= batch.total_files:
+                        batch.status = 'completed'
+                        batch.completed_at = datetime.utcnow()
 
-                db.commit()
+                    db.commit()
+            except Exception as batch_error:
+                logger.error(f"Failed to update batch status on success: {batch_error}")
+                db.rollback()
 
         # Update certificate with batch_id if needed
         if task.batch_id:

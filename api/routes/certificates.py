@@ -40,19 +40,37 @@ def sanitize_filename(filename: str) -> str:
     """Remove problematic characters from filenames before saving."""
     if not filename:
         return "certificate"
-    safe = re.sub(r'[^A-Za-z0-9._-]+', '_', filename)
+    # Preserve the file extension
+    name, ext = os.path.splitext(filename)
+    # Replace problematic characters with single underscore
+    safe = re.sub(r'[^A-Za-z0-9._-]+', '_', name)
+    # Remove multiple consecutive underscores
+    safe = re.sub(r'_+', '_', safe)
     safe = safe.strip('_')
-    return safe or "certificate"
+    # Reattach extension
+    return (safe or "certificate") + ext
 
 
 def save_file_to_batch(dest_dir: Path, original_filename: str, content: bytes) -> str:
     """Persist uploaded certificate bytes to the batch-specific directory."""
     dest_dir.mkdir(parents=True, exist_ok=True)
-    unique_name = f"{uuid.uuid4()}_{sanitize_filename(original_filename)}"
+    sanitized = sanitize_filename(original_filename)
+    unique_name = f"{uuid.uuid4()}_{sanitized}"
     full_path = dest_dir / unique_name
+    
+    # Write file
     with open(full_path, "wb") as buffer:
         buffer.write(content)
-    return str(full_path)
+    
+    # Verify file was written successfully
+    if not os.path.exists(full_path):
+        raise IOError(f"Failed to save file: {full_path}")
+    
+    if os.path.getsize(full_path) != len(content):
+        raise IOError(f"File size mismatch after save: {full_path}")
+    
+    # Return absolute path to avoid path resolution issues
+    return str(full_path.resolve())
 
 
 def compute_file_hash(file_content: bytes) -> str:

@@ -1438,6 +1438,85 @@ def home(request: Request, db: Session = Depends(get_db)):
         "selected_font": get_active_font()
     })
 
+@app.get("/robots.txt", response_class=Response)
+def robots_txt():
+    """Generate robots.txt file."""
+    from core.seo_config import SITE_URL, NOINDEX_PAGES
+    
+    robots_content = f"""User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /login
+Disallow: /employee/login
+Disallow: /expert/login
+Disallow: /dashboard
+Disallow: /employee/dashboard
+Disallow: /expert/dashboard
+Disallow: /profile
+Disallow: /expert/profile
+
+Sitemap: {SITE_URL}/sitemap.xml
+"""
+    return Response(content=robots_content, media_type="text/plain")
+
+@app.get("/sitemap.xml", response_class=Response)
+def sitemap_xml(request: Request, db: Session = Depends(get_db)):
+    """Generate dynamic sitemap.xml."""
+    from core.seo_config import SITE_URL, SITEMAP_CONFIG
+    from datetime import datetime
+    
+    # Get current time for lastmod
+    now = datetime.utcnow().strftime("%Y-%m-%d")
+    
+    # Start building sitemap
+    sitemap_urls = []
+    
+    # Static pages
+    static_pages = [
+        {"loc": "/", "changefreq": "daily", "priority": "1.0"},
+        {"loc": "/login", "changefreq": "monthly", "priority": "0.3"},
+        {"loc": "/employee/login", "changefreq": "monthly", "priority": "0.3"},
+        {"loc": "/expert/login", "changefreq": "monthly", "priority": "0.3"},
+    ]
+    
+    for page in static_pages:
+        sitemap_urls.append(f"""  <url>
+    <loc>{SITE_URL}{page['loc']}</loc>
+    <lastmod>{now}</lastmod>
+    <changefreq>{page['changefreq']}</changefreq>
+    <priority>{page['priority']}</priority>
+  </url>""")
+    
+    # Dynamic tender pages (limit to recent/active tenders for performance)
+    try:
+        # Get active tenders (not expired, not awarded, or recently published)
+        active_tenders = db.query(TenderDB).filter(
+            or_(
+                TenderDB.deadline.is_(None),
+                TenderDB.deadline >= datetime.utcnow() - timedelta(days=30),
+                TenderDB.awarded == True
+            )
+        ).order_by(desc(TenderDB.published_at)).limit(1000).all()
+        
+        for tender in active_tenders:
+            lastmod = tender.published_at.strftime("%Y-%m-%d") if tender.published_at else now
+            sitemap_urls.append(f"""  <url>
+    <loc>{SITE_URL}/tender/{tender.id}</loc>
+    <lastmod>{lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>""")
+    except Exception as e:
+        logger.warning(f"Error generating tender sitemap entries: {e}")
+    
+    # Build complete sitemap XML
+    sitemap_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{''.join(sitemap_urls)}
+</urlset>"""
+    
+    return Response(content=sitemap_xml, media_type="application/xml")
+
 @app.get("/procurement", response_class=HTMLResponse)
 @require_company_details
 @require_pin_verification
@@ -19787,7 +19866,93 @@ DO NOT wrap response in ```json blocks. Return raw JSON only."""
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+    from core.redis_client import is_redis_available, get_redis_client
+    from certificate_queue import is_redis_available as cert_queue_redis_available, get_queue_status
+    
+    # Check database connection
+    db_status = "ok"
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    # Check Redis connection (for sessions)
+    redis_session_status = "ok" if is_redis_available() else "unavailable"
+    redis_session_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    
+    # Check Redis connection (for certificate queue)
+    redis_queue_status = "ok" if cert_queue_redis_available() else "unavailable"
+    queue_status = get_queue_status()
+    
+    return {
+        "status": "ok" if db_status == "ok" else "degraded",
+        "database": db_status,
+        "redis_session": {
+            "status": redis_session_status,
+            "url": redis_session_url.split('@')[-1] if '@' in redis_session_url else redis_session_url  # Hide credentials
+        },
+        "redis_queue": {
+            "status": redis_queue_status,
+            "queue_size": queue_status.get('queue_size', 0),
+            "processing_count": queue_status.get('processing_count', 0),
+            "active_workers": queue_status.get('active_workers', 0)
+        },
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+@app.get("/api/redis/status")
+async def redis_status_endpoint(request: Request, db: Session = Depends(get_db)):
+    """Check Redis connection status for certificate processing."""
+    from core.redis_client import is_redis_available, get_redis_client
+    from certificate_queue import is_redis_available as cert_queue_redis_available, get_queue_status, get_redis_connection
+    
+    current_user = get_current_user(request, db)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    # Test session Redis
+    session_redis_ok = False
+    session_redis_error = None
+    try:
+        session_client = get_redis_client()
+        if session_client:
+            session_client.ping()
+            session_redis_ok = True
+    except Exception as e:
+        session_redis_error = str(e)
+    
+    # Test certificate queue Redis
+    queue_redis_ok = False
+    queue_redis_error = None
+    queue_info = {}
+    try:
+        queue_redis_ok = cert_queue_redis_available()
+        if queue_redis_ok:
+            queue_info = get_queue_status()
+            # Try to get connection and test
+            try:
+                r = get_redis_connection()
+                r.ping()
+            except Exception as e:
+                queue_redis_error = str(e)
+                queue_redis_ok = False
+    except Exception as e:
+        queue_redis_error = str(e)
+    
+    return {
+        "session_redis": {
+            "connected": session_redis_ok,
+            "error": session_redis_error,
+            "url": os.getenv('REDIS_URL', 'redis://localhost:6379/0').split('@')[-1] if '@' in os.getenv('REDIS_URL', '') else os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+        },
+        "queue_redis": {
+            "connected": queue_redis_ok,
+            "error": queue_redis_error,
+            "queue_status": queue_info
+        }
+    }
 
 # Cleanup task (run periodically)
 @app.get("/api/admin/cleanup")

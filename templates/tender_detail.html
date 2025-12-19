@@ -1,5 +1,26 @@
 {% extends "base.html" %}
 
+{# SEO Meta Tags - Dynamic based on tender data #}
+{% set tender_title = tender.title if tender else 'Tender Details' %}
+{% set tender_description = (tender.summary[:155] + '...' if tender and tender.summary and tender.summary|length > 155 else (tender.summary if tender and tender.summary else 'Government tender details and information')) %}
+{% set tender_keywords = (tender.category + ', ' + tender.state + ', ' + tender.authority if tender and tender.category and tender.state and tender.authority else 'government tender, public procurement, bidding') %}
+{% set seo_meta = {
+    'title': tender_title + ' - ' + (tender.authority if tender and tender.authority else 'Government Tender') + ' - BidSuite',
+    'description': tender_description,
+    'keywords': tender_keywords,
+    'url': request.url.scheme + '://' + request.url.netloc + request.url.path,
+    'image': request.url.scheme + '://' + request.url.netloc + '/static/images/og-default.jpg',
+    'published_time': tender.published_at.isoformat() if tender and tender.published_at else None,
+    'modified_time': tender.updated_at.isoformat() if tender and tender.updated_at else None
+} %}
+
+{# Breadcrumbs #}
+{% set breadcrumb_items = [
+    {'name': 'Home', 'url': '/'},
+    {'name': 'Tenders', 'url': '/procurement'},
+    {'name': tender_title[:50] + ('...' if tender_title|length > 50 else ''), 'url': request.url.path}
+] %}
+
 {% block extra_head %}
 <style>
     .certificate-matching-modal__dialog {
@@ -2821,6 +2842,9 @@
         </div>
     </div>
 </section>
+
+{# Breadcrumb Navigation #}
+{% include 'components/breadcrumbs.html' %}
 
 <section class="section">
     <div class="panel panel-collapsible" data-collapsible>
@@ -9180,5 +9204,120 @@ displayModalCertResults = function(...args) {
 
 // ============ End Certificate Intelligence Modal Functions ============
 </script>
+
+{# Structured Data - Tender Detail Page #}
+{% if tender %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "{{ tender.title|e }}",
+    "description": "{{ (tender.summary[:500] if tender.summary else 'Government tender details')|e }}",
+    "url": "{{ request.url.scheme }}://{{ request.url.netloc }}{{ request.url.path }}",
+    {% if tender.published_at %}
+    "datePublished": "{{ tender.published_at.isoformat() }}",
+    {% endif %}
+    {% if tender.updated_at %}
+    "dateModified": "{{ tender.updated_at.isoformat() }}",
+    {% endif %}
+    "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "{{ request.url.scheme }}://{{ request.url.netloc }}/"
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Tenders",
+                "item": "{{ request.url.scheme }}://{{ request.url.netloc }}/procurement"
+            },
+            {
+                "@type": "ListItem",
+                "position": 3,
+                "name": "{{ tender.title[:50]|e }}",
+                "item": "{{ request.url.scheme }}://{{ request.url.netloc }}{{ request.url.path }}"
+            }
+        ]
+    },
+    "mainEntity": {
+        "@type": "Product",
+        "name": "{{ tender.title|e }}",
+        "description": "{{ (tender.summary[:500] if tender.summary else 'Government tender')|e }}",
+        {% if tender.authority %}
+        "brand": {
+            "@type": "Organization",
+            "name": "{{ tender.authority|e }}"
+        },
+        {% endif %}
+        {% if tender.category %}
+        "category": "{{ tender.category|e }}",
+        {% endif %}
+        {% if tender.tender_value %}
+        "offers": {
+            "@type": "Offer",
+            "price": "{{ tender.tender_value }}",
+            "priceCurrency": "INR"
+        },
+        {% endif %}
+        {% if tender.deadline %}
+        "availabilityStarts": "{{ tender.deadline.isoformat() }}",
+        {% endif %}
+        {% if tender.state %}
+        "areaServed": {
+            "@type": "State",
+            "name": "{{ tender.state|e }}"
+        }
+        {% endif %}
+    }
+}
+</script>
+
+{# Event Schema for Tender Deadline #}
+{% if tender.deadline %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": "{{ tender.title|e }} - Submission Deadline",
+    "startDate": "{{ tender.deadline.isoformat() }}",
+    "description": "Submission deadline for {{ tender.title|e }}",
+    "url": "{{ request.url.scheme }}://{{ request.url.netloc }}{{ request.url.path }}",
+    {% if tender.authority %}
+    "organizer": {
+        "@type": "Organization",
+        "name": "{{ tender.authority|e }}"
+    },
+    {% endif %}
+    {% if tender.state %}
+    "location": {
+        "@type": "Place",
+        "name": "{{ tender.state|e }}"
+    }
+    {% endif %}
+}
+</script>
+{% endif %}
+
+{# Organization Schema for Tender Authority #}
+{% if tender.authority %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "{{ tender.authority|e }}",
+    {% if tender.state %}
+    "address": {
+        "@type": "PostalAddress",
+        "addressRegion": "{{ tender.state|e }}"
+    }
+    {% endif %}
+}
+</script>
+{% endif %}
+{% endif %}
 
 {% endblock %}

@@ -1,8 +1,28 @@
 {% extends "base.html" %}
 
-{% block title %}{{ project.project_name }} - BidSuite{% endblock %}
+{# SEO Meta Tags - Dynamic based on project data #}
+{% set project_description = (project.description[:155] + '...' if project.description and project.description|length > 155 else (project.description if project.description else 'Project details and information on BidSuite')) %}
+{% set seo_meta = {
+    'title': project.project_name + ' - Project Details - BidSuite',
+    'description': project_description,
+    'keywords': 'project management, government projects, tender projects, ' + (project.sector if project.sector else ''),
+    'url': request.url.scheme + '://' + request.url.netloc + request.url.path,
+    'image': request.url.scheme + '://' + request.url.netloc + '/static/images/og-default.jpg',
+    'published_time': project.created_at.isoformat() if project.created_at else None,
+    'modified_time': project.updated_at.isoformat() if project.updated_at else None
+} %}
+
+{# Breadcrumbs #}
+{% set breadcrumb_items = [
+    {'name': 'Home', 'url': '/'},
+    {'name': 'Projects', 'url': '/projects'},
+    {'name': project.project_name[:50] + ('...' if project.project_name|length > 50 else ''), 'url': request.url.path}
+] %}
 
 {% block content %}
+{# Breadcrumb Navigation #}
+{% include 'components/breadcrumbs.html' %}
+
 <section class="section">
     <div class="project-detail-header">
         <!-- Back button on the left -->
@@ -931,4 +951,76 @@ document.addEventListener('DOMContentLoaded', function() {
     loadAttachedCertificates();
 });
 </script>
+
+{# Structured Data - Project Detail Page #}
+{% if project %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "{{ project.project_name|e }}",
+    "description": "{{ (project.description[:500] if project.description else 'Project details')|e }}",
+    "url": "{{ request.url.scheme }}://{{ request.url.netloc }}{{ request.url.path }}",
+    {% if project.created_at %}
+    "datePublished": "{{ project.created_at.isoformat() }}",
+    {% endif %}
+    {% if project.updated_at %}
+    "dateModified": "{{ project.updated_at.isoformat() }}",
+    {% endif %}
+    "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "{{ request.url.scheme }}://{{ request.url.netloc }}/"
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Projects",
+                "item": "{{ request.url.scheme }}://{{ request.url.netloc }}/projects"
+            },
+            {
+                "@type": "ListItem",
+                "position": 3,
+                "name": "{{ project.project_name[:50]|e }}",
+                "item": "{{ request.url.scheme }}://{{ request.url.netloc }}{{ request.url.path }}"
+            }
+        ]
+    },
+    "mainEntity": {
+        "@type": "Project",
+        "name": "{{ project.project_name|e }}",
+        "description": "{{ (project.description[:500] if project.description else 'Project')|e }}",
+        {% if project.start_date %}
+        "startDate": "{{ project.start_date.isoformat() }}",
+        {% endif %}
+        {% if project.end_date %}
+        "endDate": "{{ project.end_date.isoformat() }}",
+        {% elif not project.end_date %}
+        "projectStatus": "Active",
+        {% endif %}
+        {% if project.project_value %}
+        "value": {
+            "@type": "MonetaryAmount",
+            "value": {{ project.project_value }},
+            "currency": "INR"
+        },
+        {% endif %}
+        {% if project.sector %}
+        "category": "{{ project.sector|e }}",
+        {% endif %}
+        {% if current_user and current_user.company %}
+        "sponsor": {
+            "@type": "Organization",
+            "name": "{{ current_user.company|e }}"
+        }
+        {% endif %}
+    }
+}
+</script>
+{% endif %}
+
 {% endblock %}
