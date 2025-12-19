@@ -7835,13 +7835,15 @@ async def serve_tender_screenshot_file(tender_id: str, screenshot_id: int, db: S
 @require_company_details
 async def custom_card_tenders(request: Request, card_id: int, db: Session = Depends(get_db)):
     """Custom card tenders page."""
-    current_user = get_current_user(request, db)
-    if not current_user:
+    from core.dependencies import get_user_id_for_queries
+    
+    user_id_for_query, _ = get_user_id_for_queries(request, db)
+    if not user_id_for_query:
         return RedirectResponse(url="/login", status_code=302)
 
-    # Find the card
+    # Find the card - query by user_id_for_query
     card = db.query(CustomCardDB).filter(
-        and_(CustomCardDB.id == card_id, CustomCardDB.user_id == current_user.id)
+        and_(CustomCardDB.id == card_id, CustomCardDB.user_id == user_id_for_query)
     ).first()
 
     if not card:
@@ -12100,17 +12102,24 @@ async def export_favorites_csv(request: Request, db: Session = Depends(get_db)):
 @require_company_details
 async def get_custom_cards(request: Request, db: Session = Depends(get_db)):
     """Get user's custom cards."""
-    from core.dependencies import get_id_for_custom_cards
+    from core.dependencies import get_id_for_custom_cards, get_user_id_for_queries
 
     card_owner_id, entity, entity_type = get_id_for_custom_cards(request, db)
     if not card_owner_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
+    # Get user_id for database queries (company owner's user_id for BD employees)
+    user_id_for_query, _ = get_user_id_for_queries(request, db)
+    if not user_id_for_query:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     # Convert URLs to state names for display
     from core.cache import URL_TO_STATE
 
-    # BD employees use their own ID, not company owner's
-    cards = db.query(CustomCardDB).filter(CustomCardDB.user_id == card_owner_id).all()
+    # Query cards - for BD employees, we need to get all cards for the company
+    # and filter client-side, or we can add a worked_by field later
+    # For now, get all cards for the user_id (includes both admin and BD employee cards)
+    cards = db.query(CustomCardDB).filter(CustomCardDB.user_id == user_id_for_query).all()
     return {"cards": [
         {
             "id": card.id,
@@ -12142,16 +12151,29 @@ async def create_custom_card(
     db: Session = Depends(get_db)
 ):
     """Create a new custom card."""
-    from core.dependencies import get_id_for_custom_cards
+    from core.dependencies import get_id_for_custom_cards, get_user_id_for_queries
 
     card_owner_id, entity, entity_type = get_id_for_custom_cards(request, db)
     if not card_owner_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    # Check if card name already exists for this user/BD employee
-    existing_card = db.query(CustomCardDB).filter(
-        and_(CustomCardDB.user_id == card_owner_id, CustomCardDB.card_name == card_name)
-    ).first()
+    # Get user_id for database storage (company owner's user_id for BD employees)
+    user_id_for_storage, _ = get_user_id_for_queries(request, db)
+    if not user_id_for_storage:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Check if card name already exists for this entity
+    # For BD employees, check by user_id_for_storage and card_owner_id logic
+    if entity_type == 'bd_employee':
+        # BD employees can have cards with same name as admin (separate cards)
+        # But we still need to check within the company's user_id
+        existing_card = db.query(CustomCardDB).filter(
+            and_(CustomCardDB.user_id == user_id_for_storage, CustomCardDB.card_name == card_name)
+        ).first()
+    else:
+        existing_card = db.query(CustomCardDB).filter(
+            and_(CustomCardDB.user_id == user_id_for_storage, CustomCardDB.card_name == card_name)
+        ).first()
 
     if existing_card:
         raise HTTPException(status_code=400, detail="Card name already exists")
@@ -12166,9 +12188,9 @@ async def create_custom_card(
     from core.cache import STATE_TO_URL
     sources_for_db = [STATE_TO_URL.get(src, src) for src in sources_list] if sources_list else None
 
-    # Create new card - BD employees use their own ID
+    # Create new card - use user_id_for_storage (company owner's user_id for BD employees)
     new_card = CustomCardDB(
-        user_id=card_owner_id,
+        user_id=user_id_for_storage,
         card_name=card_name,
         core_search_terms=core_search_terms,
         state=state if state else None,
@@ -12199,15 +12221,20 @@ async def update_custom_card(
     db: Session = Depends(get_db)
 ):
     """Update a custom card."""
-    from core.dependencies import get_id_for_custom_cards
+    from core.dependencies import get_id_for_custom_cards, get_user_id_for_queries
 
     card_owner_id, entity, entity_type = get_id_for_custom_cards(request, db)
     if not card_owner_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    # Find the card - BD employees can only update their own cards
+    # Get user_id for database queries (company owner's user_id for BD employees)
+    user_id_for_query, _ = get_user_id_for_queries(request, db)
+    if not user_id_for_query:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Find the card - query by user_id_for_query
     card = db.query(CustomCardDB).filter(
-        and_(CustomCardDB.id == card_id, CustomCardDB.user_id == card_owner_id)
+        and_(CustomCardDB.id == card_id, CustomCardDB.user_id == user_id_for_query)
     ).first()
 
     if not card:
@@ -12216,7 +12243,7 @@ async def update_custom_card(
     # Check if new card name conflicts with existing cards
     if card_name != card.card_name:
         existing_card = db.query(CustomCardDB).filter(
-            and_(CustomCardDB.user_id == card_owner_id, CustomCardDB.card_name == card_name)
+            and_(CustomCardDB.user_id == user_id_for_query, CustomCardDB.card_name == card_name)
         ).first()
         if existing_card:
             raise HTTPException(status_code=400, detail="Card name already exists")
@@ -13881,15 +13908,20 @@ async def delete_all_completion_certificates(
 @app.delete("/api/custom-cards/{card_id}")
 async def delete_custom_card(request: Request, card_id: int, db: Session = Depends(get_db)):
     """Delete a custom card."""
-    from core.dependencies import get_id_for_custom_cards
+    from core.dependencies import get_id_for_custom_cards, get_user_id_for_queries
 
     card_owner_id, entity, entity_type = get_id_for_custom_cards(request, db)
     if not card_owner_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    # Find and delete card - BD employees can only delete their own cards
+    # Get user_id for database queries (company owner's user_id for BD employees)
+    user_id_for_query, _ = get_user_id_for_queries(request, db)
+    if not user_id_for_query:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Find and delete card - query by user_id_for_query
     card = db.query(CustomCardDB).filter(
-        and_(CustomCardDB.id == card_id, CustomCardDB.user_id == card_owner_id)
+        and_(CustomCardDB.id == card_id, CustomCardDB.user_id == user_id_for_query)
     ).first()
 
     if not card:
@@ -13916,19 +13948,24 @@ async def search_with_custom_card(
     db: Session = Depends(get_db)
 ):
     """Search tenders using custom card with dynamic filters."""
-    from core.dependencies import get_id_for_custom_cards
+    from core.dependencies import get_id_for_custom_cards, get_user_id_for_queries
 
     card_owner_id, entity, entity_type = get_id_for_custom_cards(request, db)
     if not card_owner_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Get user_id for database queries (company owner's user_id for BD employees)
+    user_id_for_query, _ = get_user_id_for_queries(request, db)
+    if not user_id_for_query:
         raise HTTPException(status_code=401, detail="Authentication required")
 
     # Check if user has complete company details (skip for BD employees)
     if entity_type == 'user' and not user_has_complete_company_details(entity.id, db):
         raise HTTPException(status_code=403, detail="Complete company details required")
 
-    # Find the card
+    # Find the card - query by user_id_for_query
     card = db.query(CustomCardDB).filter(
-        and_(CustomCardDB.id == card_id, CustomCardDB.user_id == card_owner_id)
+        and_(CustomCardDB.id == card_id, CustomCardDB.user_id == user_id_for_query)
     ).first()
 
     if not card:

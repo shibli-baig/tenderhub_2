@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     {# SEO Meta Tags - Can be overridden in child templates #}
-    {% set seo_title = seo_meta.title if seo_meta and seo_meta.title else (block('title') | default('BidSuite - Government Tender Management', true)) %}
+    {% set page_title = seo_meta.title if seo_meta and seo_meta.title else 'BidSuite - Government Tender Management' %}
+    {% set seo_title = page_title %}
     {% set seo_description = seo_meta.description if seo_meta and seo_meta.description else 'Operational command centre for government tender strategy. BidSuite unifies discovery, evaluation, collaboration, and compliance into a single experience built for leadership teams navigating high-value public infrastructure opportunities.' %}
     {% set seo_keywords = seo_meta.keywords if seo_meta and seo_meta.keywords else 'government tenders, public procurement, tender management, bidding platform, government contracts, procurement software, tender intelligence, BidSuite' %}
     {% set seo_image = seo_meta.image if seo_meta and seo_meta.image else (request.url.scheme + '://' + request.url.netloc + '/static/images/og-default.jpg') %}
