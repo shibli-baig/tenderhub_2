@@ -43,24 +43,15 @@ if database_url.get_backend_name() == "sqlite":
     )
 else:
     # PostgreSQL connection args with SSL support for Render
-    connect_args: Dict[str, Any] = {}
-    
-    # Check if we're on Render (has DATABASE_URL with SSL requirements)
-    is_render = os.getenv("RENDER", "").lower() == "true" or "render.com" in str(database_url)
-    
-    if is_render or os.getenv("DB_SSL_MODE"):
-        # Render PostgreSQL requires SSL
-        connect_args["sslmode"] = os.getenv("DB_SSL_MODE", "require")
-        # Disable SSL verification for Render (they use self-signed certs)
-        connect_args["sslmode"] = "require"
-    
+    # Note: For psycopg3, SSL is typically handled via the connection string
+    # Render's DATABASE_URL usually includes SSL parameters already
+    # We don't need to add connect_args for SSL unless explicitly required
     engine_kwargs.update(
         pool_size=int(os.getenv("DB_POOL_SIZE", "40")),
         max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "20")),
         pool_timeout=int(os.getenv("DB_POOL_TIMEOUT", "30")),
         pool_recycle=int(os.getenv("DB_POOL_RECYCLE", "1800")),
         echo_pool=False,
-        connect_args=connect_args,
     )
 
 engine = create_engine(DATABASE_URL, **engine_kwargs)

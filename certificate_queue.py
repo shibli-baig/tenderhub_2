@@ -205,8 +205,6 @@ def process_certificate_task(task: CertificateTask) -> bool:
             file_size=task.file_size,
             s3_key=task.s3_key,
             s3_url=task.s3_url
-            s3_key=task.s3_key,
-            s3_url=task.s3_url
         )
 
         # Update the batch on success

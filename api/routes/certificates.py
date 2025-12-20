@@ -18,7 +18,7 @@ from io import BytesIO
 from database import CertificateDB, VectorDB, BulkUploadBatchDB
 from core.dependencies import get_db, get_current_user, require_company_details
 from core.openai_wrapper import OpenAIWrapper, OpenAIServiceError
-from core.s3_storage import s3_manager, upload_to_s3
+from s3_utils import upload_to_s3
 from certificate_processor import certificate_processor
 from certificate_queue import (
     enqueue_certificate,
