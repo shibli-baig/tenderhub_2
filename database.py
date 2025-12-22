@@ -2485,6 +2485,8 @@ def ensure_certificate_schema():
                 ("confidence_score", float_type),
                 ("metrics", json_object_type),
                 ("verbatim_certificate", text_type),
+                ("s3_key", text_type),  # S3 object key for certificate storage
+                ("s3_url", text_type),  # S3 URL for certificate access
             ]
 
             for column_name, column_def in additions:
