@@ -282,11 +282,13 @@ async function toggleFavorite(tenderId) {
         favoriteBtn.textContent = 'Processing...';
         
         const method = isFavorited ? 'DELETE' : 'POST';
-        const formData = new FormData();
         
         const response = await fetch(`/api/favorites/${tenderId}`, {
             method: method,
-            body: method === 'POST' ? formData : null
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: method === 'POST' ? JSON.stringify({}) : null
         });
         
         if (response.ok) {

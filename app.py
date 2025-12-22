@@ -10738,7 +10738,6 @@ async def delete_employee(
 async def add_favorite(
     request: Request,
     tender_id: str,
-    notes: str = Form(""),
     db: Session = Depends(get_db)
 ):
     """Add tender to favorites."""
@@ -10776,6 +10775,23 @@ async def add_favorite(
 
     if existing_favorite:
         raise HTTPException(status_code=400, detail="Already favorited")
+
+    # Get notes from request body if present (optional - supports JSON or form data)
+    notes = ""
+    try:
+        content_type = request.headers.get("content-type", "").lower()
+        if "application/json" in content_type:
+            body = await request.json()
+            notes = body.get("notes", "")
+        elif "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
+            # Only try to parse form data if content-type indicates it
+            # Skip if it's an empty FormData to avoid multipart boundary errors
+            if request.headers.get("content-length", "0") != "0":
+                form_data = await request.form()
+                notes = form_data.get("notes", "")
+    except Exception:
+        # If parsing fails, default to empty string
+        notes = ""
 
     # Create favorite - use user_id_for_storage (company owner's user_id for BD employees)
     # but track who actually favorited it using worked_by fields
