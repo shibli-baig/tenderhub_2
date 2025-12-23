@@ -74,7 +74,7 @@
         <div class="section-header">
             <div>
                 <h1 class="section-title">Choose Filter</h1>
-                <p class="section-subtitle">Filter by geography, sector and value to surface high-impact opportunities for your portfolio.</p>
+                <p class="section-subtitle">Filter by geography and value to surface high-impact opportunities for your portfolio.</p>
             </div>
         </div>
 
@@ -82,21 +82,6 @@
             <div class="form-group">
                 <label for="search" class="form-label">Search tenders</label>
                 <input type="text" id="search" name="search" placeholder="Title, authority, keywords" value="{{ search or '' }}">
-            </div>
-            <div class="form-group">
-                <label for="sector" class="form-label">Sector</label>
-                <select id="sector" name="sector">
-                    <option value="">All sectors</option>
-                    {% for sector_obj in user_sectors_data %}
-                        <option value="{{ sector_obj.sector }}">{{ sector_obj.sector }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="sub_sector" class="form-label">Sub-Sector</label>
-                <select id="sub_sector" name="sub_sector" disabled>
-                    <option value="">Select sub-sector</option>
-                </select>
             </div>
             <div class="form-group">
                 <label for="category" class="form-label">Category</label>
@@ -141,6 +126,14 @@
             <div class="form-group">
                 <label for="max_value" class="form-label">Max value (₹)</label>
                 <input type="number" id="max_value" name="max_value" placeholder="Any" value="{{ max_value or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="min_emd" class="form-label">Min EMD (₹)</label>
+                <input type="number" id="min_emd" name="min_emd" placeholder="0" value="{{ min_emd or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="max_emd" class="form-label">Max EMD (₹)</label>
+                <input type="number" id="max_emd" name="max_emd" placeholder="Any" value="{{ max_emd or '' }}">
             </div>
             <div class="form-group">
                 <label for="sort_by" class="form-label">Sort by</label>
@@ -321,6 +314,27 @@
                 <a href="?{{ query_prefix }}page={{ page - 1 }}" class="btn btn-outline">« Previous</a>
             {% endif %}
             <span class="badge badge--muted">Page {{ page }} of {{ total_pages }}</span>
+            
+            <div class="pagination-jump">
+                <label for="pageJumpInputTender" class="pagination-jump-label">Go to:</label>
+                <input 
+                    type="number" 
+                    id="pageJumpInputTender" 
+                    class="pagination-jump-input" 
+                    min="1" 
+                    max="{{ total_pages }}" 
+                    value="{{ page }}"
+                    onkeypress="if(event.key === 'Enter') { jumpToPageTender({{ total_pages }}); }"
+                >
+                <button 
+                    type="button" 
+                    class="pagination-jump-btn" 
+                    onclick="jumpToPageTender({{ total_pages }})"
+                >
+                    Go
+                </button>
+            </div>
+            
             {% if has_next %}
                 <a href="?{{ query_prefix }}page={{ page + 1 }}" class="btn btn-outline">Next »</a>
             {% endif %}
@@ -1602,6 +1616,90 @@ body.dark-mode .match-reasons-text {
 body.dark-mode .tender-card-new__footer {
     border-top-color: rgba(99, 102, 241, 0.2);
 }
+
+/* ============ Pagination Jump Styles ============ */
+.pagination-jump {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-jump-label {
+    font-size: 0.875rem;
+    color: #64748b;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.pagination-jump-input {
+    width: 60px;
+    padding: 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1e293b;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.pagination-jump-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.pagination-jump-input::-webkit-inner-spin-button,
+.pagination-jump-input::-webkit-outer-spin-button {
+    opacity: 1;
+    cursor: pointer;
+}
+
+.pagination-jump-btn {
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.pagination-jump-btn:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
+}
+
+.pagination-jump-btn:active {
+    transform: translateY(0);
+}
+
+@media (max-width: 640px) {
+    .pagination-jump {
+        gap: 0.35rem;
+    }
+    
+    .pagination-jump-label {
+        font-size: 0.8rem;
+    }
+    
+    .pagination-jump-input {
+        width: 50px;
+        padding: 0.4rem;
+        font-size: 0.8rem;
+    }
+    
+    .pagination-jump-btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
+    }
+}
+/* ============ End Pagination Jump Styles ============ */
 </style>
 
 <script>
@@ -1617,14 +1715,14 @@ function applyFilters(event) {
     if (currentCardId) {
         const filters = {
             search: document.getElementById('search')?.value.trim(),
-            sector: document.getElementById('sector')?.value.trim(),
-            sub_sector: document.getElementById('sub_sector')?.value.trim(),
             category: document.getElementById('category')?.value.trim(),
             product_category: document.getElementById('product_category')?.value.trim(),
             state: document.getElementById('state')?.value.trim(),
             source: document.getElementById('source')?.value.trim(),
             min_value: document.getElementById('min_value')?.value.trim(),
-            max_value: document.getElementById('max_value')?.value.trim()
+            max_value: document.getElementById('max_value')?.value.trim(),
+            min_emd: document.getElementById('min_emd')?.value.trim(),
+            max_emd: document.getElementById('max_emd')?.value.trim()
         };
 
         // Re-search with the card and additional filters
@@ -1632,7 +1730,7 @@ function applyFilters(event) {
     } else {
         // No card search active, do normal page navigation
         const params = new URLSearchParams();
-        const fields = ['search', 'sector', 'sub_sector', 'category', 'product_category', 'state', 'source', 'min_value', 'max_value', 'sort_by'];
+        const fields = ['search', 'category', 'product_category', 'state', 'source', 'min_value', 'max_value', 'min_emd', 'max_emd', 'sort_by'];
         fields.forEach(field => {
             const value = document.getElementById(field)?.value.trim();
             if (value) params.set(field, value);
@@ -1709,7 +1807,6 @@ async function fetchRecommendedTenders() {
         const params = new URLSearchParams();
 
         // Get filter values
-        const sector = document.getElementById('sector')?.value.trim();
         const search = document.getElementById('search')?.value.trim();
         const category = document.getElementById('category')?.value.trim();
         const productCategory = document.getElementById('product_category')?.value.trim();
@@ -1717,18 +1814,10 @@ async function fetchRecommendedTenders() {
         const source = document.getElementById('source')?.value.trim();
         const minValue = document.getElementById('min_value')?.value.trim();
         const maxValue = document.getElementById('max_value')?.value.trim();
+        const minEmd = document.getElementById('min_emd')?.value.trim();
+        const maxEmd = document.getElementById('max_emd')?.value.trim();
 
-        // Add current card sector if searching via card
-        if (currentCardId && !sector) {
-            const cardData = customCards.find(c => c.id === currentCardId);
-            if (cardData && cardData.sector) {
-                params.set('sector', cardData.sector);
-            }
-        } else if (sector) {
-            params.set('sector', sector);
-        }
-
-        // Add other filters
+        // Add filters
         if (search) params.set('search', search);
         if (category) params.set('category', category);
         if (productCategory) params.set('product_category', productCategory);
@@ -1736,6 +1825,8 @@ async function fetchRecommendedTenders() {
         if (source) params.set('source', source);
         if (minValue) params.set('min_value', minValue);
         if (maxValue) params.set('max_value', maxValue);
+        if (minEmd) params.set('min_emd', minEmd);
+        if (maxEmd) params.set('max_emd', maxEmd);
 
         // Fetch recommendations
         const response = await fetch(`/api/tenders/recommended?${params.toString()}`);
@@ -2251,26 +2342,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Handle sector change in main filters
-    const filterSectorSelect = document.getElementById('sector');
-    const filterSubSectorSelect = document.getElementById('sub_sector');
-
-    if (filterSectorSelect && filterSubSectorSelect) {
-        filterSectorSelect.addEventListener('change', function() {
-            const selectedSector = this.value;
-            const options = subSectors[selectedSector] || [];
-
-            filterSubSectorSelect.innerHTML = '<option value="">Select sub-sector</option>';
-            if (options.length && selectedSector) {
-                options.forEach(subSector => {
-                    filterSubSectorSelect.innerHTML += `<option value="${subSector}">${subSector}</option>`;
-                });
-                filterSubSectorSelect.disabled = false;
-            } else {
-                filterSubSectorSelect.disabled = true;
-            }
-        });
-    }
 });
 
 // Handle sector change in card filters (after cards are loaded)
@@ -2307,16 +2378,6 @@ function updateFilterFormFields(filters) {
     if (filters.search !== undefined) {
         const searchField = document.getElementById('search');
         if (searchField) searchField.value = filters.search || '';
-    }
-
-    if (filters.sector !== undefined) {
-        const sectorField = document.getElementById('sector');
-        if (sectorField) sectorField.value = filters.sector || '';
-    }
-
-    if (filters.sub_sector !== undefined) {
-        const subSectorField = document.getElementById('sub_sector');
-        if (subSectorField) subSectorField.value = filters.sub_sector || '';
     }
 
     if (filters.category !== undefined) {
@@ -2358,8 +2419,6 @@ async function searchWithCard(cardId, additionalFilters = {}) {
 
         // Build form data with filters
         const formData = new FormData();
-        if (additionalFilters.sector) formData.append('sector', additionalFilters.sector);
-        if (additionalFilters.sub_sector) formData.append('sub_sector', additionalFilters.sub_sector);
         if (additionalFilters.search) formData.append('search', additionalFilters.search);
         if (additionalFilters.category) formData.append('category', additionalFilters.category);
         if (additionalFilters.product_category) formData.append('product_category', additionalFilters.product_category);
@@ -2367,6 +2426,8 @@ async function searchWithCard(cardId, additionalFilters = {}) {
         if (additionalFilters.source) formData.append('source', additionalFilters.source);
         if (additionalFilters.min_value) formData.append('min_value', additionalFilters.min_value);
         if (additionalFilters.max_value) formData.append('max_value', additionalFilters.max_value);
+        if (additionalFilters.min_emd) formData.append('min_emd', additionalFilters.min_emd);
+        if (additionalFilters.max_emd) formData.append('max_emd', additionalFilters.max_emd);
 
         const response = await fetch(`/api/custom-cards/${cardId}/search`, {
             method: 'POST',
@@ -2613,5 +2674,31 @@ async function saveReminderFromSearch(event) {
         alert('Failed to set reminder. Please try again.');
     }
 }
+
+// ============ Pagination Jump Function ============
+function jumpToPageTender(totalPages) {
+    const input = document.getElementById('pageJumpInputTender');
+    if (!input) return;
+    
+    let pageNum = parseInt(input.value);
+    
+    // Validate input
+    if (isNaN(pageNum) || pageNum < 1) {
+        pageNum = 1;
+    } else if (pageNum > totalPages) {
+        pageNum = totalPages;
+    }
+    
+    // Update input value if it was corrected
+    input.value = pageNum;
+    
+    // Build URL with all query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('page', pageNum);
+    
+    // Navigate to the page
+    window.location.href = `?${urlParams.toString()}`;
+}
+// ============ End Pagination Jump Function ============
 </script>
 {% endblock %}

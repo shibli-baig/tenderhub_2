@@ -52,7 +52,7 @@ os.environ.setdefault("DB_POOL_TIMEOUT", "30")
 os.environ.setdefault("DB_POOL_RECYCLE", "1800")
 
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import and_, or_, desc, String, cast, func, inspect, text
+from sqlalchemy import and_, or_, desc, String, cast, func, inspect, text, Numeric
 from datetime import datetime, timedelta, date
 from typing import List, Optional, Dict, Any, Set
 import uuid
@@ -712,6 +712,49 @@ def _format_currency_display(value: Any) -> str:
     if not formatted.startswith("₹"):
         formatted = f"₹{formatted}"
     return formatted
+
+
+def _extract_numeric_emd_from_jsonb(emd_fee_details) -> Optional[float]:
+    """
+    Extract numeric EMD value from JSONB emd_fee_details for filtering.
+    Returns None if EMD is not found or cannot be parsed.
+    """
+    if not emd_fee_details:
+        return None
+    
+    # Try to extract from various possible keys
+    emd_keys = [
+        "EMD Amount (INR)",
+        "EMD Amount in ₹",
+        "EMD Amount",
+        "Amount",
+        "EMD Fee",
+        "emd_amount",
+    ]
+    
+    emd_value = _extract_json_field_value(emd_fee_details, emd_keys)
+    
+    if emd_value is None or emd_value in ("", "N/A", "NA"):
+        return None
+    
+    # Convert to numeric value
+    if isinstance(emd_value, (int, float)):
+        return float(emd_value)
+    
+    # Try to parse string value
+    text = str(emd_value).strip()
+    if not text or text.upper() in {"N/A", "NA"}:
+        return None
+    
+    # Remove currency symbols and non-numeric characters (except decimal point and minus)
+    cleaned = CURRENCY_SANITIZE_RE.sub("", text)
+    if not cleaned:
+        return None
+    
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
 
 
 def _prepare_tender_display_fields(tender: Optional[TenderDB]) -> None:
@@ -1555,13 +1598,15 @@ async def procurement(request: Request, db: Session = Depends(get_db)):
         logger.info(f"Product Category filter requested: '{product_category}'")
     min_value = request.query_params.get('min_value', '')
     max_value = request.query_params.get('max_value', '')
+    min_emd = request.query_params.get('min_emd', '')
+    max_emd = request.query_params.get('max_emd', '')
     sort_by = request.query_params.get('sort_by', 'published_desc')
     show_all = request.query_params.get('show_all', '')
     page = int(request.query_params.get('page', 1))
     per_page = 20
 
     # Check if any filters are applied or show_all is requested
-    filters_applied = any([search, category, state, source, product_category, min_value, max_value, show_all])
+    filters_applied = any([search, category, state, source, product_category, min_value, max_value, min_emd, max_emd, show_all])
 
     tenders = []
     total_tenders = 0
@@ -1650,6 +1695,60 @@ async def procurement(request: Request, db: Session = Depends(get_db)):
             except ValueError:
                 pass
 
+        # EMD filtering - only show tenders with EMD when EMD filters are applied
+        if min_emd or max_emd:
+            # Extract numeric EMD value from JSONB using PostgreSQL functions
+            # Try multiple possible keys in order of preference
+            emd_value_expr = None
+            emd_keys = [
+                "EMD Amount (INR)",
+                "EMD Amount in ₹",
+                "EMD Amount",
+                "Amount",
+                "EMD Fee",
+                "emd_amount",
+            ]
+            
+            # Build COALESCE chain to try each key
+            for i, key in enumerate(emd_keys):
+                # Extract value and clean it (remove non-numeric chars except decimal and minus)
+                key_expr = func.regexp_replace(
+                    func.regexp_replace(
+                        TenderDB.emd_fee_details[key].astext,
+                        r'[^\d\.\-]', '', 'g'
+                    ),
+                    r'^$', '', 'g'
+                )
+                
+                if emd_value_expr is None:
+                    emd_value_expr = func.nullif(key_expr, '')
+                else:
+                    emd_value_expr = func.coalesce(emd_value_expr, func.nullif(key_expr, ''))
+            
+            # Filter out tenders without EMD (where emd_value_expr is NULL or empty)
+            query = query.filter(emd_value_expr.isnot(None))
+            query = query.filter(emd_value_expr != '')
+            
+            # Apply min_emd filter
+            if min_emd:
+                try:
+                    min_emd_float = float(min_emd)
+                    # Cast the cleaned EMD value to numeric for comparison
+                    emd_numeric = cast(emd_value_expr, Numeric)
+                    query = query.filter(emd_numeric >= min_emd_float)
+                except (ValueError, Exception) as e:
+                    logger.warning(f"Error parsing min_emd: {e}")
+            
+            # Apply max_emd filter
+            if max_emd:
+                try:
+                    max_emd_float = float(max_emd)
+                    # Cast the cleaned EMD value to numeric for comparison
+                    emd_numeric = cast(emd_value_expr, Numeric)
+                    query = query.filter(emd_numeric <= max_emd_float)
+                except (ValueError, Exception) as e:
+                    logger.warning(f"Error parsing max_emd: {e}")
+
         # Get total count for pagination
         total_tenders = query.count()
 
@@ -1725,6 +1824,8 @@ async def procurement(request: Request, db: Session = Depends(get_db)):
         "product_category": product_category,
         "min_value": min_value,
         "max_value": max_value,
+        "min_emd": min_emd,
+        "max_emd": max_emd,
         "sort_by": sort_by,
         "show_all": show_all,
         "page": page,
