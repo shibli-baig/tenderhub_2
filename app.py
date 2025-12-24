@@ -7463,6 +7463,42 @@ async def tender_detail(request: Request, tender_id: str, db: Session = Depends(
     # Get user_id for database queries (company owner's user_id for BD employees)
     user_id_for_query, _ = get_user_id_for_queries(request, db) if entity_id else (None, None)
 
+    # Mark tender as seen (independent of other checks)
+    if entity_id:
+        try:
+            if entity_type == 'user':
+                # Check if already seen
+                seen_record = db.query(SeenTenderDB).filter(
+                    and_(SeenTenderDB.user_id == entity_id, SeenTenderDB.tender_id == tender.id)
+                ).first()
+                if not seen_record:
+                    seen_record = SeenTenderDB(
+                        user_id=entity_id,
+                        tender_id=tender.id
+                    )
+                    db.add(seen_record)
+                    db.commit()
+                    logger.info(f"Marked tender {tender.id} as seen for user {entity_id}")
+            elif entity_type == 'bd_employee':
+                # Check if already seen
+                seen_record = db.query(SeenTenderDB).filter(
+                    and_(SeenTenderDB.employee_id == entity_id, SeenTenderDB.tender_id == tender.id)
+                ).first()
+                if not seen_record:
+                    seen_record = SeenTenderDB(
+                        employee_id=entity_id,
+                        tender_id=tender.id
+                    )
+                    db.add(seen_record)
+                    db.commit()
+                    logger.info(f"Marked tender {tender.id} as seen for BD employee {entity_id}")
+            else:
+                logger.warning(f"Unknown entity_type '{entity_type}' for entity_id {entity_id}, cannot mark tender as seen")
+        except Exception as e:
+            logger.error(f"Failed to mark tender {tender.id} as seen for {entity_type} {entity_id}: {e}", exc_info=True)
+    else:
+        logger.debug(f"No entity_id found, cannot mark tender {tender.id} as seen")
+
     # Check if entity has favorited this tender
     is_favorited = False
     is_shortlisted = False
@@ -7498,33 +7534,6 @@ async def tender_detail(request: Request, tender_id: str, db: Session = Depends(
             and_(RejectedTenderDB.user_id == entity_id, RejectedTenderDB.tender_id == tender.id)
         ).first()
         is_rejected = rejected is not None
-
-        # Mark tender as seen
-        if entity_id:
-            if entity_type == 'user':
-                # Check if already seen
-                seen_record = db.query(SeenTenderDB).filter(
-                    and_(SeenTenderDB.user_id == entity_id, SeenTenderDB.tender_id == tender.id)
-                ).first()
-                if not seen_record:
-                    seen_record = SeenTenderDB(
-                        user_id=entity_id,
-                        tender_id=tender.id
-                    )
-                    db.add(seen_record)
-                    db.commit()
-            elif entity_type == 'bd_employee':
-                # Check if already seen
-                seen_record = db.query(SeenTenderDB).filter(
-                    and_(SeenTenderDB.employee_id == entity_id, SeenTenderDB.tender_id == tender.id)
-                ).first()
-                if not seen_record:
-                    seen_record = SeenTenderDB(
-                        employee_id=entity_id,
-                        tender_id=tender.id
-                    )
-                    db.add(seen_record)
-                    db.commit()
 
         # Check if tender has expired and entity had it favorited/shortlisted
         if tender.deadline:

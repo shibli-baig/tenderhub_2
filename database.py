@@ -2553,12 +2553,37 @@ def ensure_project_schema():
         logger.warning(f"Could not ensure project schema: {exc}")
 
 
+def ensure_seen_tenders_schema():
+    """Ensure seen_tenders table exists with correct schema."""
+    from sqlalchemy import inspect
+    
+    try:
+        inspector = inspect(engine)
+        table_exists = 'seen_tenders' in inspector.get_table_names()
+        
+        if not table_exists:
+            logger.info("Creating seen_tenders table...")
+            SeenTenderDB.__table__.create(bind=engine, checkfirst=True)
+            logger.info("✓ seen_tenders table created")
+        else:
+            # Check if all required columns exist
+            columns = {col['name'] for col in inspector.get_columns('seen_tenders')}
+            required_columns = {'id', 'user_id', 'employee_id', 'tender_id', 'created_at'}
+            missing_columns = required_columns - columns
+            
+            if missing_columns:
+                logger.warning(f"seen_tenders table missing columns: {missing_columns}")
+    except Exception as e:
+        logger.error(f"Error ensuring seen_tenders schema: {e}")
+
+
 def create_tables():
     """Create all database tables."""
     Base.metadata.create_all(bind=engine)
     ensure_company_schema()
     ensure_project_schema()
     ensure_certificate_schema()
+    ensure_seen_tenders_schema()
 
 
 def cleanup_old_tenders(db: Session, days_old: int = 60) -> int:
