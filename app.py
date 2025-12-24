@@ -74,7 +74,7 @@ from database import (
     CompanyCodeDB, EmployeeDB, TenderAssignmentDB, TaskDB, TaskCommentDB, TaskFileDB, TaskProgressUpdateDB,
     TenderMessageDB, TaskConcernDB, EmployeeNotificationDB, CertificateDB, CompanyDB, CompanyCertificateDB, ShortlistedTenderDB,
     RejectedTenderDB, DumpedTenderDB, StageDocumentDB, StageTaskTemplateDB, NotificationDB,
-    TenderResponseDB, ResponseDocumentDB, ReminderDB, CalendarActivityDB,
+    TenderResponseDB, ResponseDocumentDB, ReminderDB, CalendarActivityDB, SeenTenderDB,
     ExpertDB, ExpertProfileDB, ExpertContentDB, ExpertContentCommentDB, ExpertContentLikeDB,
     ExpertServiceRequestDB, ExpertApplicationDB, ExpertCollaborationDB, ExpertReviewDB,
     ExpertPaymentDB, ExpertFavoriteTenderDB, ExpertNotificationDB, EmployeePerformanceRatingDB,
@@ -1807,6 +1807,15 @@ async def procurement(request: Request, db: Session = Depends(get_db)):
             except json.JSONDecodeError:
                 user_sectors_data = []
 
+    # Get seen tender IDs for the current entity
+    seen_tender_ids = set()
+    if current_user:
+        seen_records = db.query(SeenTenderDB).filter(SeenTenderDB.user_id == current_user.id).all()
+        seen_tender_ids = {record.tender_id for record in seen_records}
+    elif current_bd_employee:
+        seen_records = db.query(SeenTenderDB).filter(SeenTenderDB.employee_id == current_bd_employee.id).all()
+        seen_tender_ids = {record.tender_id for record in seen_records}
+
     return templates.TemplateResponse("tender_searching.html", {
         "request": request,
         "tenders": tenders,
@@ -1833,6 +1842,7 @@ async def procurement(request: Request, db: Session = Depends(get_db)):
         "has_prev": has_prev,
         "has_next": has_next,
         "total_tenders": total_tenders,
+        "seen_tender_ids": seen_tender_ids,
         "selected_font": get_active_font()
     })
 
@@ -7488,6 +7498,33 @@ async def tender_detail(request: Request, tender_id: str, db: Session = Depends(
             and_(RejectedTenderDB.user_id == entity_id, RejectedTenderDB.tender_id == tender.id)
         ).first()
         is_rejected = rejected is not None
+
+        # Mark tender as seen
+        if entity_id:
+            if entity_type == 'user':
+                # Check if already seen
+                seen_record = db.query(SeenTenderDB).filter(
+                    and_(SeenTenderDB.user_id == entity_id, SeenTenderDB.tender_id == tender.id)
+                ).first()
+                if not seen_record:
+                    seen_record = SeenTenderDB(
+                        user_id=entity_id,
+                        tender_id=tender.id
+                    )
+                    db.add(seen_record)
+                    db.commit()
+            elif entity_type == 'bd_employee':
+                # Check if already seen
+                seen_record = db.query(SeenTenderDB).filter(
+                    and_(SeenTenderDB.employee_id == entity_id, SeenTenderDB.tender_id == tender.id)
+                ).first()
+                if not seen_record:
+                    seen_record = SeenTenderDB(
+                        employee_id=entity_id,
+                        tender_id=tender.id
+                    )
+                    db.add(seen_record)
+                    db.commit()
 
         # Check if tender has expired and entity had it favorited/shortlisted
         if tender.deadline:
@@ -14218,6 +14255,15 @@ async def search_with_custom_card(
     total_tenders = query.count()
     tenders = query.order_by(desc(TenderDB.published_at)).offset(skip).limit(per_page).all()
 
+    # Get seen tender IDs for the current entity
+    seen_tender_ids = set()
+    if entity_type == 'user':
+        seen_records = db.query(SeenTenderDB).filter(SeenTenderDB.user_id == entity_id).all()
+        seen_tender_ids = {record.tender_id for record in seen_records}
+    elif entity_type == 'bd_employee':
+        seen_records = db.query(SeenTenderDB).filter(SeenTenderDB.employee_id == entity_id).all()
+        seen_tender_ids = {record.tender_id for record in seen_records}
+
     # Pagination info
     total_pages = (total_tenders + per_page - 1) // per_page
     has_prev = page > 1
@@ -14237,6 +14283,7 @@ async def search_with_custom_card(
                 "summary": tender.summary,
                 "published_at": tender.published_at.isoformat() if tender.published_at else None,
                 "deadline": tender.deadline.isoformat() if tender.deadline else None,
+                "is_seen": tender.id in seen_tender_ids,
                 "metadata": {
                     "work_item_details": tender.work_item_details or {},
                     "critical_dates": tender.critical_dates or {},
@@ -14516,10 +14563,26 @@ async def get_recommended_tenders(
     - more_reco: Score > 65% (Highly Recommended) - lowered from 70%
     - less_reco: Score 30-65% (Other Recommendations) - lowered from 45%
     """
-    # Get current user
-    current_user = get_current_user(request, db)
-    if not current_user:
+    # Get current user or BD employee
+    from core.dependencies import get_current_user_or_bd_employee
+    entity, entity_type = get_current_user_or_bd_employee(request, db)
+    if not entity:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # For recommendation scoring, we need user_id (company owner's ID for BD employees)
+    if entity_type == 'user':
+        current_user = entity
+        user_id_for_scoring = current_user.id
+    else:
+        # BD employee - get company owner's user_id
+        from core.dependencies import get_user_id_for_queries
+        user_id_for_scoring, _ = get_user_id_for_queries(request, db)
+        if not user_id_for_scoring:
+            raise HTTPException(status_code=401, detail="Company owner not found")
+        # Get the actual user for scoring
+        current_user = db.query(UserDB).filter(UserDB.id == user_id_for_scoring).first()
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Company owner not found")
 
     try:
         import time
@@ -14535,7 +14598,7 @@ async def get_recommended_tenders(
             logger.info("TenderEmbeddingManager initialized successfully")
 
             # Generate user profile embedding once (cached for reuse)
-            user_profile_embedding = embedding_manager.get_user_profile_embedding(current_user.id)
+            user_profile_embedding = embedding_manager.get_user_profile_embedding(user_id_for_scoring)
             if user_profile_embedding is not None:
                 logger.info(f"User profile embedding generated: {len(user_profile_embedding)} dimensions")
             else:
@@ -14643,6 +14706,15 @@ async def get_recommended_tenders(
         # For simplicity, we'll return all results and let frontend handle pagination
         # In production, you might want to implement server-side pagination
 
+        # Get seen tender IDs for the current entity
+        seen_tender_ids = set()
+        if entity_type == 'user':
+            seen_records = db.query(SeenTenderDB).filter(SeenTenderDB.user_id == entity.id).all()
+            seen_tender_ids = {record.tender_id for record in seen_records}
+        elif entity_type == 'bd_employee':
+            seen_records = db.query(SeenTenderDB).filter(SeenTenderDB.employee_id == entity.id).all()
+            seen_tender_ids = {record.tender_id for record in seen_records}
+
         # Convert tenders to frontend format
         more_reco_formatted = []
         for item in categorized["more_reco"]:
@@ -14650,6 +14722,7 @@ async def get_recommended_tenders(
             tender_data["recommendation_score"] = item["score"]
             tender_data["match_reasons"] = item["match_reasons"]
             tender_data["semantic_similarity"] = item.get("semantic_similarity", 0)
+            tender_data["is_seen"] = tender_data["id"] in seen_tender_ids
             more_reco_formatted.append(tender_data)
 
         less_reco_formatted = []
@@ -14658,6 +14731,7 @@ async def get_recommended_tenders(
             tender_data["recommendation_score"] = item["score"]
             tender_data["match_reasons"] = item["match_reasons"]
             tender_data["semantic_similarity"] = item.get("semantic_similarity", 0)
+            tender_data["is_seen"] = tender_data["id"] in seen_tender_ids
             less_reco_formatted.append(tender_data)
 
         # Calculate performance metrics

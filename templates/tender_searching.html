@@ -543,6 +543,11 @@
     white-space: nowrap;
 }
 
+.tender-card-new__status--seen {
+    background: rgba(34, 197, 94, 0.12);
+    color: #22c55e;
+}
+
 /* Divider */
 .tender-card-new__divider {
     border-top: 1px dashed var(--card-border, #e5e7eb);
@@ -1932,7 +1937,7 @@ function createRecommendedTenderCard(tender, category) {
                     ${tender.state && tender.state !== 'Unknown' ? `· ${tender.state}` : ''}
                 </p>
             </div>
-            <span class="tender-card-new__status">OPEN</span>
+            <span class="tender-card-new__status${tender.is_seen ? ' tender-card-new__status--seen' : ''}">OPEN</span>
         </div>
 
         <!-- Divider -->
@@ -2497,7 +2502,7 @@ function displaySearchResults(result, cardId) {
                                     ${tender.state && tender.state !== 'Unknown' ? '· ' + tender.state : ''}
                                 </p>
                             </div>
-                            <span class="tender-card-new__status">OPEN</span>
+                            <span class="tender-card-new__status${tender.is_seen ? ' tender-card-new__status--seen' : ''}">OPEN</span>
                         </div>
 
                         <!-- Divider -->

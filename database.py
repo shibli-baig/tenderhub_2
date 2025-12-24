@@ -1261,6 +1261,30 @@ class CalendarActivityDB(Base):
     )
 
 
+class SeenTenderDB(Base):
+    """
+    SQLAlchemy model for tracking which tenders users and BD employees have viewed.
+    """
+    __tablename__ = "seen_tenders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    employee_id = Column(String, ForeignKey("employees.id", ondelete="CASCADE"), nullable=True, index=True)
+    tender_id = Column(String, ForeignKey("tenders.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Relationships
+    user = relationship("UserDB", foreign_keys=[user_id])
+    employee = relationship("EmployeeDB", foreign_keys=[employee_id])
+    tender = relationship("TenderDB", foreign_keys=[tender_id])
+
+    # Unique constraints and indexes
+    __table_args__ = (
+        Index('idx_user_tender_seen', 'user_id', 'tender_id', unique=True),
+        Index('idx_employee_tender_seen', 'employee_id', 'tender_id', unique=True),
+    )
+
+
 class DumpedTenderDB(Base):
     """
     SQLAlchemy model for dumped/killed tenders (incomplete applications).
