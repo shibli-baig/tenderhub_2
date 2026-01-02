@@ -1585,6 +1585,11 @@ async def procurement(request: Request, db: Session = Depends(get_db)):
         cleanup_orphaned_records(db)
     except Exception as e:
         logger.warning(f"Cleanup of expired tenders and orphaned records failed: {e}")
+        # Rollback any failed transaction to allow subsequent queries to work
+        try:
+            db.rollback()
+        except Exception as rollback_error:
+            logger.error(f"Failed to rollback after cleanup error: {rollback_error}")
 
     # Get search and filter parameters
     search = request.query_params.get('search', '')
