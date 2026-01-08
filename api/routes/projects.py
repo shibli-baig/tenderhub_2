@@ -270,6 +270,20 @@ async def project_detail(
                             'is_deliverable': False
                         })
 
+    # Load milestones for timeline
+    milestones = db.query(ProjectMilestoneDB).filter(
+        ProjectMilestoneDB.project_id == project_id
+    ).order_by(ProjectMilestoneDB.milestone_date, ProjectMilestoneDB.display_order).all()
+    
+    # Ensure default milestones exist if none are present
+    if len(milestones) == 0:
+        from database import ensure_default_project_milestones
+        ensure_default_project_milestones(project, db)
+        # Reload milestones after creation
+        milestones = db.query(ProjectMilestoneDB).filter(
+            ProjectMilestoneDB.project_id == project_id
+        ).order_by(ProjectMilestoneDB.milestone_date, ProjectMilestoneDB.display_order).all()
+
     # Use return_url if provided, otherwise fallback to default
     if return_url:
         from urllib.parse import unquote
@@ -283,6 +297,7 @@ async def project_detail(
         "current_user": current_user,
         "project": project,
         "documents_with_sizes": documents_with_sizes,
+        "milestones": milestones,
         "test_redirect_url": back_url
     })
 

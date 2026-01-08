@@ -74,7 +74,7 @@ from database import (
     CompanyCodeDB, EmployeeDB, TenderAssignmentDB, TaskDB, TaskCommentDB, TaskFileDB, TaskProgressUpdateDB,
     TenderMessageDB, TaskConcernDB, EmployeeNotificationDB, CertificateDB, CompanyDB, CompanyCertificateDB, ShortlistedTenderDB,
     RejectedTenderDB, DumpedTenderDB, StageDocumentDB, StageTaskTemplateDB, NotificationDB,
-    TenderResponseDB, ResponseDocumentDB, ReminderDB, CalendarActivityDB, SeenTenderDB,
+    TenderResponseDB, ResponseDocumentDB, ReminderDB, CalendarActivityDB, SeenTenderDB, ProjectMilestoneDB,
     ExpertDB, ExpertProfileDB, ExpertContentDB, ExpertContentCommentDB, ExpertContentLikeDB,
     ExpertServiceRequestDB, ExpertApplicationDB, ExpertCollaborationDB, ExpertReviewDB,
     ExpertPaymentDB, ExpertFavoriteTenderDB, ExpertNotificationDB, EmployeePerformanceRatingDB,
@@ -480,6 +480,37 @@ async def startup_event():
         logger.info("Application startup: Ensuring database tables exist...")
         create_tables()
         logger.info("✓ Database tables verified/created successfully")
+        
+        # Ensure all existing projects have default milestones
+        try:
+            from database import ensure_default_project_milestones
+            db = SessionLocal()
+            try:
+                # Find projects without milestones
+                projects_without_milestones = db.query(ProjectDB).outerjoin(
+                    ProjectMilestoneDB, ProjectDB.id == ProjectMilestoneDB.project_id
+                ).filter(ProjectMilestoneDB.id.is_(None)).all()
+                
+                count = 0
+                for project in projects_without_milestones:
+                    try:
+                        ensure_default_project_milestones(project, db)
+                        count += 1
+                    except Exception as e:
+                        logger.warning(f"Failed to create default milestones for project {project.id}: {e}")
+                        continue
+                
+                if count > 0:
+                    logger.info(f"✓ Created default milestones for {count} existing projects")
+                db.close()
+            except Exception as e:
+                logger.warning(f"Error ensuring default milestones for existing projects: {e}")
+                try:
+                    db.close()
+                except:
+                    pass
+        except Exception as e:
+            logger.warning(f"Could not ensure default milestones during startup: {e}")
     except Exception as e:
         logger.error(f"Failed to initialize database tables on startup: {e}")
         # Don't fail the startup, just log the error
@@ -4185,11 +4216,26 @@ async def test_project_detail(
     else:
         back_url = f"/public-projects/nkbpl.pratyaksh?test_token={test_token}"
 
+    # Load milestones for timeline
+    milestones = db.query(ProjectMilestoneDB).filter(
+        ProjectMilestoneDB.project_id == project_id
+    ).order_by(ProjectMilestoneDB.milestone_date, ProjectMilestoneDB.display_order).all()
+    
+    # Ensure default milestones exist if none are present
+    if len(milestones) == 0:
+        from database import ensure_default_project_milestones
+        ensure_default_project_milestones(project, db)
+        # Reload milestones after creation
+        milestones = db.query(ProjectMilestoneDB).filter(
+            ProjectMilestoneDB.project_id == project_id
+        ).order_by(ProjectMilestoneDB.milestone_date, ProjectMilestoneDB.display_order).all()
+
     return templates.TemplateResponse("project_detail.html", {
         "request": request,
         "current_user": test_user,
         "project": project,
         "documents_with_sizes": documents_with_sizes,
+        "milestones": milestones,
         "is_test_mode": True,
         "test_token": test_token,
         "test_base_url": "/public-projects/nkbpl.pratyaksh",
@@ -6251,11 +6297,26 @@ async def project_detail(
     logger.info(f"Project {project.id} - Description: {bool(project.project_description)} ({len(project.project_description) if project.project_description else 0} chars)")
     logger.info(f"Project {project.id} - Scope: {bool(project.complete_scope_of_work)} ({len(project.complete_scope_of_work) if project.complete_scope_of_work else 0} chars)")
 
+    # Load milestones for timeline
+    milestones = db.query(ProjectMilestoneDB).filter(
+        ProjectMilestoneDB.project_id == project_id
+    ).order_by(ProjectMilestoneDB.milestone_date, ProjectMilestoneDB.display_order).all()
+    
+    # Ensure default milestones exist if none are present
+    if len(milestones) == 0:
+        from database import ensure_default_project_milestones
+        ensure_default_project_milestones(project, db)
+        # Reload milestones after creation
+        milestones = db.query(ProjectMilestoneDB).filter(
+            ProjectMilestoneDB.project_id == project_id
+        ).order_by(ProjectMilestoneDB.milestone_date, ProjectMilestoneDB.display_order).all()
+
     return templates.TemplateResponse("project_detail.html", {
         "request": request,
         "current_user": current_user,
         "project": project,
         "documents_with_sizes": documents_with_sizes,
+        "milestones": milestones,
         "is_test_session": is_test_session,
         "is_quarantined": is_quarantined,
         "test_redirect_url": test_redirect_url,
@@ -12668,10 +12729,25 @@ async def edit_project_page(
         else:
             user_industry_sectors = [company_details.industry_sector]
 
+    # Load existing milestones, ordered by date
+    milestones = db.query(ProjectMilestoneDB).filter(
+        ProjectMilestoneDB.project_id == project_id
+    ).order_by(ProjectMilestoneDB.milestone_date, ProjectMilestoneDB.display_order).all()
+    
+    # Ensure default milestones exist if none are present
+    if len(milestones) == 0:
+        from database import ensure_default_project_milestones
+        ensure_default_project_milestones(project, db)
+        # Reload milestones after creation
+        milestones = db.query(ProjectMilestoneDB).filter(
+            ProjectMilestoneDB.project_id == project_id
+        ).order_by(ProjectMilestoneDB.milestone_date, ProjectMilestoneDB.display_order).all()
+
     return templates.TemplateResponse("edit_project.html", {
         "request": request,
         "current_user": current_user,
         "project": project,
+        "milestones": milestones,
         "user_industry_sectors": user_industry_sectors,
         "user_sectors_data": user_sectors_data,
         "now": datetime.now,
@@ -12854,6 +12930,52 @@ async def update_project(
 
     logger.info(f"[EDIT] Final document count: {sum(len(v) for v in existing_documents.values()) if existing_documents else 0}")
     logger.info(f"[EDIT] ✓ Flagged 'documents' field as modified for SQLAlchemy tracking")
+
+    # Handle milestones
+    try:
+        milestone_labels = form_data.getlist('milestones[label][]')
+        milestone_dates = form_data.getlist('milestones[date][]')
+        
+        # Filter out empty labels
+        valid_milestones = [(label.strip(), date_str) for label, date_str in zip(milestone_labels, milestone_dates) if label.strip()]
+        
+        # Validate at least 2 milestones
+        if len(valid_milestones) < 2:
+            raise HTTPException(status_code=400, detail="At least 2 milestones are required (start and finish)")
+        
+        # Delete all existing milestones for this project
+        existing_count = db.query(ProjectMilestoneDB).filter(
+            ProjectMilestoneDB.project_id == project_id
+        ).delete(synchronize_session=False)
+        if existing_count > 0:
+            logger.info(f"[EDIT] Deleted {existing_count} existing milestones for project {project_id}")
+        
+        # Create new milestones from form data
+        for idx, (label, date_str) in enumerate(valid_milestones):
+            try:
+                milestone_date = datetime.strptime(date_str, "%Y-%m-%d") if date_str else None
+                if not milestone_date:
+                    logger.warning(f"[EDIT] Skipping milestone '{label}' due to invalid date: {date_str}")
+                    continue
+            except ValueError as e:
+                logger.warning(f"[EDIT] Skipping milestone '{label}' due to date parse error: {e}")
+                continue
+            
+            new_milestone = ProjectMilestoneDB(
+                project_id=project_id,
+                milestone_label=label,
+                milestone_date=milestone_date,
+                display_order=idx
+            )
+            db.add(new_milestone)
+        
+        logger.info(f"[EDIT] Created {len(valid_milestones)} milestones for project {project_id}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[EDIT] Error processing milestones: {e}")
+        # Don't fail the entire update if milestones fail, but log it
+        # Milestones can be added separately later
 
     # If project was auto-generated and is now being edited, mark as completed_by_user
     if project.is_auto_generated and project.completion_status == "incomplete":

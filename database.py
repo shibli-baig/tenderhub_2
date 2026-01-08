@@ -543,6 +543,7 @@ class ProjectDB(Base):
 
     # Relationships
     user = relationship("UserDB", back_populates="projects")
+    milestones = relationship("ProjectMilestoneDB", back_populates="project", cascade="all, delete-orphan", order_by="ProjectMilestoneDB.milestone_date")
 
     # Indexes for query optimization
     __table_args__ = (
@@ -1282,6 +1283,33 @@ class SeenTenderDB(Base):
     __table_args__ = (
         Index('idx_user_tender_seen', 'user_id', 'tender_id', unique=True),
         Index('idx_employee_tender_seen', 'employee_id', 'tender_id', unique=True),
+    )
+
+
+class ProjectMilestoneDB(Base):
+    """SQLAlchemy model for project timeline milestones."""
+    __tablename__ = "project_milestones"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    # Milestone details
+    milestone_label = Column(String, nullable=False)  # e.g., "Tender Published", "Project Started", etc.
+    milestone_date = Column(DateTime, nullable=False, index=True)
+    
+    # Ordering (for sorting when dates are same)
+    display_order = Column(Integer, default=0)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    project = relationship("ProjectDB", back_populates="milestones")
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_project_milestones', 'project_id', 'milestone_date'),
     )
 
 
@@ -2577,6 +2605,89 @@ def ensure_seen_tenders_schema():
         logger.error(f"Error ensuring seen_tenders schema: {e}")
 
 
+def ensure_project_milestones_schema():
+    """Ensure project_milestones table exists with correct schema."""
+    from sqlalchemy import inspect
+    
+    try:
+        inspector = inspect(engine)
+        table_exists = 'project_milestones' in inspector.get_table_names()
+        
+        if not table_exists:
+            logger.info("Creating project_milestones table...")
+            ProjectMilestoneDB.__table__.create(bind=engine, checkfirst=True)
+            logger.info("✓ project_milestones table created")
+        else:
+            # Check if all required columns exist
+            columns = {col['name'] for col in inspector.get_columns('project_milestones')}
+            required_columns = {'id', 'project_id', 'milestone_label', 'milestone_date', 'display_order', 'created_at', 'updated_at'}
+            missing_columns = required_columns - columns
+            
+            if missing_columns:
+                logger.warning(f"project_milestones table missing columns: {missing_columns}")
+    except Exception as e:
+        logger.error(f"Error ensuring project_milestones schema: {e}")
+
+
+def ensure_default_project_milestones(project: "ProjectDB", db: Session) -> None:
+    """
+    Ensure a project has at least two default milestones (start and finish).
+    Creates them if they don't exist.
+    """
+    if not project:
+        return
+    
+    # Check if project already has milestones
+    existing_milestones = db.query(ProjectMilestoneDB).filter(
+        ProjectMilestoneDB.project_id == project.id
+    ).count()
+    
+    if existing_milestones > 0:
+        return  # Project already has milestones
+    
+    # Determine start milestone label and date
+    start_label = "Tender Published"
+    start_date = project.created_at  # Default fallback
+    
+    # Try to get tender published date if source_tender_id exists
+    if project.source_tender_id:
+        # TenderDB is defined earlier in this file, so it's available
+        tender = db.query(TenderDB).filter(TenderDB.id == project.source_tender_id).first()
+        if tender and tender.published_at:
+            start_date = tender.published_at
+    elif project.start_date:
+        start_label = "Project Started"
+        start_date = project.start_date
+    
+    # Determine end milestone date
+    end_date = project.end_date if project.end_date else project.created_at
+    
+    # Create start milestone
+    start_milestone = ProjectMilestoneDB(
+        project_id=project.id,
+        milestone_label=start_label,
+        milestone_date=start_date,
+        display_order=0
+    )
+    db.add(start_milestone)
+    
+    # Create end milestone
+    end_milestone = ProjectMilestoneDB(
+        project_id=project.id,
+        milestone_label="Project Completed",
+        milestone_date=end_date,
+        display_order=1
+    )
+    db.add(end_milestone)
+    
+    try:
+        db.commit()
+        logger.info(f"Created default milestones for project {project.id}")
+    except Exception as e:
+        logger.error(f"Error creating default milestones for project {project.id}: {e}")
+        db.rollback()
+
+
 def create_tables():
     """Create all database tables."""
     Base.metadata.create_all(bind=engine)
@@ -2584,6 +2695,7 @@ def create_tables():
     ensure_project_schema()
     ensure_certificate_schema()
     ensure_seen_tenders_schema()
+    ensure_project_milestones_schema()
 
 
 def cleanup_old_tenders(db: Session, days_old: int = 60) -> int:

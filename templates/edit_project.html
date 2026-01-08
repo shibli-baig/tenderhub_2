@@ -192,6 +192,92 @@
         <article class="surface-card">
             <div class="section-header" style="margin-bottom: var(--space-4);">
                 <div>
+                    <h2 class="surface-card__title">Project Timeline</h2>
+                    <p class="panel-subtitle">Track key milestones from tender publication to project completion.</p>
+                </div>
+            </div>
+            
+            <div id="milestones-container">
+                {% if milestones %}
+                    {% for milestone in milestones %}
+                    <div class="milestone-row" data-milestone-index="{{ loop.index0 }}">
+                        <div class="form-grid two-col" style="gap: 1rem; margin-bottom: 1rem;">
+                            <div class="form-group">
+                                <label class="form-label">Milestone Label</label>
+                                <input type="text" name="milestones[label][]" class="milestone-label" placeholder="e.g., Tender Published, Project Started" value="{{ milestone.milestone_label }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Milestone Date</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                                    <input type="date" name="milestones[date][]" class="milestone-date" value="{{ milestone.milestone_date.strftime('%Y-%m-%d') if milestone.milestone_date else '' }}" required style="flex: 1;">
+                                    <button type="button" class="btn btn-outline btn-sm delete-milestone" {% if milestones|length <= 2 %}disabled{% endif %} style="white-space: nowrap;">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                        </svg>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="milestone-row" data-milestone-index="0">
+                        <div class="form-grid two-col" style="gap: 1rem; margin-bottom: 1rem;">
+                            <div class="form-group">
+                                <label class="form-label">Milestone Label</label>
+                                <input type="text" name="milestones[label][]" class="milestone-label" placeholder="e.g., Tender Published" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Milestone Date</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                                    <input type="date" name="milestones[date][]" class="milestone-date" required style="flex: 1;">
+                                    <button type="button" class="btn btn-outline btn-sm delete-milestone" disabled style="white-space: nowrap;">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                        </svg>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="milestone-row" data-milestone-index="1">
+                        <div class="form-grid two-col" style="gap: 1rem; margin-bottom: 1rem;">
+                            <div class="form-group">
+                                <label class="form-label">Milestone Label</label>
+                                <input type="text" name="milestones[label][]" class="milestone-label" placeholder="e.g., Project Completed" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Milestone Date</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                                    <input type="date" name="milestones[date][]" class="milestone-date" required style="flex: 1;">
+                                    <button type="button" class="btn btn-outline btn-sm delete-milestone" disabled style="white-space: nowrap;">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                        </svg>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <button type="button" id="add-milestone-btn" class="btn btn-outline" style="margin-top: 1rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 0.5rem;">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Milestone
+            </button>
+            <p class="form-hint" style="margin-top: 0.5rem;">At least 2 milestones are required (start and finish).</p>
+        </article>
+
+        <article class="surface-card">
+            <div class="section-header" style="margin-bottom: var(--space-4);">
+                <div>
                     <h2 class="surface-card__title">Services delivered</h2>
                     <p class="panel-subtitle">Highlight competencies showcased in this project.</p>
                 </div>
@@ -580,6 +666,121 @@ document.addEventListener('DOMContentLoaded', () => {
             firstInvalid.focus();
         }
     });
+
+    // Milestone management
+    const milestonesContainer = document.getElementById('milestones-container');
+    const addMilestoneBtn = document.getElementById('add-milestone-btn');
+
+    function updateDeleteButtons() {
+        const milestoneRows = milestonesContainer.querySelectorAll('.milestone-row');
+        milestoneRows.forEach(row => {
+            const deleteBtn = row.querySelector('.delete-milestone');
+            if (milestoneRows.length <= 2) {
+                deleteBtn.disabled = true;
+            } else {
+                deleteBtn.disabled = false;
+            }
+        });
+    }
+
+    function addMilestoneRow(label = '', date = '') {
+        const milestoneRows = milestonesContainer.querySelectorAll('.milestone-row');
+        const index = milestoneRows.length;
+        
+        const row = document.createElement('div');
+        row.className = 'milestone-row';
+        row.setAttribute('data-milestone-index', index);
+        
+        row.innerHTML = `
+            <div class="form-grid two-col" style="gap: 1rem; margin-bottom: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">Milestone Label</label>
+                    <input type="text" name="milestones[label][]" class="milestone-label" placeholder="e.g., Project Started, Contract Signed" value="${label}" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Milestone Date</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                        <input type="date" name="milestones[date][]" class="milestone-date" value="${date}" required style="flex: 1;">
+                        <button type="button" class="btn btn-outline btn-sm delete-milestone" style="white-space: nowrap;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        milestonesContainer.appendChild(row);
+        
+        // Attach delete event listener
+        const deleteBtn = row.querySelector('.delete-milestone');
+        deleteBtn.addEventListener('click', () => {
+            const currentRows = milestonesContainer.querySelectorAll('.milestone-row');
+            if (currentRows.length <= 2) {
+                alert('At least 2 milestones are required (start and finish).');
+                return;
+            }
+            row.remove();
+            updateDeleteButtons();
+        });
+        
+        updateDeleteButtons();
+    }
+
+    // Add milestone button click handler
+    if (addMilestoneBtn) {
+        addMilestoneBtn.addEventListener('click', () => {
+            addMilestoneRow();
+        });
+    }
+
+    // Delete milestone handlers
+    if (milestonesContainer) {
+        milestonesContainer.addEventListener('click', (e) => {
+            if (e.target.closest('.delete-milestone')) {
+                const row = e.target.closest('.milestone-row');
+                const currentRows = milestonesContainer.querySelectorAll('.milestone-row');
+                if (currentRows.length <= 2) {
+                    alert('At least 2 milestones are required (start and finish).');
+                    return;
+                }
+                row.remove();
+                updateDeleteButtons();
+            }
+        });
+
+        // Form validation - ensure at least 2 milestones
+        form.addEventListener('submit', (e) => {
+            const milestoneRows = milestonesContainer.querySelectorAll('.milestone-row');
+            if (milestoneRows.length < 2) {
+                e.preventDefault();
+                alert('At least 2 milestones are required (start and finish).');
+                return false;
+            }
+            
+            // Validate all milestones have both label and date
+            let hasError = false;
+            milestoneRows.forEach((row, idx) => {
+                const label = row.querySelector('.milestone-label').value.trim();
+                const date = row.querySelector('.milestone-date').value;
+                
+                if (!label || !date) {
+                    hasError = true;
+                }
+            });
+            
+            if (hasError) {
+                e.preventDefault();
+                alert('Please fill in both label and date for all milestones.');
+                return false;
+            }
+        });
+
+        // Initialize delete buttons state
+        updateDeleteButtons();
+    }
 });
 </script>
 {% endblock %}
