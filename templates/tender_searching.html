@@ -19,6 +19,9 @@
             <button type="button" class="btn btn-outline" onclick="toggleEditMode()">
                 <span id="editCardBtnText">Edit Cards</span>
             </button>
+            <button type="button" class="btn btn-outline" onclick="openAddTenderLinkModal()">
+                <span>Add Tender Link</span>
+            </button>
             <button type="button" class="btn btn-primary" onclick="openAddCardModal()">
                 <span>+ Add Sector Card</span>
             </button>
@@ -33,6 +36,31 @@
         </div>
     </div>
 </section>
+
+<!-- Add Tender Link Modal -->
+<div id="addTenderLinkModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeAddTenderLinkModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add Tender Link</h3>
+            <button type="button" class="modal-close" onclick="closeAddTenderLinkModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="addTenderLinkForm">
+                <div class="form-group">
+                    <label for="tender_link" class="form-label">Tender Link</label>
+                    <input type="text" id="tender_link" name="tender_link" 
+                           placeholder="Enter tender URL or link" 
+                           style="width: 100%; padding: 0.75rem 1rem; font-size: 1rem;">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeAddTenderLinkModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitTenderLink()">Submit</button>
+        </div>
+    </div>
+</div>
 
 <!-- Add Sector Card Modal -->
 <div id="addCardModal" class="modal" style="display: none;">
@@ -2037,6 +2065,25 @@ function closeAddCardModal() {
     document.body.style.overflow = '';
     currentEditingCardId = null;
     configureCardModal(null);
+}
+
+// Add Tender Link Modal Functions
+function openAddTenderLinkModal() {
+    document.getElementById('addTenderLinkModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeAddTenderLinkModal() {
+    document.getElementById('addTenderLinkModal').style.display = 'none';
+    document.body.style.overflow = '';
+    // Clear the form
+    document.getElementById('addTenderLinkForm').reset();
+}
+
+function submitTenderLink() {
+    // For now, this does nothing as requested
+    // Just close the modal
+    closeAddTenderLinkModal();
 }
 
 // Toggle edit mode for cards
