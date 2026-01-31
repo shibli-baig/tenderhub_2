@@ -18,7 +18,7 @@ from pathlib import Path
 import redis
 from redis.exceptions import ConnectionError as RedisConnectionError
 
-from database import SessionLocal, CertificateDB, BulkUploadBatchDB, VectorDB
+from database import SessionLocal, CertificateDB, BulkUploadBatchDB, VectorDB, ProjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +89,7 @@ class CertificateTask:
         file_size: Optional[int] = None,
         s3_key: Optional[str] = None,
         s3_url: Optional[str] = None,
+        project_id: Optional[int] = None,
         retry_count: int = 0,
         created_at: Optional[str] = None,
         last_error: Optional[str] = None
@@ -102,6 +103,7 @@ class CertificateTask:
         self.file_size = file_size
         self.s3_key = s3_key
         self.s3_url = s3_url
+        self.project_id = project_id
         self.retry_count = retry_count
         self.created_at = created_at or datetime.utcnow().isoformat()
         self.last_error = last_error
@@ -118,6 +120,7 @@ class CertificateTask:
             'file_size': self.file_size,
             's3_key': self.s3_key,
             's3_url': self.s3_url,
+            'project_id': self.project_id,
             'retry_count': self.retry_count,
             'created_at': self.created_at,
             'last_error': self.last_error
@@ -136,6 +139,7 @@ class CertificateTask:
             file_size=data.get('file_size'),
             s3_key=data.get('s3_key'),
             s3_url=data.get('s3_url'),
+            project_id=data.get('project_id'),
             retry_count=data.get('retry_count', 0),
             created_at=data.get('created_at'),
             last_error=data.get('last_error')
@@ -229,13 +233,22 @@ def process_certificate_task(task: CertificateTask) -> bool:
                 logger.error(f"Failed to update batch status on success: {batch_error}")
                 db.rollback()
 
-        # Update certificate with batch_id if needed
-        if task.batch_id:
-            processed_cert = db.query(CertificateDB).filter(
-                CertificateDB.id == processed_id
-            ).first()
-            if processed_cert:
+        # Update certificate with batch_id and/or project_id if needed
+        processed_cert = db.query(CertificateDB).filter(
+            CertificateDB.id == processed_id
+        ).first()
+        if processed_cert:
+            updated = False
+            if task.batch_id:
                 processed_cert.batch_id = task.batch_id
+                updated = True
+            if task.project_id:
+                processed_cert.project_id = task.project_id
+                project = db.query(ProjectDB).filter(ProjectDB.id == task.project_id).first()
+                if project:
+                    processed_cert.project_name = project.project_name
+                updated = True
+            if updated:
                 db.commit()
 
         # Delete the initial placeholder certificate
@@ -532,7 +545,8 @@ def enqueue_certificate(
     file_hash: Optional[str] = None,
     file_size: Optional[int] = None,
     s3_key: Optional[str] = None,
-    s3_url: Optional[str] = None
+    s3_url: Optional[str] = None,
+    project_id: Optional[int] = None
 ) -> str:
     """
     Add a certificate to the Redis processing queue.
@@ -546,6 +560,7 @@ def enqueue_certificate(
         file_size: Optional file size in bytes
         s3_key: Optional S3 object key for the file
         s3_url: Optional S3 URL for the file
+        project_id: Optional project ID (for completion certs from project docs)
 
     Returns:
         Task ID for tracking
@@ -560,7 +575,8 @@ def enqueue_certificate(
         file_hash=file_hash,
         file_size=file_size,
         s3_key=s3_key,
-        s3_url=s3_url
+        s3_url=s3_url,
+        project_id=project_id
     )
 
     try:

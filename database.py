@@ -544,6 +544,7 @@ class ProjectDB(Base):
     # Relationships
     user = relationship("UserDB", back_populates="projects")
     milestones = relationship("ProjectMilestoneDB", back_populates="project", cascade="all, delete-orphan", order_by="ProjectMilestoneDB.milestone_date")
+    certificates = relationship("CertificateDB", back_populates="project", foreign_keys="CertificateDB.project_id")
 
     # Indexes for query optimization
     __table_args__ = (
@@ -882,6 +883,7 @@ class CertificateDB(Base):
     id = Column(String, primary_key=True, index=True)
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     batch_id = Column(String, ForeignKey("bulk_upload_batches.id"), nullable=True)  # Link to batch
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, index=True)  # Link to project (completion cert from project docs)
 
     # Extracted certificate data
     project_name = Column(String, nullable=False)
@@ -935,6 +937,7 @@ class CertificateDB(Base):
     user = relationship("UserDB", back_populates="certificates")
     vectors = relationship("VectorDB", back_populates="certificate")
     batch = relationship("BulkUploadBatchDB", back_populates="certificates")
+    project = relationship("ProjectDB", back_populates="certificates")
 
     # Indexes for query optimization
     __table_args__ = (
@@ -942,6 +945,7 @@ class CertificateDB(Base):
         Index('idx_certificate_status', 'processing_status'),  # For status filtering
         Index('idx_batch_certificates', 'batch_id'),  # For batch queries
         Index('idx_user_file_hash', 'user_id', 'file_hash'),  # For duplicate detection
+        Index('idx_certificate_project', 'project_id'),  # For project completion certs
     )
 
 
@@ -2539,6 +2543,7 @@ def ensure_certificate_schema():
                 ("verbatim_certificate", text_type),
                 ("s3_key", text_type),  # S3 object key for certificate storage
                 ("s3_url", text_type),  # S3 URL for certificate access
+                ("project_id", "INTEGER REFERENCES projects(id) ON DELETE SET NULL"),  # Link to project (completion cert from project docs)
             ]
 
             for column_name, column_def in additions:

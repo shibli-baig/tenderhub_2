@@ -1161,6 +1161,84 @@ def transfer_tender_documents_to_project(db: Session, tender_id: str, project_id
     }
 
 
+def _resolve_project_doc_path(entry: Any, base_path: str = "uploads") -> Optional[str]:
+    """Resolve project document path from dict or string. Returns absolute path or None if file not found."""
+    if isinstance(entry, dict):
+        path = entry.get("file_path") or entry.get("path", "")
+    else:
+        path = str(entry)
+    if not path:
+        return None
+    if os.path.exists(path):
+        return path
+    alt = os.path.join(base_path, path) if not path.startswith("uploads") else path
+    return alt if os.path.exists(alt) else None
+
+
+def queue_project_completion_certificates(project: ProjectDB, db: Session) -> int:
+    """
+    Queue completion certificate files from project.documents for processing.
+    Returns the number of files queued.
+    """
+    import hashlib
+    from certificate_queue import enqueue_certificate
+    from api.routes.certificates import check_duplicate_certificate
+
+    entries = project.documents.get("completion_certificate", []) if project.documents else []
+    if not entries:
+        return 0
+    if not isinstance(entries, list):
+        entries = [entries]
+
+    allowed_extensions = {".pdf", ".jpg", ".jpeg", ".png"}
+    queued = 0
+
+    for entry in entries:
+        resolved = _resolve_project_doc_path(entry)
+        if not resolved:
+            logger.warning(f"Could not resolve path for project {project.id} completion cert: {entry}")
+            continue
+
+        ext = os.path.splitext(resolved)[1].lower()
+        if ext not in allowed_extensions:
+            continue
+
+        original_filename = os.path.basename(resolved)
+        if isinstance(entry, dict) and entry.get("original_filename"):
+            original_filename = entry["original_filename"]
+
+        try:
+            with open(resolved, "rb") as f:
+                file_content = f.read()
+        except (OSError, IOError) as e:
+            logger.warning(f"Could not read {resolved}: {e}")
+            continue
+
+        file_hash = hashlib.sha256(file_content).hexdigest()
+        file_size = len(file_content)
+
+        existing = check_duplicate_certificate(db, project.user_id, file_hash)
+        if existing:
+            logger.info(f"Skipping duplicate certificate for project {project.id}: {original_filename}")
+            continue
+
+        try:
+            enqueue_certificate(
+                user_id=project.user_id,
+                file_path=os.path.abspath(resolved),
+                filename=original_filename,
+                file_hash=file_hash,
+                file_size=file_size,
+                project_id=project.id,
+            )
+            queued += 1
+            logger.info(f"Queued completion certificate for project {project.id}: {original_filename}")
+        except Exception as e:
+            logger.warning(f"Failed to queue certificate {original_filename}: {e}")
+
+    return queued
+
+
 def auto_create_project_from_tender(db: Session, tender: TenderDB, user_id: str, shortlist_id: Optional[int] = None) -> Optional[ProjectDB]:
     """
     Automatically create a ProjectDB entry from an awarded tender.
@@ -1267,6 +1345,14 @@ def auto_create_project_from_tender(db: Session, tender: TenderDB, user_id: str,
             f"from tender {tender.id}. Transferred {transfer_result['count']} documents "
             f"across {len(transfer_result['categories'])} categories."
         )
+
+        if new_project.documents and "completion_certificate" in new_project.documents:
+            try:
+                queued = queue_project_completion_certificates(new_project, db)
+                if queued > 0:
+                    logger.info(f"Queued {queued} completion certificate(s) for auto-created project {new_project.id}")
+            except Exception as queue_err:
+                logger.warning(f"Failed to queue completion certificates for project {new_project.id}: {queue_err}")
 
         return new_project
 
@@ -4231,12 +4317,18 @@ async def test_project_detail(
             ProjectMilestoneDB.project_id == project_id
         ).order_by(ProjectMilestoneDB.milestone_date, ProjectMilestoneDB.display_order).all()
 
+    project_completion_certificates = db.query(CertificateDB).filter(
+        CertificateDB.project_id == project_id,
+        CertificateDB.processing_status == "completed"
+    ).order_by(desc(CertificateDB.processed_at)).all()
+
     return templates.TemplateResponse("project_detail.html", {
         "request": request,
         "current_user": test_user,
         "project": project,
         "documents_with_sizes": documents_with_sizes,
         "milestones": milestones,
+        "project_completion_certificates": project_completion_certificates,
         "is_test_mode": True,
         "test_token": test_token,
         "test_base_url": "/public-projects/nkbpl.pratyaksh",
@@ -6312,12 +6404,19 @@ async def project_detail(
             ProjectMilestoneDB.project_id == project_id
         ).order_by(ProjectMilestoneDB.milestone_date, ProjectMilestoneDB.display_order).all()
 
+    # Load processed completion certificates for this project
+    project_completion_certificates = db.query(CertificateDB).filter(
+        CertificateDB.project_id == project_id,
+        CertificateDB.processing_status == "completed"
+    ).order_by(desc(CertificateDB.processed_at)).all()
+
     return templates.TemplateResponse("project_detail.html", {
         "request": request,
         "current_user": current_user,
         "project": project,
         "documents_with_sizes": documents_with_sizes,
         "milestones": milestones,
+        "project_completion_certificates": project_completion_certificates,
         "is_test_session": is_test_session,
         "is_quarantined": is_quarantined,
         "test_redirect_url": test_redirect_url,
@@ -12717,6 +12816,14 @@ async def submit_project(
     db.commit()
     db.refresh(new_project)
 
+    if new_project.documents and "completion_certificate" in new_project.documents:
+        try:
+            queued = queue_project_completion_certificates(new_project, db)
+            if queued > 0:
+                logger.info(f"Queued {queued} completion certificate(s) for new project {new_project.id}")
+        except Exception as e:
+            logger.warning(f"Failed to queue completion certificates for project {new_project.id}: {e}")
+
     return RedirectResponse(url="/projects?show_all=true", status_code=302)
 
 
@@ -13024,6 +13131,14 @@ async def update_project(
         db.rollback()
         logger.error(f"[EDIT] Failed to update project {project_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update project: {str(e)}")
+
+    if project.documents and "completion_certificate" in project.documents:
+        try:
+            queued = queue_project_completion_certificates(project, db)
+            if queued > 0:
+                logger.info(f"[EDIT] Queued {queued} completion certificate(s) for project {project_id}")
+        except Exception as e:
+            logger.warning(f"Failed to queue completion certificates for project {project_id}: {e}")
 
     # Redirect back to project detail, preserving return_url
     redirect_url = f"/project/{project_id}"

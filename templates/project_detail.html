@@ -358,9 +358,31 @@
             ('other_documents', 'Other Documents')
         ] %}
 
-        {% if documents_with_sizes %}
+        {% if documents_with_sizes or project_completion_certificates %}
             {% for doc_type, display_name in document_types %}
-                {% if documents_with_sizes.get(doc_type) %}
+                {% if doc_type == 'completion_certificate' and project_completion_certificates %}
+                {# Completion Certificate: show processed certificates from pipeline #}
+                <div class="panel" style="margin-bottom: var(--space-4);">
+                    <h3 class="surface-card__title" style="margin-bottom: var(--space-3);">{{ display_name }}</h3>
+                    <div class="document-grid">
+                        {% for cert in project_completion_certificates %}
+                        <div class="document-card">
+                            <div class="document-card__title" title="{{ cert.project_name }}">{{ cert.project_name or cert.original_filename or 'Certificate' }}</div>
+                            <div style="font-size: 0.85rem; color: #6b7280; margin: 0.5rem 0;">
+                                {% if cert.client_name %}<p style="margin: 0.25rem 0;"><strong>Client:</strong> {{ cert.client_name }}</p>{% endif %}
+                                {% if cert.project_value %}<p style="margin: 0.25rem 0;"><strong>Value:</strong> {{ '%.2f'|format(cert.project_value / 10000000) }} Cr</p>{% endif %}
+                                {% if cert.completion_date %}<p style="margin: 0.25rem 0;"><strong>Completion:</strong> {{ cert.completion_date.strftime('%b %d, %Y') }}</p>{% endif %}
+                            </div>
+                            <div class="document-card__meta">
+                                <span>{{ cert.original_filename or 'Certificate' }}</span>
+                                <a href="/api/certificates/{{ cert.id }}/download" target="_blank">Download</a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% elif doc_type != 'completion_certificate' and documents_with_sizes.get(doc_type) %}
+                {# Other document types: show raw files #}
                 <div class="panel" style="margin-bottom: var(--space-4);">
                     <h3 class="surface-card__title" style="margin-bottom: var(--space-3);">{{ display_name }}</h3>
                     <div class="document-grid">
@@ -395,6 +417,25 @@
                             <div class="document-card__meta">
                                 <span>{% if size_mb %}{{ '%.2f'|format(size_mb) }} MB{% else %}Unknown size{% endif %}</span>
                                 <a href="{% if is_test_mode %}{{ test_base_url }}/project/{{ project.id }}/download/{{ doc_type }}/{{ loop.index0 }}?test_token={{ test_token }}{% else %}/api/project/{{ project.id }}/download/{{ doc_type }}/{{ loop.index0 }}{% endif %}" target="_blank">Download</a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% elif doc_type == 'completion_certificate' and documents_with_sizes.get(doc_type) and not (project_completion_certificates or []) %}
+                {# Completion Certificate: no processed certs yet, show raw files (pending processing) #}
+                <div class="panel" style="margin-bottom: var(--space-4);">
+                    <h3 class="surface-card__title" style="margin-bottom: var(--space-3);">{{ display_name }}</h3>
+                    <p class="panel-subtitle" style="margin-bottom: 1rem;">Processing uploaded certificates. They will appear here once extraction is complete.</p>
+                    <div class="document-grid">
+                        {% for doc_info in documents_with_sizes[doc_type] %}
+                        {% set filename = doc_info.get('original_filename') or doc_info.path.split('/')[-1] %}
+                        {% set size_mb = doc_info.size and (doc_info.size / (1024 * 1024)) %}
+                        <div class="document-card">
+                            <div class="document-card__title" title="{{ filename }}">{{ filename }}</div>
+                            <div class="document-card__meta">
+                                <span>{% if size_mb %}{{ '%.2f'|format(size_mb) }} MB{% else %}Unknown size{% endif %}</span>
+                                <span style="color: #6b7280; font-size: 0.85rem;">Processing...</span>
                             </div>
                         </div>
                         {% endfor %}
