@@ -2017,6 +2017,37 @@ function toggleLessRecommended() {
     }
 }
 
+// Sync seen tender status (for dynamic update when returning via back button)
+async function syncSeenTenderStatus() {
+    if (window.location.pathname !== '/procurement') return;
+    try {
+        const response = await fetch('/api/tenders/seen-ids', { credentials: 'include' });
+        if (!response.ok) return;
+        const data = await response.json();
+        const seenIds = new Set(data.seen_tender_ids || []);
+        document.querySelectorAll('.tender-card-new[data-tender-id]').forEach(function(card) {
+            const tenderId = card.getAttribute('data-tender-id');
+            const statusEl = card.querySelector('.tender-card-new__status');
+            if (tenderId && statusEl) {
+                if (seenIds.has(tenderId)) {
+                    statusEl.classList.add('tender-card-new__status--seen');
+                } else {
+                    statusEl.classList.remove('tender-card-new__status--seen');
+                }
+            }
+        });
+    } catch (e) {
+        console.debug('Could not sync seen tender status:', e);
+    }
+}
+
+// Update seen status when page is restored from back/forward cache (e.g. after viewing a tender)
+window.addEventListener('pageshow', function(event) {
+    if (event.persisted) {
+        syncSeenTenderStatus();
+    }
+});
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     initializeRecommendationToggle();

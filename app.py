@@ -14704,6 +14704,29 @@ async def get_tenders(
         "total": query.count()
     }
 
+
+@app.get("/api/tenders/seen-ids")
+@require_company_details
+async def get_seen_tender_ids(request: Request, db: Session = Depends(get_db)):
+    """Return tender IDs the current user/BD employee has viewed. Used for dynamic seen-status on back navigation."""
+    from core.dependencies import get_current_user_or_bd_employee
+
+    entity, entity_type = get_current_user_or_bd_employee(request, db)
+    if not entity:
+        return {"seen_tender_ids": []}
+
+    seen_tender_ids = []
+    if entity_type == "user":
+        records = db.query(SeenTenderDB).filter(SeenTenderDB.user_id == entity.id).all()
+    elif entity_type == "bd_employee":
+        records = db.query(SeenTenderDB).filter(SeenTenderDB.employee_id == entity.id).all()
+    else:
+        return {"seen_tender_ids": []}
+
+    seen_tender_ids = [r.tender_id for r in records]
+    return {"seen_tender_ids": seen_tender_ids}
+
+
 @app.get("/api/tenders/recommended")
 async def get_recommended_tenders(
     request: Request,
