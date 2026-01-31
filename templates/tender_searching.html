@@ -247,7 +247,7 @@
                                 {% endif %}
                             </p>
                         </div>
-                        <span class="tender-card-new__status">OPEN</span>
+                        <span class="tender-card-new__status{% if tender.id in seen_tender_ids %} tender-card-new__status--seen{% endif %}">{% if tender.tender_type and 'Limited' in tender.tender_type %}{{ tender.tender_type }}{% else %}OPEN{% endif %}</span>
                     </div>
 
                     <!-- Divider -->
