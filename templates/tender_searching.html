@@ -247,7 +247,10 @@
                                 {% endif %}
                             </p>
                         </div>
-                        <span class="tender-card-new__status{% if tender.id in seen_tender_ids %} tender-card-new__status--seen{% endif %}">{% if tender.tender_type and 'Limited' in tender.tender_type %}{{ tender.tender_type }}{% else %}OPEN{% endif %}</span>
+                        <div class="tender-card-new__status-block">
+                            <span class="tender-card-new__status">{% if tender.tender_type and 'Limited' in tender.tender_type %}{{ tender.tender_type }}{% else %}OPEN{% endif %}</span>
+                            {% if tender.id in seen_tender_ids %}<span class="tender-card-new__viewed">Viewed</span>{% endif %}
+                        </div>
                     </div>
 
                     <!-- Divider -->
@@ -560,6 +563,13 @@
     font-size: 0.95rem;
 }
 
+.tender-card-new__status-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+}
+
 .tender-card-new__status {
     padding: 0.35rem 0.9rem;
     border-radius: 999px;
@@ -571,9 +581,11 @@
     white-space: nowrap;
 }
 
-.tender-card-new__status--seen {
-    background: rgba(34, 197, 94, 0.12);
+.tender-card-new__viewed {
+    font-size: 0.7rem;
+    font-weight: 600;
     color: #22c55e;
+    letter-spacing: 0.05em;
 }
 
 /* Divider */
@@ -875,7 +887,7 @@ body.dark-mode .form-group label {
         gap: 0.75rem;
     }
 
-    .tender-card-new__status {
+    .tender-card-new__status-block {
         align-self: flex-start;
     }
 
@@ -936,6 +948,10 @@ body.dark-mode .tender-pill__value {
 
 body.dark-mode .tender-card-new__summary {
     color: #9ca3af;
+}
+
+body.dark-mode .tender-card-new__viewed {
+    color: #34d399;
 }
 
 body.dark-mode .tender-chip {
@@ -1965,7 +1981,10 @@ function createRecommendedTenderCard(tender, category) {
                     ${tender.state && tender.state !== 'Unknown' ? `· ${tender.state}` : ''}
                 </p>
             </div>
-            <span class="tender-card-new__status${tender.is_seen ? ' tender-card-new__status--seen' : ''}">OPEN</span>
+            <div class="tender-card-new__status-block">
+                <span class="tender-card-new__status">OPEN</span>
+                ${tender.is_seen ? '<span class="tender-card-new__viewed">Viewed</span>' : ''}
+            </div>
         </div>
 
         <!-- Divider -->
@@ -2027,13 +2046,18 @@ async function syncSeenTenderStatus() {
         const seenIds = new Set(data.seen_tender_ids || []);
         document.querySelectorAll('.tender-card-new[data-tender-id]').forEach(function(card) {
             const tenderId = card.getAttribute('data-tender-id');
-            const statusEl = card.querySelector('.tender-card-new__status');
-            if (tenderId && statusEl) {
-                if (seenIds.has(tenderId)) {
-                    statusEl.classList.add('tender-card-new__status--seen');
-                } else {
-                    statusEl.classList.remove('tender-card-new__status--seen');
+            const statusBlock = card.querySelector('.tender-card-new__status-block');
+            if (!tenderId || !statusBlock) return;
+            let viewedEl = statusBlock.querySelector('.tender-card-new__viewed');
+            if (seenIds.has(tenderId)) {
+                if (!viewedEl) {
+                    viewedEl = document.createElement('span');
+                    viewedEl.className = 'tender-card-new__viewed';
+                    viewedEl.textContent = 'Viewed';
+                    statusBlock.appendChild(viewedEl);
                 }
+            } else {
+                if (viewedEl) viewedEl.remove();
             }
         });
     } catch (e) {
@@ -2621,7 +2645,10 @@ function displaySearchResults(result, cardId) {
                                     ${tender.state && tender.state !== 'Unknown' ? '· ' + tender.state : ''}
                                 </p>
                             </div>
-                            <span class="tender-card-new__status${tender.is_seen ? ' tender-card-new__status--seen' : ''}">OPEN</span>
+                            <div class="tender-card-new__status-block">
+                                <span class="tender-card-new__status">OPEN</span>
+                                ${tender.is_seen ? '<span class="tender-card-new__viewed">Viewed</span>' : ''}
+                            </div>
                         </div>
 
                         <!-- Divider -->
