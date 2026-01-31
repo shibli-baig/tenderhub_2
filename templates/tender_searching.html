@@ -57,7 +57,7 @@
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-outline" onclick="closeAddTenderLinkModal()">Cancel</button>
-            <button type="button" class="btn btn-primary" onclick="submitTenderLink()">Submit</button>
+            <button type="button" class="btn btn-primary" onclick="submitTenderLink(event)">Submit</button>
         </div>
     </div>
 </div>
@@ -2080,10 +2080,51 @@ function closeAddTenderLinkModal() {
     document.getElementById('addTenderLinkForm').reset();
 }
 
-function submitTenderLink() {
-    // For now, this does nothing as requested
-    // Just close the modal
-    closeAddTenderLinkModal();
+async function submitTenderLink(event) {
+    const urlInput = document.getElementById('tender_link');
+    const url = urlInput.value.trim();
+    
+    if (!url) {
+        alert('Please enter a tender URL');
+        return;
+    }
+    
+    // Show loading state
+    const submitBtn = event?.target || document.querySelector('#addTenderLinkModal .btn-primary');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Validating...';
+    
+    try {
+        // Validate URL with backend
+        const formData = new FormData();
+        formData.append('url', url);
+        
+        const response = await fetch('/api/tenders/validate-url', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.valid) {
+            // URL is valid - for now just close the modal
+            // In the future, this is where you would process the URL
+            alert('URL is valid! (Processing will be implemented later)');
+            closeAddTenderLinkModal();
+        } else {
+            // URL is invalid - show error and keep modal open
+            alert(result.message || 'Invalid URL. Please enter a valid tender link from an allowed government e-procurement portal.');
+            urlInput.focus();
+        }
+    } catch (error) {
+        console.error('Error validating URL:', error);
+        alert('An error occurred while validating the URL. Please try again.');
+    } finally {
+        // Restore button state
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
 }
 
 // Toggle edit mode for cards

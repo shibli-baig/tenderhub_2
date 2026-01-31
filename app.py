@@ -27,6 +27,7 @@ and favorites functionality while maintaining backward compatibility.
 """
 
 from fastapi import FastAPI, HTTPException, Depends, Request, Form, File, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -11238,6 +11239,40 @@ async def shortlist_tender(
     create_deadline_notifications(entity_id, tender_id, db)
 
     return {"message": "Tender shortlisted successfully", "success": True}
+
+@app.post("/api/tenders/validate-url")
+async def validate_tender_url_endpoint(
+    request: Request,
+    url: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Validate a tender URL against allowed government e-procurement portals.
+    
+    Returns:
+        JSON response with validation result and message
+    """
+    from core.tender_url_validator import validate_tender_url
+    
+    is_valid, message = validate_tender_url(url)
+    
+    if is_valid:
+        return JSONResponse(
+            status_code=200,
+            content={
+                "valid": True,
+                "message": message
+            }
+        )
+    else:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "valid": False,
+                "message": message
+            }
+        )
+
 
 @app.post("/api/tenders/reject")
 async def reject_tender(
