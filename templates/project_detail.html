@@ -370,8 +370,11 @@
                             <div class="document-card__title" title="{{ cert.project_name }}">{{ cert.project_name or cert.original_filename or 'Certificate' }}</div>
                             <div style="font-size: 0.85rem; color: #6b7280; margin: 0.5rem 0;">
                                 {% if cert.client_name %}<p style="margin: 0.25rem 0;"><strong>Client:</strong> {{ cert.client_name }}</p>{% endif %}
+                                {% if cert.location %}<p style="margin: 0.25rem 0;"><strong>Location:</strong> {{ cert.location }}</p>{% endif %}
+                                {% if cert.consultancy_fee_inr %}<p style="margin: 0.25rem 0;"><strong>Consultancy fee:</strong> {{ cert.consultancy_fee_inr }}</p>{% endif %}
+                                {% if cert.duration %}<p style="margin: 0.25rem 0;"><strong>Duration:</strong> {{ cert.duration }}</p>{% endif %}
                                 {% if cert.project_value %}<p style="margin: 0.25rem 0;"><strong>Value:</strong> {{ '%.2f'|format(cert.project_value / 10000000) }} Cr</p>{% endif %}
-                                {% if cert.completion_date %}<p style="margin: 0.25rem 0;"><strong>Completion:</strong> {{ cert.completion_date.strftime('%b %d, %Y') }}</p>{% endif %}
+                                {% if cert.completion_date %}<p style="margin: 0.25rem 0;"><strong>Completion:</strong> {{ cert.completion_date.strftime('%b %d, %Y') }}</p>{% elif cert.end_date %}<p style="margin: 0.25rem 0;"><strong>End date:</strong> {{ cert.end_date.strftime('%b %d, %Y') }}</p>{% endif %}
                             </div>
                             <div class="document-card__meta">
                                 <span>{{ cert.original_filename or 'Certificate' }}</span>

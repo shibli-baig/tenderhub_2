@@ -236,6 +236,9 @@
         <div class="tender-cards-list">
             {% for tender in tenders %}
                 <article class="tender-card-new" data-tender-id="{{ tender.id }}" onclick="window.location.href='/tender/{{ tender.id }}'">
+                    {% if tender.id in seen_tender_ids %}
+                    <div class="tender-card-new__ribbon"><span>Viewed</span></div>
+                    {% endif %}
                     <!-- Header: Title + Authority + Status -->
                     <div class="tender-card-new__header">
                         <div class="tender-card-new__title-block">
@@ -249,7 +252,6 @@
                         </div>
                         <div class="tender-card-new__status-block">
                             <span class="tender-card-new__status">{% if tender.tender_type and 'Limited' in tender.tender_type %}{{ tender.tender_type }}{% else %}OPEN{% endif %}</span>
-                            {% if tender.id in seen_tender_ids %}<span class="tender-card-new__viewed">Viewed</span>{% endif %}
                         </div>
                     </div>
 
@@ -520,6 +522,8 @@
 }
 
 .tender-card-new {
+    position: relative;
+    overflow: hidden;
     background: var(--card-bg, #ffffff);
     border-radius: 12px;
     border: 1px solid var(--card-border, #e5e7eb);
@@ -581,11 +585,27 @@
     white-space: nowrap;
 }
 
-.tender-card-new__viewed {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #22c55e;
-    letter-spacing: 0.05em;
+/* Viewed Ribbon */
+.tender-card-new__ribbon {
+    position: absolute;
+    top: 18px;
+    right: -32px;
+    width: 120px;
+    transform: rotate(45deg);
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    text-align: center;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.tender-card-new__ribbon span {
+    display: block;
+    padding: 5px 0;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
 }
 
 /* Divider */
@@ -2046,18 +2066,17 @@ async function syncSeenTenderStatus() {
         const seenIds = new Set(data.seen_tender_ids || []);
         document.querySelectorAll('.tender-card-new[data-tender-id]').forEach(function(card) {
             const tenderId = card.getAttribute('data-tender-id');
-            const statusBlock = card.querySelector('.tender-card-new__status-block');
-            if (!tenderId || !statusBlock) return;
-            let viewedEl = statusBlock.querySelector('.tender-card-new__viewed');
+            if (!tenderId) return;
+            let ribbonEl = card.querySelector('.tender-card-new__ribbon');
             if (seenIds.has(tenderId)) {
-                if (!viewedEl) {
-                    viewedEl = document.createElement('span');
-                    viewedEl.className = 'tender-card-new__viewed';
-                    viewedEl.textContent = 'Viewed';
-                    statusBlock.appendChild(viewedEl);
+                if (!ribbonEl) {
+                    ribbonEl = document.createElement('div');
+                    ribbonEl.className = 'tender-card-new__ribbon';
+                    ribbonEl.innerHTML = '<span>Viewed</span>';
+                    card.insertBefore(ribbonEl, card.firstChild);
                 }
             } else {
-                if (viewedEl) viewedEl.remove();
+                if (ribbonEl) ribbonEl.remove();
             }
         });
     } catch (e) {

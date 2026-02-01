@@ -288,6 +288,106 @@ RULES:
 CERTIFICATE_MAX_PAGES = int(os.getenv("CERTIFICATE_MAX_PAGES", "6"))
 CERTIFICATE_EXTRACTION_ATTEMPTS = int(os.getenv("CERTIFICATE_EXTRACTION_ATTEMPTS", "2"))
 
+# Completion Certificate (CC) extraction prompt - text-in, JSON-out via GPT
+CC_EXTRACTION_PROMPT_TEMPLATE = """You are an expert at extracting structured information from Indian infrastructure consultancy Completion Certificates.
+
+Extract the following 20 fields from the certificate text provided. If a field is not present or cannot be determined, use "NOT FOUND".
+
+Certificate Text:
+{certificate_text}
+
+Extract and return ONLY a valid JSON object with the following structure:
+
+{{
+    "project_title": "Extract the project title/name",
+    "sectors": "Extract main sectors (e.g., Transportation, Water, Energy)",
+    "sub_sectors": "Extract sub-sectors or specific categories",
+    "services_rendered": "Extract services provided (e.g., PMC, DPR, Design, Supervision)",
+    "metrics": [
+        {{
+            "metric_name": "Name of metric (e.g., Road Length, Bridges, Budget)",
+            "value": "Numeric value",
+            "unit": "Unit (e.g., km, nos, Cr, MW)",
+            "notes": "Any additional context"
+        }}
+    ],
+    "consultancy_fee_inr": "Extract consultancy fee in INR (e.g., ₹5.2 Crores)",
+    "scope_of_work": "Extract scope of work description",
+    "start_date": "Extract start date in DD-MMM-YYYY format if possible",
+    "end_date": "Extract end date in DD-MMM-YYYY format if possible",
+    "duration": "Extract duration (e.g., 36 months, 3 years)",
+    "issuing_authority_details": "Extract issuing authority name and details",
+    "performance_remarks": "Extract any performance remarks or ratings",
+    "location": "Extract project location",
+    "certificate_number": "Extract certificate number or reference number",
+    "signing_authority_details": "Extract name and designation of signing authority",
+    "role_lead_jv": "Extract role - Lead Consultant or JV Partner",
+    "jv_partners": "Extract JV partner names if applicable, otherwise NOT FOUND",
+    "funding_agency": "Extract funding agency or sponsor",
+    "confidence_score": 0.85
+}}
+
+CRITICAL INSTRUCTIONS:
+1. Extract ALL metrics found in the certificate (there can be 20+ metrics)
+2. Look for metrics in tables, lists, and body text
+3. Be verbatim - copy exact text from certificate
+4. For dates, try to standardize format but keep original if unclear
+5. Assign confidence_score between 0.0 and 1.0 based on clarity of information
+6. Return ONLY the JSON object, no additional text
+
+Return the JSON now:"""
+
+
+def extract_cc_data_with_llm(certificate_text: str) -> Optional[Dict[str, Any]]:
+    """
+    Extract structured data from certificate text using OpenAI GPT.
+    Uses CC_EXTRACTION_PROMPT; returns parsed JSON or None on failure.
+    """
+    if not certificate_text or not certificate_text.strip():
+        logger.warning("extract_cc_data_with_llm: empty certificate_text")
+        return None
+    if not OPENAI_API_KEY or not openai_client:
+        logger.warning("OpenAI API key not configured; cannot run CC extraction")
+        return None
+
+    prompt = CC_EXTRACTION_PROMPT_TEMPLATE.format(certificate_text=certificate_text.strip())
+
+    try:
+        response = openai_client.chat.completions.create(
+            model=EXTRACTION_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a data extraction expert specializing in infrastructure consultancy documents. You always return valid JSON.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=EXTRACTION_TEMPERATURE,
+            max_tokens=EXTRACTION_MAX_TOKENS if EXTRACTION_MAX_TOKENS else 4096,
+        )
+
+        result_text = (response.choices[0].message.content or "").strip()
+        if not result_text:
+            logger.warning("extract_cc_data_with_llm: empty response")
+            return None
+
+        # Remove markdown code blocks if present
+        if result_text.startswith("```"):
+            result_text = result_text.split("```")[1]
+            if result_text.startswith("json"):
+                result_text = result_text[4:]
+            result_text = result_text.strip()
+
+        data = json.loads(result_text)
+        return data
+
+    except json.JSONDecodeError as e:
+        logger.error(f"extract_cc_data_with_llm: JSON parse error: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"extract_cc_data_with_llm: {e}")
+        return None
+
 
 def parse_consultancy_fee(fee_str: str) -> Optional[float]:
     """
@@ -377,16 +477,22 @@ def validate_extraction_quality(parsed_data: Dict[str, Any], extracted_text: str
         if special_char_ratio > 0.5:
             return False, "Text appears corrupted/garbled (>50% special chars)"
     
-    # Count "NOT FOUND" or empty critical fields
-    critical_fields = ['project_name', 'client_name', 'location']
-    missing_count = 0
-    for field in critical_fields:
-        value = parsed_data.get(field)
-        if not value or value in ['NOT FOUND', 'Not Found', 'NOT_FOUND', 'Not found', 'N/A', 'NA']:
-            missing_count += 1
-    
-    if missing_count >= 2:  # At least 2 of 3 critical fields missing
-        return False, f"Too many critical fields missing ({missing_count}/3: project_name, client_name, location)"
+    # Require project_name; allow missing client_name if location present (CC prompt does not return client_name)
+    not_found_vals = {'NOT FOUND', 'Not Found', 'NOT_FOUND', 'Not found', 'N/A', 'NA'}
+    def _is_missing(v: Any) -> bool:
+        if v is None:
+            return True
+        s = (v if isinstance(v, str) else str(v)).strip()
+        return not s or s in not_found_vals
+
+    project_name_ok = not _is_missing(parsed_data.get("project_name"))
+    if not project_name_ok:
+        return False, "project_name missing or NOT FOUND"
+
+    client_ok = not _is_missing(parsed_data.get("client_name"))
+    location_ok = not _is_missing(parsed_data.get("location"))
+    if not client_ok and not location_ok:
+        return False, "At least one of client_name or location required"
     
     # Check confidence score if available
     confidence = parsed_data.get('confidence_score')
@@ -556,6 +662,42 @@ class CertificateProcessor:
             logger.error(f"Claude extraction error: {e}")
             raise
 
+    # Text-only extraction for CC prompt pipeline (images -> raw text)
+    _CERTIFICATE_TEXT_ONLY_INSTRUCTION = (
+        "Extract the complete raw text of this certificate document. "
+        "Preserve order and structure. Return only the text, no JSON or commentary."
+    )
+
+    def _request_certificate_text_only(self, image_payload: List[Dict[str, Any]]) -> str:
+        """
+        Call GPT with the image payload and return only the full raw text of the certificate.
+        Used as input for extract_cc_data_with_llm in the CC prompt pipeline.
+        """
+        if not OPENAI_API_KEY or not openai_client:
+            raise ValueError("OpenAI API key not configured")
+
+        messages = [
+            {"role": "system", "content": "You extract the full text from certificate documents. Output only the raw text, no JSON."},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": self._CERTIFICATE_TEXT_ONLY_INSTRUCTION},
+                    *image_payload,
+                ],
+            },
+        ]
+
+        response = _call_chat_completion_with_temperature_fallback(
+            model=EXTRACTION_MODEL,
+            messages=messages,
+            temperature=0.0,
+            max_completion_tokens=6000,
+        )
+        raw = (response.choices[0].message.content or "").strip()
+        if not raw:
+            raise ValueError("Model returned empty text for certificate")
+        return raw
+
     def _extract_json(self, text: str) -> Dict[str, Any]:
         """Parse raw model output into JSON."""
         if not text:
@@ -650,6 +792,68 @@ class CertificateProcessor:
         normalized["sub_sectors"] = self._normalize_list(normalized.get("sub_sectors"))
         normalized["jv_partners"] = self._normalize_list(normalized.get("jv_partners"))
         normalized["metrics"] = self._normalize_metrics(normalized.get("metrics"))
+
+        try:
+            confidence = float(payload.get("confidence_score", 0.8))
+            normalized["confidence_score"] = max(0.0, min(1.0, confidence))
+        except (TypeError, ValueError):
+            normalized["confidence_score"] = 0.8
+
+        return normalized
+
+    _NOT_FOUND_VALUES = frozenset(
+        {"NOT FOUND", "Not Found", "NOT_FOUND", "Not found", "N/A", "NA", "n/a", "na"}
+    )
+
+    def _cc_string_or_none(self, value: Any) -> Optional[str]:
+        """Return normalized string or None if value is NOT FOUND / empty."""
+        s = self._normalize_string(value)
+        if not s or s in self._NOT_FOUND_VALUES:
+            return None
+        return s
+
+    def _normalize_cc_list(self, value: Any) -> List[str]:
+        """Normalize list from CC prompt; treat NOT FOUND and filter list entries."""
+        raw = self._normalize_list(value)
+        return [x for x in raw if x and x not in self._NOT_FOUND_VALUES]
+
+    def _normalize_cc_payload(
+        self,
+        payload: Dict[str, Any],
+        certificate_text: str,
+        filename: str = "Certificate",
+    ) -> Dict[str, Any]:
+        """
+        Normalize JSON from CC extraction prompt to the shape expected by CertificateDB.
+        Maps project_title -> project_name; treats NOT FOUND as null/empty; sets verbatim_certificate = certificate_text.
+        """
+        project_title = self._cc_string_or_none(payload.get("project_title"))
+        project_name = project_title or self._cc_string_or_none(payload.get("project_name")) or filename
+
+        normalized: Dict[str, Any] = {}
+        normalized["project_name"] = project_name
+        normalized["client_name"] = self._cc_string_or_none(payload.get("client_name"))  # not in CC prompt
+        normalized["location"] = self._cc_string_or_none(payload.get("location"))
+        normalized["location_original_script"] = self._cc_string_or_none(payload.get("location_original_script"))
+        normalized["scope_of_work"] = self._cc_string_or_none(payload.get("scope_of_work"))
+        normalized["project_value_inr"] = self._cc_string_or_none(payload.get("project_value_inr"))  # not in CC prompt
+        normalized["consultancy_fee_inr"] = self._cc_string_or_none(payload.get("consultancy_fee_inr"))
+        normalized["start_date"] = self._cc_string_or_none(payload.get("start_date"))
+        normalized["end_date"] = self._cc_string_or_none(payload.get("end_date"))
+        normalized["completion_date"] = self._cc_string_or_none(payload.get("completion_date"))  # not in CC prompt
+        normalized["duration"] = self._cc_string_or_none(payload.get("duration"))
+        normalized["issuing_authority_details"] = self._cc_string_or_none(payload.get("issuing_authority_details"))
+        normalized["signing_authority_details"] = self._cc_string_or_none(payload.get("signing_authority_details"))
+        normalized["certificate_number"] = self._cc_string_or_none(payload.get("certificate_number"))
+        normalized["performance_remarks"] = self._cc_string_or_none(payload.get("performance_remarks"))
+        normalized["role_lead_jv"] = self._cc_string_or_none(payload.get("role_lead_jv"))
+        normalized["funding_agency"] = self._cc_string_or_none(payload.get("funding_agency"))
+        normalized["verbatim_certificate"] = (certificate_text or "").strip() or None
+        normalized["services_rendered"] = self._normalize_cc_list(payload.get("services_rendered"))
+        normalized["sectors"] = self._normalize_cc_list(payload.get("sectors"))
+        normalized["sub_sectors"] = self._normalize_cc_list(payload.get("sub_sectors"))
+        normalized["jv_partners"] = self._normalize_cc_list(payload.get("jv_partners"))
+        normalized["metrics"] = self._normalize_metrics(payload.get("metrics"))
 
         try:
             confidence = float(payload.get("confidence_score", 0.8))
@@ -880,72 +1084,27 @@ class CertificateProcessor:
             
             image_payload = self._load_document_images(actual_file_path)
 
-            # Determine if Claude alternation is available
-            claude_available = USE_CLAUDE_ALTERNATION and ANTHROPIC_API_KEY and anthropic_client
-            
-            # Get model preference for this certificate (alternates across batch)
-            preferred_model = self._get_next_model_preference()
+            # CC pipeline: images -> raw text -> user prompt (extract_cc_data_with_llm) -> normalize -> validate
+            logger.info(f"📊 Extracting raw text from {len(image_payload)} page(s) for CC pipeline")
+            certificate_text = self._request_certificate_text_only(image_payload)
+            if not certificate_text or len(certificate_text.strip()) < 50:
+                raise ValueError("Certificate text extraction returned too little text")
 
-            if claude_available:
-                logger.info(f"📊 Sending {len(image_payload)} page(s) for extraction (alternating strategy: start with {preferred_model.upper()})")
-            else:
-                logger.info(f"📊 Sending {len(image_payload)} page(s) to GPT for structured extraction")
+            logger.info("📊 Running CC extraction prompt on certificate text")
+            data = extract_cc_data_with_llm(certificate_text)
+            if not data:
+                raise ValueError("CC extraction (extract_cc_data_with_llm) returned no data")
 
-            normalized_payload: Optional[Dict[str, Any]] = None
-            extracted_text = ""
-            validation_reason = ""
-            # attempts_used and extraction_model_used already initialized above
+            normalized_payload = self._normalize_cc_payload(data, certificate_text, filename=filename)
+            extracted_text = normalized_payload.get("verbatim_certificate") or certificate_text
 
-            # Build extraction sequence with preferred model first for load balancing
-            # If preferred is GPT: GPT1 → Claude1 → GPT2 → Claude2
-            # If preferred is Claude: Claude1 → GPT1 → Claude2 → GPT2
-            extraction_sequence = []
-            for i in range(1, CERTIFICATE_EXTRACTION_ATTEMPTS + 1):
-                if preferred_model == 'gpt':
-                    extraction_sequence.append(('gpt', i))
-                    if claude_available:
-                        extraction_sequence.append(('claude', i))
-                else:  # preferred_model == 'claude'
-                    if claude_available:
-                        extraction_sequence.append(('claude', i))
-                    extraction_sequence.append(('gpt', i))
+            is_valid, validation_reason = validate_extraction_quality(normalized_payload, extracted_text)
+            if not is_valid:
+                raise ValueError(f"CC extraction failed validation: {validation_reason}")
 
-            for model_type, attempt_num in extraction_sequence:
-                try:
-                    start_time = time.time()
-                    
-                    if model_type == 'gpt':
-                        logger.info(f"🔄 Attempt {attempt_num} with GPT ({EXTRACTION_MODEL})...")
-                        raw_payload = self._request_certificate_json(image_payload)
-                        extraction_model_used = EXTRACTION_MODEL
-                    else:  # claude
-                        logger.info(f"🔄 Attempt {attempt_num} with Claude ({CLAUDE_EXTRACTION_MODEL})...")
-                        raw_payload = self._request_certificate_json_claude(image_payload)
-                        extraction_model_used = CLAUDE_EXTRACTION_MODEL
-                    
-                    response_time = time.time() - start_time
-                    logger.info(f"⏱️ {model_type.upper()} response time: {response_time:.2f}s")
-
-                    normalized_payload = self._normalize_payload(raw_payload)
-                    extracted_text = normalized_payload.get("verbatim_certificate") or json.dumps(raw_payload, ensure_ascii=False)
-
-                    is_valid, validation_reason = validate_extraction_quality(normalized_payload, extracted_text)
-                    if is_valid:
-                        logger.info(f"✅ Extraction validated using {model_type.upper()} on attempt {attempt_num} | Quality: {normalized_payload.get('confidence_score', 0):.2f}")
-                        attempts_used = len([x for x in extraction_sequence[:extraction_sequence.index((model_type, attempt_num)) + 1]])
-                        break
-
-                    logger.warning(f"❌ {model_type.upper()} attempt {attempt_num} failed validation: {validation_reason}")
-                    normalized_payload = None
-
-                except Exception as e:
-                    response_time = time.time() - start_time if 'start_time' in locals() else 0
-                    logger.error(f"❌ {model_type.upper()} attempt {attempt_num} failed after {response_time:.2f}s | Error: {str(e)[:200]}")
-                    normalized_payload = None
-                    continue
-
-            if not normalized_payload:
-                raise ValueError(f"Unable to extract reliable data from certificate after all attempts: {validation_reason}")
+            attempts_used = 1
+            extraction_model_used = EXTRACTION_MODEL
+            logger.info(f"✅ CC extraction validated | Quality: {normalized_payload.get('confidence_score', 0):.2f}")
 
             project_name = normalized_payload["project_name"] or f"Certificate {filename}"
             services = normalized_payload.get("services_rendered") or []
@@ -999,8 +1158,8 @@ class CertificateProcessor:
                 file_size=file_size,
                 extracted_text=extracted_text,
                 processing_status="completed",
-                extraction_method="vision_direct",
-                parsing_method=f"{extraction_model_used}_json",
+                extraction_method="vision_text_then_cc_json",
+                parsing_method=f"{extraction_model_used}_cc_json",
                 extraction_quality_score=normalized_payload.get("confidence_score"),
                 extraction_attempts=attempts_used or 1,
                 processed_at=datetime.utcnow()
@@ -1114,8 +1273,8 @@ class CertificateProcessor:
                         extracted_text="",
                         processing_status="failed",
                         processing_error=str(e),
-                        extraction_method="vision_direct",
-                        parsing_method=f"{failed_model}_json",
+                        extraction_method="vision_text_then_cc_json",
+                        parsing_method=f"{failed_model}_cc_json",
                         extraction_quality_score=0.0,
                         extraction_attempts=attempts_value,
                         created_at=datetime.utcnow(),

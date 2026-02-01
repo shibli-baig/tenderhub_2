@@ -604,6 +604,11 @@
                 <span>🏢</span>
                 <span>{{ certificate.client_name or 'Client Not Specified' }}</span>
             </div>
+            {% if confidence_percentage is not none %}
+            <div class="hero-meta">
+                <span class="confidence-chip">{{ confidence_percentage }}% confidence</span>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Main Grid -->
@@ -851,6 +856,12 @@
                 <div class="metadata-item">
                     <strong>Processed</strong>
                     {{ certificate.processed_at.strftime('%B %d, %Y at %I:%M %p') }}
+                </div>
+                {% endif %}
+                {% if confidence_percentage is not none %}
+                <div class="metadata-item">
+                    <strong>Extraction confidence</strong>
+                    {{ confidence_percentage }}%
                 </div>
                 {% endif %}
             </div>
