@@ -1222,6 +1222,9 @@ def queue_project_completion_certificates(project: ProjectDB, db: Session) -> in
             logger.info(f"Skipping duplicate certificate for project {project.id}: {original_filename}")
             continue
 
+        s3_key = None
+        if isinstance(entry, dict) and entry.get("s3_key"):
+            s3_key = entry["s3_key"]
         try:
             enqueue_certificate(
                 user_id=project.user_id,
@@ -1229,6 +1232,7 @@ def queue_project_completion_certificates(project: ProjectDB, db: Session) -> in
                 filename=original_filename,
                 file_hash=file_hash,
                 file_size=file_size,
+                s3_key=s3_key,
                 project_id=project.id,
             )
             queued += 1
@@ -12760,19 +12764,31 @@ async def submit_project(
         for file in doc_files:
             if hasattr(file, 'filename') and file.filename:  # It's a file upload
                 try:
-                    # Generate unique filename
+                    content = await file.read()
                     file_extension = os.path.splitext(file.filename)[1]
                     unique_filename = f"{uuid.uuid4()}{file_extension}"
                     file_path = f"uploads/projects/{unique_filename}"
 
                     with open(file_path, "wb") as buffer:
-                        buffer.write(await file.read())
+                        buffer.write(content)
 
-                    # Store both file path and original filename
-                    file_entries.append({
-                        "file_path": file_path,
-                        "original_filename": file.filename
-                    })
+                    entry = {"file_path": file_path, "original_filename": file.filename}
+                    if doc_type == "completion_certificate":
+                        try:
+                            from s3_utils import upload_to_s3
+                            import mimetypes
+                            s3_key = f"projects/{current_user.id}/completion_certificate/{unique_filename}"
+                            content_type, _ = mimetypes.guess_type(file.filename)
+                            success, _ = upload_to_s3(
+                                file_data=content,
+                                s3_key=s3_key,
+                                content_type=content_type or "application/octet-stream",
+                            )
+                            if success:
+                                entry["s3_key"] = s3_key
+                        except Exception as s3_err:
+                            logger.warning(f"S3 upload for completion cert (add project) failed: {s3_err}")
+                    file_entries.append(entry)
                 except Exception as e:
                     logger.error(f"Error uploading {doc_type} file: {e}")
                     continue
@@ -13012,19 +13028,34 @@ async def update_project(
         for file in doc_files:
             if hasattr(file, 'filename') and file.filename:  # It's a file upload
                 try:
-                    # Generate unique filename
+                    content = await file.read()
                     file_extension = os.path.splitext(file.filename)[1]
                     unique_filename = f"{uuid.uuid4()}{file_extension}"
                     file_path = f"uploads/projects/{unique_filename}"
 
                     with open(file_path, "wb") as buffer:
-                        buffer.write(await file.read())
+                        buffer.write(content)
 
-                    # Store both file path and original filename
-                    file_entries.append({
-                        "file_path": file_path,
-                        "original_filename": file.filename
-                    })
+                    entry = {"file_path": file_path, "original_filename": file.filename}
+                    # Upload completion certificates to S3 so certificate workers can fetch after restart (ephemeral disk)
+                    if doc_type == "completion_certificate":
+                        try:
+                            from s3_utils import upload_to_s3
+                            import mimetypes
+                            s3_key = f"projects/{project_id}/completion_certificate/{unique_filename}"
+                            content_type, _ = mimetypes.guess_type(file.filename)
+                            success, _ = upload_to_s3(
+                                file_data=content,
+                                s3_key=s3_key,
+                                content_type=content_type or "application/octet-stream",
+                            )
+                            if success:
+                                entry["s3_key"] = s3_key
+                                logger.info(f"[EDIT] Completion certificate uploaded to S3: {s3_key}")
+                        except Exception as s3_err:
+                            logger.warning(f"[EDIT] S3 upload for completion cert failed (worker may use local path): {s3_err}")
+
+                    file_entries.append(entry)
                     logger.info(f"[EDIT] Successfully uploaded: {file.filename} -> {file_path}")
                 except Exception as e:
                     logger.error(f"[EDIT] Error uploading {doc_type} file {file.filename}: {e}")

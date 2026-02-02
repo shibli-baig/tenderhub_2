@@ -481,13 +481,26 @@
 {% block extra_scripts %}
 <script>
 (function() {
-  // When opened in a new tab from past projects, back button closes this tab
+  // When opened in a new tab from past projects: browser Back and in-page Back close this tab
+  function closeIfOpenedFromElsewhere() {
+    try { window.close(); } catch (e) {}
+  }
   try {
     history.pushState({ fromPastProjects: true }, '', location.href);
-    window.addEventListener('popstate', function() {
-      window.close();
-    });
+    window.addEventListener('popstate', closeIfOpenedFromElsewhere);
   } catch (e) {}
+
+  // In-page back link: close tab instead of navigating when this tab was opened from past projects
+  document.addEventListener('DOMContentLoaded', function() {
+    var backBtn = document.querySelector('a.back-button');
+    if (backBtn && window.opener) {
+      backBtn.href = 'javascript:void(0)';
+      backBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        closeIfOpenedFromElsewhere();
+      });
+    }
+  });
 })();
 </script>
 <style>

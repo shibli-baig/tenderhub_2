@@ -1095,7 +1095,7 @@ class FilterPresetDB(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = relationship("UserDB", foreign_keys=[user_id])
+    user = relationship("UserDB", foreign_keys=[user_id], overlaps="filter_presets")
 
     # Indexes
     __table_args__ = (
