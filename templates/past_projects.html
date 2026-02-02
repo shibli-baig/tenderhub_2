@@ -518,7 +518,7 @@
                         </div>
                         <div class="project-card-new__actions">
                             {% if not is_test_mode %}
-                            <button type="button" class="project-btn project-btn--secondary" onclick="event.stopPropagation(); window.location.href='/edit_project/{{ project.id }}'">
+                            <button type="button" class="project-btn project-btn--secondary" onclick="event.stopPropagation(); openEditInNewTab({{ project.id }})">
                                 ✏️ Edit
                             </button>
                             {% endif %}
@@ -9248,19 +9248,25 @@ function handleAllProjectsClick() {
     form.submit();
 }
 
-// Navigate to project detail page with return URL
+// Open edit project in a new tab so the past projects page keeps its scroll position
+function openEditInNewTab(projectId) {
+    if (IS_TEST_MODE) {
+        window.open(`${TEST_BASE_URL}/edit_project/${projectId}?test_token=${TEST_TOKEN}`, '_blank');
+    } else {
+        window.open('/edit_project/' + projectId, '_blank');
+    }
+}
+
+// Open project detail in a new tab so the past projects page keeps its scroll position
 function navigateToProject(projectId) {
-    // Capture current URL with all query parameters as return URL
     const currentUrl = window.location.href;
     const returnUrl = encodeURIComponent(currentUrl);
-    
-    // Build project detail URL with return_url parameter
     if (IS_TEST_MODE) {
         const url = `${TEST_BASE_URL}/project/${projectId}?test_token=${TEST_TOKEN}&return_url=${returnUrl}`;
-        window.location.href = url;
+        window.open(url, '_blank');
     } else {
         const url = `/project/${projectId}?return_url=${returnUrl}`;
-        window.location.href = url;
+        window.open(url, '_blank');
     }
 }
 

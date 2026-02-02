@@ -235,7 +235,7 @@
     {% if tenders %}
         <div class="tender-cards-list">
             {% for tender in tenders %}
-                <article class="tender-card-new" data-tender-id="{{ tender.id }}" onclick="window.location.href='/tender/{{ tender.id }}'">
+                <article class="tender-card-new" data-tender-id="{{ tender.id }}" onclick="openTenderInNewTab('{{ tender.id }}')">
                     {% if tender.id in seen_tender_ids %}
                     <div class="tender-card-new__ribbon"><span>Viewed</span></div>
                     {% endif %}
@@ -326,7 +326,7 @@
                             <button type="button" class="tender-btn tender-btn--secondary" onclick="event.stopPropagation(); openReminderModalForTender('{{ tender.id }}', '{{ tender.title|replace("'", "\\'") }}')">
                                 🔔 Set Reminder
                             </button>
-                            <button type="button" class="tender-btn tender-btn--primary" onclick="event.stopPropagation(); window.location.href='/tender/{{ tender.id }}'">
+                            <button type="button" class="tender-btn tender-btn--primary" onclick="event.stopPropagation(); openTenderInNewTab('{{ tender.id }}')">
                                 View Details →
                             </button>
                         </div>
@@ -1772,6 +1772,11 @@ body.dark-mode .tender-card-new__footer {
 </style>
 
 <script>
+// Open tender detail in a new tab so the search page keeps its scroll position
+function openTenderInNewTab(tenderId) {
+    window.open('/tender/' + tenderId, '_blank');
+}
+
 const searchForm = document.getElementById('searchForm');
 if (searchForm) {
     searchForm.addEventListener('submit', function(e) { e.preventDefault(); });
@@ -1957,7 +1962,7 @@ function createRecommendedTenderCard(tender, category) {
     const article = document.createElement('article');
     article.className = 'tender-card-new';
     article.dataset.tenderId = tender.id;
-    article.onclick = () => window.location.href = `/tender/${tender.id}`;
+    article.onclick = () => openTenderInNewTab(tender.id);
 
     // Determine badge class and text
     let badgeClass, badgeText;
@@ -2654,7 +2659,7 @@ function displaySearchResults(result, cardId) {
                 else if (tender.category === 'Services') categoryIcon = '💼';
 
                 return `
-                    <article class="tender-card-new" data-tender-id="${tender.id}" onclick="window.location.href='/tender/${tender.id}'">
+                    <article class="tender-card-new" data-tender-id="${tender.id}" onclick="openTenderInNewTab('${tender.id}')">
                         <!-- Header: Title + Authority + Status -->
                         <div class="tender-card-new__header">
                             <div class="tender-card-new__title-block">
@@ -2707,7 +2712,7 @@ function displaySearchResults(result, cardId) {
                                 <button type="button" class="tender-btn tender-btn--secondary" onclick="event.stopPropagation(); openReminderModalForTender('${tender.id}', '${(tender.title || '').replace(/'/g, "\\'")}')">
                                     🔔 Set Reminder
                                 </button>
-                                <button type="button" class="tender-btn tender-btn--primary" onclick="event.stopPropagation(); window.location.href='/tender/${tender.id}'">
+                                <button type="button" class="tender-btn tender-btn--primary" onclick="event.stopPropagation(); openTenderInNewTab('${tender.id}')">
                                     View Details →
                                 </button>
                             </div>
@@ -2746,13 +2751,13 @@ loadCustomCards().then(() => {
 
 {% endif %}
 
-// Navigate to detail on tender-card click (handles both old and new card styles)
+// Navigate to detail in new tab on tender-card click (handles both old and new card styles)
 const tenderCards = document.querySelectorAll('.tender-card, .tender-card-new');
 tenderCards.forEach(card => {
     card.addEventListener('click', (event) => {
         if (event.target.closest('button') || event.target.tagName === 'A') return;
         const tenderId = card.getAttribute('data-tender-id');
-        if (tenderId) window.location.href = `/tender/${tenderId}`;
+        if (tenderId) openTenderInNewTab(tenderId);
     });
 });
 

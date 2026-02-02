@@ -479,6 +479,17 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script>
+(function() {
+  // When opened in a new tab from past projects, back button closes this tab
+  try {
+    history.pushState({ fromPastProjects: true }, '', location.href);
+    window.addEventListener('popstate', function() {
+      window.close();
+    });
+  } catch (e) {}
+})();
+</script>
 <style>
 /* Project detail header styles */
 .project-detail-header {

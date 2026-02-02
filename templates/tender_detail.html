@@ -4618,6 +4618,17 @@ Example: 'Consultancy services for water supply infrastructure in Delhi NCR regi
 
 {% block extra_scripts %}
 {{ super() | default('') }}
+<script>
+(function() {
+  // When opened in a new tab from tender search, back button closes this tab
+  try {
+    history.pushState({ fromTenderSearch: true }, '', location.href);
+    window.addEventListener('popstate', function() {
+      window.close();
+    });
+  } catch (e) {}
+})();
+</script>
 <style>
 /* Custom Tooltip Styles for Action Buttons */
 .tender-action-btn {
@@ -6176,18 +6187,16 @@ async function loadDocumentsList() {
         data.documents.forEach((doc, index) => {
             const sizeInMB = (doc.file_size / (1024 * 1024)).toFixed(2);
             const isPDF = doc.document_type === 'pdf' || doc.filename.toLowerCase().endsWith('.pdf');
-            const isExcel = doc.document_type === 'excel' || doc.filename.toLowerCase().endsWith('.xls') || doc.filename.toLowerCase().endsWith('.xlsx');
 
-            // For PDFs and Excel files: Show both View and Download buttons
-            // For other files: Show only Download button
-            const buttons = (isPDF || isExcel)
-                ? `<button onclick="openDocumentInViewer(${doc.id}, '${doc.document_type}', '${doc.filename}')" class="btn btn-primary btn-sm" style="flex: 1;">
-                       View
+            // PDF: open in new tab (View) + Download. Excel/other: download only.
+            const buttons = isPDF
+                ? `<button onclick="openDocumentInNewTab(${doc.id})" class="btn btn-primary btn-sm" style="flex: 1;">
+                       Open
                    </button>
-                   <button onclick="downloadDocument(${doc.id}, '${doc.filename}')" class="btn btn-outline btn-sm" style="flex: 1;">
+                   <button onclick="downloadDocument(${doc.id}, '${(doc.filename || '').replace(/'/g, "\\'")}')" class="btn btn-outline btn-sm" style="flex: 1;">
                        Download
                    </button>`
-                : `<button onclick="downloadDocument(${doc.id}, '${doc.filename}')" class="btn btn-primary btn-sm" style="flex: 1;">
+                : `<button onclick="downloadDocument(${doc.id}, '${(doc.filename || '').replace(/'/g, "\\'")}')" class="btn btn-primary btn-sm" style="flex: 1;">
                        Download
                    </button>`;
 
@@ -6219,9 +6228,8 @@ async function loadDocumentsList() {
     }
 }
 
-function openDocumentInViewer(documentId, documentType, filename) {
-    // Open document in new browser tab
-    // Browser will handle PDF viewing natively, and Excel files will open or download based on browser capabilities
+// Open PDF in new tab. For non-PDF (Excel, etc.) use downloadDocument instead.
+function openDocumentInNewTab(documentId) {
     const documentUrl = `/api/tender/document/${documentId}`;
     window.open(documentUrl, '_blank');
 }
