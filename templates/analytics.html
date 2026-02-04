@@ -835,7 +835,7 @@
         <article class="stat-card stat-card--clickable active" id="deadlinesCard" data-section="deadlines" style="flex: 1 1 0; min-width: 0;">
             <div class="stat-card__body">
                 <h3 class="stat-card__heading">Dates & Deadlines</h3>
-                <div class="stat-card__value">{{ urgent_deadlines }}</div>
+                <div class="stat-card__value">{{ urgent_deadlines | default('...') }}</div>
                 <p class="stat-card__description">Upcoming critical dates requiring attention</p>
             </div>
         </article>
@@ -843,7 +843,7 @@
         <article class="stat-card stat-card--clickable" id="tendersCard" data-section="tenders" style="flex: 1 1 0; min-width: 0;">
             <div class="stat-card__body">
                 <h3 class="stat-card__heading">Tenders Analytics</h3>
-                <div class="stat-card__value">{{ total_tenders }}</div>
+                <div class="stat-card__value">{{ total_tenders | default('...') }}</div>
                 <p class="stat-card__description">Total tenders tracked across all statuses</p>
             </div>
         </article>
@@ -851,7 +851,7 @@
         <article class="stat-card stat-card--clickable" id="stagesCard" data-section="stages" style="flex: 1 1 0; min-width: 0;">
             <div class="stat-card__body">
                 <h3 class="stat-card__heading">Stage Analytics</h3>
-                <div class="stat-card__value">{{ shortlisted_count }}</div>
+                <div class="stat-card__value">{{ shortlisted_count | default('...') }}</div>
                 <p class="stat-card__description">Active tenders in workflow pipeline</p>
             </div>
         </article>
@@ -859,6 +859,9 @@
 
     <!-- SECTION 1: DATES & DEADLINES -->
     <div class="analytics-section active" id="deadlinesSection" style="display: block; margin-top: 30px;">
+        {% if lazy_load_sections %}
+        <div id="deadlinesSectionContent" style="min-height: 200px; display: flex; align-items: center; justify-content: center; color: #6b7280;">Loading...</div>
+        {% else %}
         <div class="two-column-grid">
             <!-- Left: Upcoming Deadlines -->
             <div>
@@ -1118,10 +1121,14 @@
                 </tr>
             </table>
         </div>
+        {% endif %}
     </div>
 
     <!-- SECTION 2: TENDERS ANALYTICS -->
     <div class="analytics-section" id="tendersSection" style="display: none; margin-top: 30px;">
+        {% if lazy_load_sections %}
+        <div id="tendersSectionContent" style="min-height: 200px; display: flex; align-items: center; justify-content: center; color: #6b7280;">Loading...</div>
+        {% else %}
         <!-- Time Period Selector -->
         <div class="analytics-panel" style="margin-bottom: 1.5rem;">
             <div class="panel-header">
@@ -1210,10 +1217,14 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 
     <!-- SECTION 3: STAGE ANALYTICS -->
     <div class="analytics-section" id="stagesSection" style="display: none; margin-top: 30px;">
+        {% if lazy_load_sections %}
+        <div id="stagesSectionContent" style="min-height: 200px; display: flex; align-items: center; justify-content: center; color: #6b7280;">Loading...</div>
+        {% else %}
         <!-- View Toggle -->
         <div class="analytics-panel" style="margin-bottom: 1.5rem;">
             <div class="view-toggle">
@@ -1359,6 +1370,7 @@
                 <div class="chart-container" id="stageHeatmapChart" style="min-height: 500px;"></div>
             </div>
         </div>
+        {% endif %}
     </div>
 </div>
 
@@ -1367,6 +1379,9 @@
     // Chart initialization flags
     window.tendersChartsInitialized = false;
     window.stageChartsInitialized = false;
+    {% if lazy_load_sections %}
+    window.analyticsData = {};
+    {% endif %}
 
     // Stat Card Navigation
     document.querySelectorAll('.stat-card--clickable').forEach(card => {
@@ -1456,25 +1471,25 @@
         content.classList.toggle('active');
     }
 
-    // View Toggle (Detailed vs Overview)
-    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const view = this.dataset.view;
-
-            // Update active button
-            document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-
-            // Toggle views
+    // View Toggle (Detailed vs Overview) - delegation for lazy-loaded content
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.view-toggle-btn');
+        if (!btn) return;
+        const view = btn.dataset.view;
+        document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const detailedView = document.getElementById('detailedView');
+        const overviewView = document.getElementById('overviewView');
+        if (detailedView && overviewView) {
             if (view === 'detailed') {
-                document.getElementById('detailedView').style.display = 'block';
-                document.getElementById('overviewView').style.display = 'none';
+                detailedView.style.display = 'block';
+                overviewView.style.display = 'none';
             } else {
-                document.getElementById('detailedView').style.display = 'none';
-                document.getElementById('overviewView').style.display = 'block';
-                renderOverviewCharts(); // Render charts when switching to overview
+                detailedView.style.display = 'none';
+                overviewView.style.display = 'block';
+                if (typeof renderOverviewCharts === 'function') renderOverviewCharts();
             }
-        });
+        }
     });
 
     // Dismiss Reminder
@@ -1495,30 +1510,27 @@
         alert('Export functionality coming soon!');
     }
 
-    // Time Period Selection
-    document.querySelectorAll('.time-period-selector .btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            // Update active button styling
-            document.querySelectorAll('.time-period-selector .btn').forEach(b => {
-                b.classList.remove('btn-primary');
-                b.classList.add('btn-secondary');
-            });
-            this.classList.remove('btn-secondary');
-            this.classList.add('btn-primary');
-
-            const period = this.dataset.period;
-            if (period === 'custom') {
-                alert('Custom date range picker coming soon!');
-            } else {
-                console.log('Selected period:', period);
-                // TODO: Implement dynamic data loading
-            }
+    // Time Period Selection - delegation for lazy-loaded content
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.time-period-selector .btn');
+        if (!btn) return;
+        document.querySelectorAll('.time-period-selector .btn').forEach(b => {
+            b.classList.remove('btn-primary');
+            b.classList.add('btn-secondary');
         });
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+        const period = btn.dataset.period;
+        if (period === 'custom') {
+            alert('Custom date range picker coming soon!');
+        } else {
+            console.log('Selected period:', period);
+        }
     });
 
-    // Pass analytics data to window object for chart rendering
+    // Pass analytics data to window object for chart rendering (server-rendered when not lazy loading)
+    {% if not lazy_load_sections %}
     window.analyticsData = {
-        // Section 2: Tenders Analytics Data
         favorites_count: {{ favorites_count }},
         shortlisted_count: {{ shortlisted_count }},
         rejected_count: {{ rejected_count }},
@@ -1527,22 +1539,11 @@
         shortlisted_value: {{ shortlisted_value }},
         awarded_value: {{ awarded_value }},
         dumped_value: {{ dumped_value }},
-
-        // Timeline data for trend charts (last 30 days)
         timeline_data: [
             {% for day in timeline_data %}
-            {
-                date: '{{ day.date }}',
-                favorites: {{ day.favorites or 0 }},
-                shortlisted: {{ day.shortlisted or 0 }},
-                rejected: {{ day.rejected or 0 }},
-                dumped: {{ day.dumped or 0 }},
-                awarded: {{ day.awarded or 0 }}
-            }{% if not loop.last %},{% endif %}
+            { date: '{{ day.date }}', favorites: {{ day.favorites or 0 }}, shortlisted: {{ day.shortlisted or 0 }}, rejected: {{ day.rejected or 0 }}, dumped: {{ day.dumped or 0 }}, awarded: {{ day.awarded or 0 }} }{% if not loop.last %},{% endif %}
             {% endfor %}
         ],
-
-        // Section 3: Stage Analytics Data
         stage_breakdown: {
             step1: {{ stage_breakdown.step1 | tojson }},
             step2: {{ stage_breakdown.step2 | tojson }},
@@ -1552,6 +1553,7 @@
             step6: {{ stage_breakdown.step6 | tojson }}
         }
     };
+    {% endif %}
 
     // Load analytics.js ONLY after ApexCharts is ready
     function loadAnalyticsScript() {
@@ -1605,23 +1607,29 @@
     // ==============================
     // Calendar & Activity Timeline
     // ==============================
-
-    // Calendar data from server
+    {% if lazy_load_sections %}
+    var calendarEvents = [], currentCalendarYear = new Date().getFullYear(), currentCalendarMonth = new Date().getMonth(), selectedDate = null;
+    window.initAnalyticsCalendarFromPartial = function() {
+        if (!window._analyticsCalendarData) return;
+        calendarEvents = window._analyticsCalendarData.calendarEvents || [];
+        currentCalendarYear = window._analyticsCalendarData.currentYear || new Date().getFullYear();
+        currentCalendarMonth = (window._analyticsCalendarData.currentMonth || 1) - 1;
+        selectedDate = null;
+        if (document.getElementById('calendarDays')) initializeCalendar();
+    };
+    {% else %}
     const calendarEvents = {{ calendar_events | tojson | safe }};
     let currentCalendarYear = {{ current_year }};
-    let currentCalendarMonth = {{ current_month }} - 1; // JavaScript months are 0-indexed
+    let currentCalendarMonth = {{ current_month }} - 1;
     let selectedDate = null;
+    document.addEventListener('DOMContentLoaded', function() { initializeCalendar(); });
+    {% endif %}
 
     // Month names
     const monthNames = [
         'January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'
     ];
-
-    // Initialize calendar after page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        initializeCalendar();
-    });
 
     // Initialize calendar
     function initializeCalendar() {
@@ -2029,5 +2037,21 @@
 
         renderCalendar();
     }
+
+    {% if lazy_load_sections %}
+    // Lazy-load analytics sections to reduce memory (limit 300 items per section)
+    document.addEventListener('DOMContentLoaded', function() {
+        var base = '/api/analytics/section/';
+        ['deadlines', 'tenders', 'stages'].forEach(function(section) {
+            var el = document.getElementById(section + 'SectionContent');
+            if (!el) return;
+            fetch(base + section).then(function(r) { return r.text(); }).then(function(html) {
+                el.innerHTML = html;
+            }).catch(function(err) {
+                el.innerHTML = '<div style="color: #dc2626; padding: 1rem;">Failed to load section. Please refresh.</div>';
+            });
+        });
+    });
+    {% endif %}
 </script>
 {% endblock %}

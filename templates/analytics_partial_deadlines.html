@@ -1,0 +1,243 @@
+{# Fragment for lazy-loaded Analytics section 1: Dates & Deadlines. Injected into #deadlinesSectionContent. #}
+<div class="two-column-grid">
+    <div>
+        <div class="analytics-panel">
+            <div class="panel-header">
+                <h2>Upcoming Deadlines</h2>
+            </div>
+            <div class="deadline-timeline">
+                {% if overdue_deadlines %}
+                <div class="deadline-group">
+                    <div class="deadline-group-header">
+                        <span class="urgency-badge overdue">🔴 Overdue</span>
+                        <span style="color: #dc2626; font-weight: 600;">{{ overdue_deadlines|length }} deadline(s)</span>
+                    </div>
+                    {% for deadline in overdue_deadlines %}
+                    <div class="deadline-card" onclick="location.href='/tender-management#shortlistedSection'">
+                        <div class="deadline-card__header">
+                            <div class="deadline-card__title">{{ deadline.tender_title }}</div>
+                            <div class="deadline-card__date">{{ deadline.deadline_date.strftime('%b %d, %Y') }} ({{ deadline.days_remaining }} days)</div>
+                        </div>
+                        <div class="deadline-card__type">{{ deadline.deadline_type }}</div>
+                        {% if deadline.assigned_employees %}
+                        <div class="deadline-card__employees">
+                            {% for emp in deadline.assigned_employees %}
+                            <span class="employee-chip">👤 {{ emp.name }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if today_deadlines %}
+                <div class="deadline-group">
+                    <div class="deadline-group-header">
+                        <span class="urgency-badge today">🟠 Today</span>
+                        <span style="color: #ea580c; font-weight: 600;">{{ today_deadlines|length }} deadline(s)</span>
+                    </div>
+                    {% for deadline in today_deadlines %}
+                    <div class="deadline-card" onclick="location.href='/tender-management#shortlistedSection'">
+                        <div class="deadline-card__header">
+                            <div class="deadline-card__title">{{ deadline.tender_title }}</div>
+                            <div class="deadline-card__date">{{ deadline.deadline_date.strftime('%b %d, %Y') }}</div>
+                        </div>
+                        <div class="deadline-card__type">{{ deadline.deadline_type }}</div>
+                        {% if deadline.assigned_employees %}
+                        <div class="deadline-card__employees">
+                            {% for emp in deadline.assigned_employees %}
+                            <span class="employee-chip">👤 {{ emp.name }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if this_week_deadlines %}
+                <div class="deadline-group">
+                    <div class="deadline-group-header">
+                        <span class="urgency-badge this-week">🟡 This Week</span>
+                        <span style="color: #d97706; font-weight: 600;">{{ this_week_deadlines|length }} deadline(s)</span>
+                    </div>
+                    {% for deadline in this_week_deadlines %}
+                    <div class="deadline-card" onclick="location.href='/tender-management#shortlistedSection'">
+                        <div class="deadline-card__header">
+                            <div class="deadline-card__title">{{ deadline.tender_title }}</div>
+                            <div class="deadline-card__date">{{ deadline.deadline_date.strftime('%b %d, %Y') }} (in {{ deadline.days_remaining }} days)</div>
+                        </div>
+                        <div class="deadline-card__type">{{ deadline.deadline_type }}</div>
+                        {% if deadline.assigned_employees %}
+                        <div class="deadline-card__employees">
+                            {% for emp in deadline.assigned_employees %}
+                            <span class="employee-chip">👤 {{ emp.name }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if next_two_weeks_deadlines %}
+                <div class="deadline-group">
+                    <div class="deadline-group-header">
+                        <span class="urgency-badge next-two-weeks">🟢 Next 2 Weeks</span>
+                        <span style="color: #16a34a; font-weight: 600;">{{ next_two_weeks_deadlines|length }} deadline(s)</span>
+                    </div>
+                    {% for deadline in next_two_weeks_deadlines %}
+                    <div class="deadline-card" onclick="location.href='/tender-management#shortlistedSection'">
+                        <div class="deadline-card__header">
+                            <div class="deadline-card__title">{{ deadline.tender_title }}</div>
+                            <div class="deadline-card__date">{{ deadline.deadline_date.strftime('%b %d, %Y') }} (in {{ deadline.days_remaining }} days)</div>
+                        </div>
+                        <div class="deadline-card__type">{{ deadline.deadline_type }}</div>
+                        {% if deadline.assigned_employees %}
+                        <div class="deadline-card__employees">
+                            {% for emp in deadline.assigned_employees %}
+                            <span class="employee-chip">👤 {{ emp.name }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if later_deadlines %}
+                <div class="deadline-group">
+                    <div class="deadline-group-header">
+                        <span class="urgency-badge later">⚪ Later</span>
+                        <span style="color: #6b7280; font-weight: 600;">{{ later_deadlines|length }} deadline(s)</span>
+                    </div>
+                    {% for deadline in later_deadlines[:5] %}
+                    <div class="deadline-card" onclick="location.href='/tender-management#shortlistedSection'">
+                        <div class="deadline-card__header">
+                            <div class="deadline-card__title">{{ deadline.tender_title }}</div>
+                            <div class="deadline-card__date">{{ deadline.deadline_date.strftime('%b %d, %Y') }} (in {{ deadline.days_remaining }} days)</div>
+                        </div>
+                        <div class="deadline-card__type">{{ deadline.deadline_type }}</div>
+                        {% if deadline.assigned_employees %}
+                        <div class="deadline-card__employees">
+                            {% for emp in deadline.assigned_employees %}
+                            <span class="employee-chip">👤 {{ emp.name }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    {% if later_deadlines|length > 5 %}
+                    <div style="text-align: center; padding: 1rem; color: #6b7280; font-size: 0.875rem;">
+                        + {{ later_deadlines|length - 5 }} more deadline(s)
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% if not overdue_deadlines and not today_deadlines and not this_week_deadlines and not next_two_weeks_deadlines and not later_deadlines %}
+                <div class="empty-state">
+                    <div class="empty-state__icon">📅</div>
+                    <div class="empty-state__title">No Upcoming Deadlines</div>
+                    <div class="empty-state__description">All caught up! No pending deadlines for your shortlisted tenders.</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div>
+        <div class="analytics-panel">
+            <div class="panel-header">
+                <h2>Active Reminders</h2>
+            </div>
+            {% if active_reminders %}
+            {% for reminder in active_reminders %}
+            <div class="reminder-card" data-reminder-id="{{ reminder.id }}">
+                <div class="reminder-card__header">
+                    <div class="reminder-card__title">{{ reminder.tender_title }}</div>
+                    <div class="reminder-card__datetime">
+                        {{ reminder.reminder_datetime.strftime('%b %d, %Y at %I:%M %p') }}
+                        <br>
+                        <small>(in {{ reminder.days_until }} day{% if reminder.days_until != 1 %}s{% endif %})</small>
+                    </div>
+                </div>
+                {% if reminder.note %}
+                <div class="reminder-card__note">{{ reminder.note }}</div>
+                {% endif %}
+                <div class="reminder-actions">
+                    <button class="btn-sm btn-dismiss" onclick="dismissReminder({{ reminder.id }})">Dismiss</button>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state__icon">🔔</div>
+                <div class="empty-state__title">No Active Reminders</div>
+                <div class="empty-state__description">Set reminders for important tender milestones.</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="analytics-panel" style="margin-top: 2rem;">
+    <div class="panel-header">
+        <h2>Activity Calendar</h2>
+    </div>
+    <table class="calendar-activity-table" style="width: 100%; table-layout: fixed; border-collapse: collapse;">
+        <tr>
+            <td class="calendar-cell" style="width: 60%; vertical-align: top; padding-right: 1rem;">
+                <div class="calendar-section">
+                    <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 class="calendar-title" id="calendarTitle" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #111827;">
+                            <span id="currentMonthYear">Loading...</span>
+                        </h3>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="calendar-nav-btn" id="prevMonth" onclick="changeMonth(-1)" style="width: 36px; height: 36px; border-radius: 12px; border: 1px solid #e5e7eb; background: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center;">‹</button>
+                            <button class="calendar-nav-btn" id="nextMonth" onclick="changeMonth(1)" style="width: 36px; height: 36px; border-radius: 12px; border: 1px solid #e5e7eb; background: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center;">›</button>
+                        </div>
+                    </div>
+                    <div class="calendar-grid">
+                        <div class="calendar-weekdays" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; margin-bottom: 0.5rem;">
+                            <div class="calendar-weekday sunday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Sun</div>
+                            <div class="calendar-weekday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Mon</div>
+                            <div class="calendar-weekday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Tue</div>
+                            <div class="calendar-weekday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Wed</div>
+                            <div class="calendar-weekday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Thu</div>
+                            <div class="calendar-weekday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Fri</div>
+                            <div class="calendar-weekday" style="text-align: center; font-size: 0.875rem; font-weight: 600; color: #6b7280; padding: 0.5rem 0;">Sat</div>
+                        </div>
+                        <div class="calendar-days" id="calendarDays" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0;"></div>
+                    </div>
+                </div>
+            </td>
+            <td class="activity-cell" style="width: 40%; vertical-align: top; padding-left: 1rem; border-left: 1px solid #e5e7eb;">
+                <div class="activity-panel">
+                    <div class="activity-panel-header" style="margin-bottom: 1.5rem;">
+                        <h3 class="activity-panel-title" style="margin: 0 0 0.5rem 0; font-size: 1.1rem; font-weight: 700; color: #111827;">Activities</h3>
+                        <p class="activity-panel-subtitle" id="selectedDateText" style="margin: 0; font-size: 0.875rem; color: #6b7280;">Select a date</p>
+                    </div>
+                    <div class="activity-list" id="activityList">
+                        <div class="activity-empty-state" style="text-align: center; padding: 2rem 1rem; color: #6b7280;">
+                            <p class="empty-state-text" style="margin: 0; font-size: 0.875rem;">Click on a date to view activities</p>
+                        </div>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<script>
+(function() {
+    var card = document.getElementById('deadlinesCard');
+    if (card) {
+        var val = card.querySelector('.stat-card__value');
+        if (val) val.textContent = {{ urgent_deadlines }};
+    }
+    window._analyticsCalendarData = {
+        calendarEvents: {{ calendar_events | tojson }},
+        currentYear: {{ current_year }},
+        currentMonth: {{ current_month }}
+    };
+    if (typeof window.initAnalyticsCalendarFromPartial === 'function') {
+        window.initAnalyticsCalendarFromPartial();
+    }
+})();
+</script>

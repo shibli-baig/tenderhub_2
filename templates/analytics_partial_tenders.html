@@ -1,0 +1,99 @@
+{# Fragment for lazy-loaded Analytics section 2: Tenders. Injected into #tendersSectionContent. #}
+<div class="analytics-panel" style="margin-bottom: 1.5rem;">
+    <div class="panel-header">
+        <h2 style="margin: 0;">Filter by Time Period</h2>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+        <div class="time-period-selector">
+            <button class="btn btn-secondary" data-period="7">Last 7 Days</button>
+            <button class="btn btn-primary" data-period="30">Last 30 Days</button>
+            <button class="btn btn-secondary" data-period="365">Last 12 Months</button>
+            <button class="btn btn-secondary" data-period="all">All Time</button>
+            <button class="btn btn-secondary" data-period="custom">Custom Range</button>
+        </div>
+        <button class="btn btn-primary" onclick="exportCharts()">📥 Export</button>
+    </div>
+</div>
+
+<div class="three-column-grid">
+    <div class="analytics-panel">
+        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 700; color: #111827;">Tender Status Breakdown</h3>
+        <p style="margin: 0 0 1.5rem 0; font-size: 0.875rem; color: #6b7280;">Distribution of tenders across all statuses</p>
+        <div class="chart-container" id="statusDonutChart">
+            <div class="chart-loading" style="display: flex; align-items: center; justify-content: center; height: 350px; color: #6b7280;"><div>Loading chart...</div></div>
+        </div>
+    </div>
+    <div class="analytics-panel">
+        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 700; color: #111827;">Status Over Time</h3>
+        <p style="margin: 0 0 1.5rem 0; font-size: 0.875rem; color: #6b7280;">Tender activity trends for the selected period</p>
+        <div class="chart-container" id="statusTimelineChart">
+            <div class="chart-loading" style="display: flex; align-items: center; justify-content: center; height: 350px; color: #6b7280;"><div>Loading chart...</div></div>
+        </div>
+    </div>
+    <div class="analytics-panel">
+        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 700; color: #111827;">Value Analysis</h3>
+        <p style="margin: 0 0 1.5rem 0; font-size: 0.875rem; color: #6b7280;">Estimated value breakdown by tender status</p>
+        <div class="chart-container" id="valueBarChart">
+            <div class="chart-loading" style="display: flex; align-items: center; justify-content: center; height: 350px; color: #6b7280;"><div>Loading chart...</div></div>
+        </div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+    <div class="analytics-panel">
+        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 700; color: #111827;">Conversion Funnel</h3>
+        <p style="margin: 0 0 1.5rem 0; font-size: 0.875rem; color: #6b7280;">Track tender progression from favorites to awards</p>
+        <div class="chart-container" id="conversionFunnelChart">
+            <div class="chart-loading" style="display: flex; align-items: center; justify-content: center; height: 350px; color: #6b7280;"><div>Loading chart...</div></div>
+        </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+        <div class="kpi-card">
+            <div class="kpi-card__label">Win Rate</div>
+            <div class="kpi-card__value">{{ win_rate }}%</div>
+            <div class="kpi-card__subtitle">Awarded / Ever Shortlisted</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-card__label">Rejection Rate</div>
+            <div class="kpi-card__value">{{ rejection_rate }}%</div>
+            <div class="kpi-card__subtitle">Rejected / Favorited</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-card__label">Active Pipeline</div>
+            <div class="kpi-card__value">₹{{ "%.1f"|format(shortlisted_value / 10000000) }}Cr</div>
+            <div class="kpi-card__subtitle">Shortlisted Value</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-card__label">Won Value</div>
+            <div class="kpi-card__value">₹{{ "%.1f"|format(awarded_value / 10000000) }}Cr</div>
+            <div class="kpi-card__subtitle">Awarded Tenders</div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var card = document.getElementById('tendersCard');
+    if (card) {
+        var val = card.querySelector('.stat-card__value');
+        if (val) val.textContent = {{ total_tenders }};
+    }
+    if (!window.analyticsData) window.analyticsData = {};
+    window.analyticsData.favorites_count = {{ favorites_count }};
+    window.analyticsData.shortlisted_count = {{ shortlisted_count }};
+    window.analyticsData.rejected_count = {{ rejected_count }};
+    window.analyticsData.dumped_count = {{ dumped_count }};
+    window.analyticsData.awarded_count = {{ awarded_count }};
+    window.analyticsData.shortlisted_value = {{ shortlisted_value }};
+    window.analyticsData.awarded_value = {{ awarded_value }};
+    window.analyticsData.dumped_value = {{ dumped_value }};
+    window.analyticsData.timeline_data = [
+        {% for day in timeline_data %}
+        { date: '{{ day.date }}', favorites: {{ day.favorites or 0 }}, shortlisted: {{ day.shortlisted or 0 }}, rejected: {{ day.rejected or 0 }}, dumped: {{ day.dumped or 0 }}, awarded: {{ day.awarded or 0 }} }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    if (!window.analyticsData.stage_breakdown) {
+        window.analyticsData.stage_breakdown = { step1: {}, step2: {}, step3: {}, step4: {}, step5: {}, step6: {} };
+    }
+})();
+</script>

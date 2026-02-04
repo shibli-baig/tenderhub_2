@@ -599,11 +599,11 @@
                         {% set record = turnover_history[i] if turnover_history|length > i else None %}
                         <div class="form-group">
                             <label class="form-label">Financial Year</label>
-                            <input type="text" name="turnover_year_labels[]" value="{{ record.label if record else '' }}" placeholder="e.g., FY 2023-24">
+                            <input type="text" name="turnover_year_labels" value="{{ record.label if record else '' }}" placeholder="e.g., FY 2023-24">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Turnover Amount</label>
-                            <input type="text" name="turnover_year_values[]" value="{{ record.raw_amount if record else '' }}" placeholder="e.g., ₹12 Cr">
+                            <input type="text" name="turnover_year_values" value="{{ record.raw_amount if record else '' }}" placeholder="e.g., ₹12 Cr">
                         </div>
                     {% endfor %}
                 </div>

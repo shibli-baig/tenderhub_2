@@ -2373,696 +2373,435 @@ async def home_login_page(request: Request, db: Session = Depends(get_db)):
         "selected_font": get_active_font()
     })
 
+# Max items for analytics to keep memory under control (e.g. 512MB Render instance)
+ANALYTICS_MAX_ITEMS = 300
+
+
 @app.get("/analytics", response_class=HTMLResponse)
 @require_company_details
 async def analytics_page(request: Request, db: Session = Depends(get_db)):
     """
-    Analytics Dashboard - Comprehensive tender management analytics.
-
-    Provides 3 main sections:
-    1. Dates & Deadlines - Upcoming deadlines and reminders
-    2. Tenders Analytics - Status distribution, trends, and performance
-    3. Stage Analytics - 6-stage workflow breakdown and employee workload
+    Analytics Dashboard - Shell only; sections are lazy-loaded via /api/analytics/section/* to reduce memory.
     """
     current_user = get_current_user(request, db)
     if not current_user:
         return RedirectResponse(url="/login", status_code=302)
 
+    from datetime import datetime
+
+    current_date = datetime.now()
+    return templates.TemplateResponse("analytics.html", {
+        "request": request,
+        "current_user": current_user,
+        "current_month": current_date.month,
+        "current_year": current_date.year,
+        "selected_font": get_active_font(),
+        "lazy_load_sections": True,
+    })
+
+
+def _get_analytics_deadlines_data(db: Session, current_user: UserDB):
+    """Build section 1 (Dates & Deadlines) data with limits and eager load. No calendar sync."""
     from database import CalendarActivityDB, ReminderDB
     from datetime import datetime, timedelta
-    from sqlalchemy import func, and_, or_, case
-    import calendar as cal_module
-
-    try:
-        # =============================================================================
-        # CALENDAR DATA PREPARATION
-        # =============================================================================
-        
-        current_date = datetime.now()
-        current_month = current_date.month
-        current_year = current_date.year
-
-        # Get all favorites for calendar
-        favorites_for_calendar = db.query(FavoriteDB).filter(
-            FavoriteDB.user_id == current_user.id
-        ).all()
-
-        # Get all projects for calendar
-        all_projects = db.query(ProjectDB).filter(ProjectDB.user_id == current_user.id).all()
-
-        # Save favorite tender deadlines to calendar
-        for fav in favorites_for_calendar:
-            if fav.tender and fav.tender.deadline:
-                try:
-                    from database import save_calendar_activity
-                    save_calendar_activity(
-                        db=db,
-                        user_id=current_user.id,
-                        activity_date=fav.tender.deadline,
-                        activity_type='deadline',
-                        title=f"Deadline: {fav.tender.title[:50]}..." if fav.tender.title else "Tender Deadline",
-                        description=f"Tender deadline for {fav.tender.title}" if fav.tender.title else "Tender deadline",
-                        tender_id=fav.tender.id
-                    )
-                except Exception as e:
-                    logger.debug(f"Error saving calendar activity for tender {fav.tender.id}: {e}")
-
-        # Save project activities to calendar
-        for project in all_projects:
-            if project.start_date:
-                try:
-                    from database import save_calendar_activity
-                    start_date = project.start_date if isinstance(project.start_date, datetime) else datetime.strptime(str(project.start_date), '%Y-%m-%d')
-                    save_calendar_activity(
-                        db=db,
-                        user_id=current_user.id,
-                        activity_date=start_date,
-                        activity_type='activity',
-                        title=f"Project Started: {project.project_name[:40]}",
-                        description=f"Started project: {project.project_name}",
-                        project_id=project.id
-                    )
-                except Exception as e:
-                    logger.debug(f"Error saving calendar activity for project start {project.id}: {e}")
-
-            if project.end_date:
-                try:
-                    from database import save_calendar_activity
-                    end_date = project.end_date if isinstance(project.end_date, datetime) else datetime.strptime(str(project.end_date), '%Y-%m-%d')
-                    save_calendar_activity(
-                        db=db,
-                        user_id=current_user.id,
-                        activity_date=end_date,
-                        activity_type='activity',
-                        title=f"Project Completed: {project.project_name[:40]}",
-                        description=f"Completed project: {project.project_name}",
-                        project_id=project.id
-                    )
-                except Exception as e:
-                    logger.debug(f"Error saving calendar activity for project end {project.id}: {e}")
-
-        # Save reminder activities to calendar
-        reminders_for_calendar = db.query(ReminderDB).filter(
-            ReminderDB.user_id == current_user.id,
-            ReminderDB.is_dismissed == False
-        ).all()
-
-        for reminder in reminders_for_calendar:
-            try:
-                from database import save_calendar_activity
-                save_calendar_activity(
-                    db=db,
-                    user_id=current_user.id,
-                    activity_date=reminder.reminder_datetime,
-                    activity_type='reminder',
-                    title=f"Reminder: {reminder.title[:50]}..." if len(reminder.title) > 50 else f"Reminder: {reminder.title}",
-                    description=reminder.note or f"Reminder for {reminder.title}",
-                    tender_id=reminder.tender_id,
-                    reminder_id=reminder.id
-                )
-            except Exception as e:
-                logger.debug(f"Error saving calendar activity for reminder {reminder.id}: {e}")
-
-        # Load ALL calendar activities from persistent storage
-        calendar_activities = db.query(CalendarActivityDB).filter(
-            CalendarActivityDB.user_id == current_user.id,
-            CalendarActivityDB.is_active == True
-        ).all()
-
-        # Convert to calendar events format
-        calendar_events = []
-        for activity in calendar_activities:
-            try:
-                event = {
-                    'date': activity.activity_date.strftime('%Y-%m-%d'),
-                    'type': activity.activity_type,
-                    'title': activity.title,
-                    'description': activity.description,
-                    'source_deleted': activity.source_deleted
-                }
-
-                # Add source IDs if present
-                if activity.tender_id:
-                    event['tender_id'] = activity.tender_id
-                if activity.project_id:
-                    event['project_id'] = activity.project_id
-                if activity.reminder_id:
-                    event['reminder_id'] = activity.reminder_id
-
-                calendar_events.append(event)
-            except Exception as e:
-                logger.debug(f"Error formatting calendar activity {activity.id}: {e}")
-
-        # =============================================================================
-        # SECTION 1: DATES & DEADLINES DATA
-        # =============================================================================
-
-        # Get all shortlisted tenders with their progress data
-        shortlisted_tenders = db.query(ShortlistedTenderDB).filter(
-            ShortlistedTenderDB.user_id == current_user.id
-        ).all()
-
-        deadlines = []
-        today = datetime.utcnow().date()
-
-        # Extract ALL deadlines from shortlisted tenders (regardless of completion status)
-        for st in shortlisted_tenders:
-            tender = db.query(TenderDB).filter(TenderDB.id == st.tender_id).first()
-            if not tender:
-                continue
-
-            progress = st.progress_data or {}
-            critical_dates = tender.critical_dates or {}
-
-            # Get assigned employees for display
-            assignments = db.query(TenderAssignmentDB).filter(
-                TenderAssignmentDB.tender_id == tender.id
-            ).all()
-            assigned_employees = []
-            if assignments:
-                emp_ids = [a.employee_id for a in assignments]
-                employees = db.query(EmployeeDB).filter(EmployeeDB.id.in_(emp_ids)).all()
-                assigned_employees = [{"id": e.id, "name": e.name, "email": e.email} for e in employees]
-
-            # Step 1: Pre-Bid Meeting / Clarification Deadline
-            # Try 'Clarification End Date' key (matches tender_management.html)
-            clarification_end = critical_dates.get('Clarification End Date')
-            if clarification_end:
-                try:
-                    deadline_date = datetime.fromisoformat(clarification_end).date()
-                    deadlines.append({
-                        'tender_id': tender.id,
-                        'tender_title': tender.title,
-                        'deadline_date': deadline_date,
-                        'deadline_type': 'Pre-Bid Meeting',
-                        'step_number': 1,
-                        'tender_status': 'Shortlisted',
-                        'assigned_employees': assigned_employees,
-                        'is_manual': False
-                    })
-                except:
-                    pass
-
-            # Step 2: Bid Submission Deadline
-            # Priority: tender.deadline, fallback: critical_dates['Bid Submission End Date']
-            submission_deadline = None
-            if tender.deadline:
-                submission_deadline = tender.deadline.date() if isinstance(tender.deadline, datetime) else tender.deadline
-            elif 'Bid Submission End Date' in critical_dates:
-                try:
-                    submission_deadline = datetime.fromisoformat(critical_dates['Bid Submission End Date']).date()
-                except:
-                    pass
-
-            if submission_deadline:
-                deadlines.append({
-                    'tender_id': tender.id,
-                    'tender_title': tender.title,
-                    'deadline_date': submission_deadline,
-                    'deadline_type': 'Bid Submission',
-                    'step_number': 2,
-                    'tender_status': 'Shortlisted',
-                    'assigned_employees': assigned_employees,
-                    'is_manual': False
-                })
-
-            # Step 3: Bid Opening Date
-            bid_opening = critical_dates.get('Bid Opening Date')
-            if bid_opening:
-                try:
-                    deadline_date = datetime.fromisoformat(bid_opening).date()
-                    deadlines.append({
-                        'tender_id': tender.id,
-                        'tender_title': tender.title,
-                        'deadline_date': deadline_date,
-                        'deadline_type': 'Bid Opening',
-                        'step_number': 3,
-                        'tender_status': 'Shortlisted',
-                        'assigned_employees': assigned_employees,
-                        'is_manual': False
-                    })
-                except:
-                    pass
-
-            # Step 4: Financial Proposal Deadline (manual)
-            step4_deadline = progress.get('step4_deadline')
-            if step4_deadline:
-                try:
-                    deadline_date = datetime.fromisoformat(step4_deadline).date() if isinstance(step4_deadline, str) else step4_deadline
-                    deadlines.append({
-                        'tender_id': tender.id,
-                        'tender_title': tender.title,
-                        'deadline_date': deadline_date,
-                        'deadline_type': 'Financial Proposal',
-                        'step_number': 4,
-                        'tender_status': 'Shortlisted',
-                        'assigned_employees': assigned_employees,
-                        'is_manual': True
-                    })
-                except:
-                    pass
-
-            # Step 5: Negotiation Deadline (manual)
-            step5_deadline = progress.get('step5_deadline')
-            if step5_deadline:
-                try:
-                    deadline_date = datetime.fromisoformat(step5_deadline).date() if isinstance(step5_deadline, str) else step5_deadline
-                    deadlines.append({
-                        'tender_id': tender.id,
-                        'tender_title': tender.title,
-                        'deadline_date': deadline_date,
-                        'deadline_type': 'Negotiation',
-                        'step_number': 5,
-                        'tender_status': 'Shortlisted',
-                        'assigned_employees': assigned_employees,
-                        'is_manual': True
-                    })
-                except:
-                    pass
-
-        # Also get ALL deadlines from favourited tenders (not yet shortlisted)
-        favourited = db.query(FavoriteDB).filter(
-            FavoriteDB.user_id == current_user.id
-        ).all()
-
-        for fav in favourited:
-            tender = db.query(TenderDB).filter(TenderDB.id == fav.tender_id).first()
-            if not tender:
-                continue
-
-            critical_dates = tender.critical_dates or {}
-
-            # Bid Submission Deadline (most important for favourited tenders)
-            # Priority: tender.deadline, fallback: critical_dates['Bid Submission End Date']
-            submission_deadline = None
-            if tender.deadline:
-                submission_deadline = tender.deadline.date() if isinstance(tender.deadline, datetime) else tender.deadline
-            elif 'Bid Submission End Date' in critical_dates:
-                try:
-                    submission_deadline = datetime.fromisoformat(critical_dates['Bid Submission End Date']).date()
-                except:
-                    pass
-
-            if submission_deadline:
-                deadlines.append({
-                    'tender_id': tender.id,
-                    'tender_title': tender.title,
-                    'deadline_date': submission_deadline,
-                    'deadline_type': 'Bid Submission',
-                    'step_number': None,
-                    'tender_status': 'Favourited',
-                    'assigned_employees': [],
-                    'is_manual': False
-                })
-
-            # Pre-Bid Meeting Deadline
-            # Try both 'Pre Bid Meeting Date' and 'Clarification End Date'
-            pre_bid_deadline = None
-            if 'Pre Bid Meeting Date' in critical_dates:
-                try:
-                    pre_bid_deadline = datetime.fromisoformat(critical_dates['Pre Bid Meeting Date']).date()
-                except:
-                    pass
-            elif 'Clarification End Date' in critical_dates:
-                try:
-                    pre_bid_deadline = datetime.fromisoformat(critical_dates['Clarification End Date']).date()
-                except:
-                    pass
-
-            if pre_bid_deadline:
-                deadlines.append({
-                    'tender_id': tender.id,
-                    'tender_title': tender.title,
-                    'deadline_date': pre_bid_deadline,
-                    'deadline_type': 'Pre-Bid Meeting',
-                    'step_number': None,
-                    'tender_status': 'Favourited',
-                    'assigned_employees': [],
-                    'is_manual': False
-                })
-
-            # Bid Opening Deadline
-            bid_opening = critical_dates.get('Bid Opening Date')
-            if bid_opening:
-                try:
-                    deadline_date = datetime.fromisoformat(bid_opening).date()
-                    deadlines.append({
-                        'tender_id': tender.id,
-                        'tender_title': tender.title,
-                        'deadline_date': deadline_date,
-                        'deadline_type': 'Bid Opening',
-                        'step_number': None,
-                        'tender_status': 'Favourited',
-                        'assigned_employees': [],
-                        'is_manual': False
-                    })
-                except:
-                    pass
-
-        # Categorize deadlines by urgency
-        overdue = []
-        today_deadlines = []
-        this_week = []
-        next_two_weeks = []
-        later = []
-
-        for d in deadlines:
-            days_diff = (d['deadline_date'] - today).days
-            d['days_remaining'] = days_diff
-
-            if days_diff < 0:
-                d['urgency'] = 'overdue'
-                overdue.append(d)
-            elif days_diff == 0:
-                d['urgency'] = 'today'
-                today_deadlines.append(d)
-            elif 1 <= days_diff <= 7:
-                d['urgency'] = 'this_week'
-                this_week.append(d)
-            elif 8 <= days_diff <= 14:
-                d['urgency'] = 'next_two_weeks'
-                next_two_weeks.append(d)
-            else:
-                d['urgency'] = 'later'
-                later.append(d)
-
-        # Get active reminders
-        reminders = db.query(ReminderDB).filter(
-            ReminderDB.user_id == current_user.id,
-            ReminderDB.is_triggered == False,
-            ReminderDB.is_dismissed == False,
-            ReminderDB.reminder_datetime >= datetime.utcnow()
-        ).order_by(ReminderDB.reminder_datetime).all()
-
-        reminders_data = []
-        for r in reminders:
-            tender = db.query(TenderDB).filter(TenderDB.id == r.tender_id).first()
-            reminders_data.append({
-                'id': r.id,
-                'tender_id': r.tender_id,
-                'tender_title': r.title or (tender.title if tender else 'Unknown'),
-                'reminder_datetime': r.reminder_datetime,
-                'note': r.note,
-                'days_until': (r.reminder_datetime.date() - today).days if r.reminder_datetime else 0
-            })
-
-        # =============================================================================
-        # SECTION 2: TENDERS ANALYTICS DATA
-        # =============================================================================
-
-        # Count by status
-        favorites_count = db.query(func.count(FavoriteDB.id)).filter(
-            FavoriteDB.user_id == current_user.id
-        ).scalar() or 0
-
-        shortlisted_count = db.query(func.count(ShortlistedTenderDB.id)).filter(
-            ShortlistedTenderDB.user_id == current_user.id
-        ).scalar() or 0
-
-        rejected_count = db.query(func.count(RejectedTenderDB.id)).filter(
-            RejectedTenderDB.user_id == current_user.id
-        ).scalar() or 0
-
-        dumped_count = db.query(func.count(DumpedTenderDB.id)).filter(
-            DumpedTenderDB.user_id == current_user.id
-        ).scalar() or 0
-
-        awarded_count = db.query(func.count(TenderDB.id)).filter(
-            TenderDB.awarded == True,
-            TenderDB.awarded_by == current_user.id
-        ).scalar() or 0
-
-        # Calculate total value by status
-        shortlisted_value = db.query(func.sum(TenderDB.estimated_value)).select_from(
-            ShortlistedTenderDB
-        ).join(
-            TenderDB, ShortlistedTenderDB.tender_id == TenderDB.id
-        ).filter(
-            ShortlistedTenderDB.user_id == current_user.id
-        ).scalar() or 0
-
-        awarded_value = db.query(func.sum(TenderDB.estimated_value)).filter(
-            TenderDB.awarded == True,
-            TenderDB.awarded_by == current_user.id
-        ).scalar() or 0
-
-        dumped_value = db.query(func.sum(TenderDB.estimated_value)).select_from(
-            DumpedTenderDB
-        ).join(
-            TenderDB, DumpedTenderDB.tender_id == TenderDB.id
-        ).filter(
-            DumpedTenderDB.user_id == current_user.id
-        ).scalar() or 0
-
-        # Calculate metrics
-        # Win Rate: Awarded tenders divided by total ever shortlisted tenders
-        # IMPORTANT: When tenders are awarded, they are DELETED from ShortlistedTenderDB (see finalize_tender_award_for_user)
-        # Similarly, killed/cancelled tenders are moved to DumpedTenderDB
-        # Therefore: Total Ever Shortlisted = Current Shortlisted + Awarded + Dumped
-        total_ever_shortlisted = shortlisted_count + awarded_count + dumped_count
-        win_rate = round((awarded_count / total_ever_shortlisted * 100), 1) if total_ever_shortlisted > 0 else 0
-
-        # Rejection Rate: Rejected tenders divided by total favourited tenders
-        # This represents tenders that were favourited but rejected before shortlisting
-        rejection_rate = round((rejected_count / favorites_count * 100), 1) if favorites_count > 0 else 0
-
-        # Time series data (last 30 days for chart)
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-
-        favorites_timeline = db.query(
-            func.date(FavoriteDB.created_at).label('date'),
-            func.count(FavoriteDB.id).label('count')
-        ).filter(
-            FavoriteDB.user_id == current_user.id,
-            FavoriteDB.created_at >= thirty_days_ago
-        ).group_by(func.date(FavoriteDB.created_at)).all()
-
-        shortlisted_timeline = db.query(
-            func.date(ShortlistedTenderDB.created_at).label('date'),
-            func.count(ShortlistedTenderDB.id).label('count')
-        ).filter(
-            ShortlistedTenderDB.user_id == current_user.id,
-            ShortlistedTenderDB.created_at >= thirty_days_ago
-        ).group_by(func.date(ShortlistedTenderDB.created_at)).all()
-
-        rejected_timeline = db.query(
-            func.date(RejectedTenderDB.created_at).label('date'),
-            func.count(RejectedTenderDB.id).label('count')
-        ).filter(
-            RejectedTenderDB.user_id == current_user.id,
-            RejectedTenderDB.created_at >= thirty_days_ago
-        ).group_by(func.date(RejectedTenderDB.created_at)).all()
-
-        dumped_timeline = db.query(
-            func.date(DumpedTenderDB.created_at).label('date'),
-            func.count(DumpedTenderDB.id).label('count')
-        ).filter(
-            DumpedTenderDB.user_id == current_user.id,
-            DumpedTenderDB.created_at >= thirty_days_ago
-        ).group_by(func.date(DumpedTenderDB.created_at)).all()
-
-        # Awarded timeline - use updated_at if awarded_date doesn't exist
-        awarded_timeline = db.query(
-            func.date(TenderDB.updated_at).label('date'),
-            func.count(TenderDB.id).label('count')
-        ).filter(
-            TenderDB.awarded == True,
-            TenderDB.awarded_by == current_user.id,
-            TenderDB.updated_at >= thirty_days_ago
-        ).group_by(func.date(TenderDB.updated_at)).all()
-
-        # Build combined timeline_data for charts
-        # Create a date range for last 30 days
-        date_range = [(datetime.utcnow() - timedelta(days=i)).date() for i in range(29, -1, -1)]
-        
-        # Convert timeline queries to dictionaries for easy lookup
-        favorites_dict = {str(d.date): d.count for d in favorites_timeline}
-        shortlisted_dict = {str(d.date): d.count for d in shortlisted_timeline}
-        rejected_dict = {str(d.date): d.count for d in rejected_timeline}
-        dumped_dict = {str(d.date): d.count for d in dumped_timeline}
-        awarded_dict = {str(d.date): d.count for d in awarded_timeline}
-        
-        # Build timeline_data array
-        timeline_data = []
-        for date in date_range:
-            date_str = str(date)
-            timeline_data.append({
-                'date': date_str,
-                'favorites': favorites_dict.get(date_str, 0),
-                'shortlisted': shortlisted_dict.get(date_str, 0),
-                'rejected': rejected_dict.get(date_str, 0),
-                'dumped': dumped_dict.get(date_str, 0),
-                'awarded': awarded_dict.get(date_str, 0)
-            })
-
-        # =============================================================================
-        # SECTION 3: STAGE ANALYTICS DATA
-        # =============================================================================
-
-        # Analyze 6-stage workflow
-        # NOTE: "Pending" status is excluded from analytics - only count tenders with actual progress
-        stage_breakdown = {
-            'step1': {'Attended': 0, 'Not Attended': 0, 'Not Applicable': 0, 'Cancelled': 0},
-            'step2': {'Submitted': 0, 'Not Submitted': 0, 'Tender Cancelled': 0},
-            'step3': {'Not Opened': 0, 'Opened & Qualified': 0, 'Opened & Not Qualified': 0, 'Tender Cancelled': 0},
-            'step4': {'Not Opened': 0, 'Opened & Won': 0, 'Opened & Lost': 0, 'Opened & Not Eligible': 0, 'Tender Cancelled': 0},
-            'step5': {'Applicable': 0, 'Not Applicable': 0, 'Tender Cancelled': 0},
-            'step6': {'Yes': 0, 'No': 0}
-        }
-
-        stage_tenders = {f'step{i}': [] for i in range(1, 7)}
-
-        for st in shortlisted_tenders:
-            tender = db.query(TenderDB).filter(TenderDB.id == st.tender_id).first()
-            if not tender:
-                continue
-
-            progress = st.progress_data or {}
-
-            # FILTER: Only include tenders where at least one stage has action taken
-            # If all stages are "Pending", skip this tender from stage analytics
-            has_progress = False
-            for step_num in range(1, 7):
-                step_key = f'step{step_num}'
-                status = progress.get(step_key, 'Pending')
-                if status != 'Pending':
-                    has_progress = True
-                    break
-
-            if not has_progress:
-                continue  # Skip tenders with no progress at any stage
-
-            # Get assigned employees
-            assignments = db.query(TenderAssignmentDB).filter(
-                TenderAssignmentDB.tender_id == tender.id
-            ).all()
-            assigned_employees = []
-            if assignments:
-                emp_ids = [a.employee_id for a in assignments]
-                employees = db.query(EmployeeDB).filter(EmployeeDB.id.in_(emp_ids)).all()
-                assigned_employees = [{"id": e.id, "name": e.name} for e in employees]
-
-            tender_info = {
-                'id': tender.id,
-                'title': tender.title,
-                'assigned_employees': assigned_employees,
-                'created_at': st.created_at
+    from sqlalchemy.orm import joinedload
+
+    # Limited, eager-loaded shortlisted (most recent 300)
+    shortlisted_tenders = db.query(ShortlistedTenderDB).options(
+        joinedload(ShortlistedTenderDB.tender),
+        joinedload(ShortlistedTenderDB.tender).joinedload(TenderDB.assignments).joinedload(TenderAssignmentDB.employee),
+    ).filter(
+        ShortlistedTenderDB.user_id == current_user.id
+    ).order_by(ShortlistedTenderDB.created_at.desc()).limit(ANALYTICS_MAX_ITEMS).all()
+
+    # Limited, eager-loaded favourites (most recent 300)
+    favourited = db.query(FavoriteDB).options(
+        joinedload(FavoriteDB.tender),
+    ).filter(
+        FavoriteDB.user_id == current_user.id
+    ).order_by(FavoriteDB.created_at.desc()).limit(ANALYTICS_MAX_ITEMS).all()
+
+    # Calendar activities: limit to recent (e.g. current year + 1)
+    calendar_activities = db.query(CalendarActivityDB).filter(
+        CalendarActivityDB.user_id == current_user.id,
+        CalendarActivityDB.is_active == True,
+        CalendarActivityDB.activity_date >= datetime.utcnow().date() - timedelta(days=400),
+    ).order_by(CalendarActivityDB.activity_date).limit(2000).all()
+
+    calendar_events = []
+    for activity in calendar_activities:
+        try:
+            event = {
+                'date': activity.activity_date.strftime('%Y-%m-%d'),
+                'type': activity.activity_type,
+                'title': activity.title,
+                'description': activity.description,
+                'source_deleted': activity.source_deleted
             }
+            if activity.tender_id:
+                event['tender_id'] = activity.tender_id
+            if activity.project_id:
+                event['project_id'] = activity.project_id
+            if activity.reminder_id:
+                event['reminder_id'] = activity.reminder_id
+            calendar_events.append(event)
+        except Exception as e:
+            logger.debug(f"Error formatting calendar activity {activity.id}: {e}")
 
-            for step_num in range(1, 7):
-                step_key = f'step{step_num}'
-                status = progress.get(step_key, 'Pending')
+    deadlines = []
+    today = datetime.utcnow().date()
 
-                # Skip "Pending" status - only count and track tenders with actual progress
-                if status == 'Pending':
-                    continue
+    for st in shortlisted_tenders:
+        tender = st.tender
+        if not tender:
+            continue
+        progress = st.progress_data or {}
+        critical_dates = tender.critical_dates or {}
+        assigned_employees = [{"id": e.id, "name": e.name, "email": e.email} for a in (tender.assignments or []) for e in ([a.employee] if a.employee else [])]
 
-                # Count status in breakdown (only non-Pending statuses)
-                if status in stage_breakdown[step_key]:
-                    stage_breakdown[step_key][status] += 1
-
-                # Track which tenders are at each stage (only non-Pending statuses)
-                tender_step_info = {
-                    **tender_info,
-                    'status': status,
-                    'step_employees': progress.get(f'{step_key}_employees', [])
-                }
-                stage_tenders[step_key].append(tender_step_info)
-
-        # Employee workload analysis
-        all_employees = db.query(EmployeeDB).filter(
-            EmployeeDB.company_code_id == (current_user.company_code_id if hasattr(current_user, 'company_code_id') else None)
-        ).all()
-
-        employee_workload = []
-        for emp in all_employees:
-            # Count tenders assigned to this employee
-            assigned_tenders = db.query(TenderAssignmentDB).filter(
-                TenderAssignmentDB.employee_id == emp.id
-            ).count()
-
-            # Analyze stage distribution
-            stage_dist = {f'step{i}': 0 for i in range(1, 7)}
-            for st in shortlisted_tenders:
-                progress = st.progress_data or {}
-                for step_num in range(1, 7):
-                    step_key = f'step{step_num}'
-                    step_emps = progress.get(f'{step_key}_employees', [])
-                    if emp.id in step_emps:
-                        stage_dist[step_key] += 1
-
-            # Determine workload level
-            if assigned_tenders == 0:
-                workload_level = 'none'
-            elif assigned_tenders <= 3:
-                workload_level = 'light'
-            elif assigned_tenders <= 7:
-                workload_level = 'medium'
-            else:
-                workload_level = 'heavy'
-
-            employee_workload.append({
-                'id': emp.id,
-                'name': emp.name,
-                'email': emp.email,
-                'total_tenders': assigned_tenders,
-                'stage_distribution': stage_dist,
-                'workload_level': workload_level
+        clarification_end = critical_dates.get('Clarification End Date')
+        if clarification_end:
+            try:
+                deadline_date = datetime.fromisoformat(clarification_end).date()
+                deadlines.append({
+                    'tender_id': tender.id, 'tender_title': tender.title, 'deadline_date': deadline_date,
+                    'deadline_type': 'Pre-Bid Meeting', 'step_number': 1, 'tender_status': 'Shortlisted',
+                    'assigned_employees': assigned_employees, 'is_manual': False
+                })
+            except Exception:
+                pass
+        submission_deadline = None
+        if tender.deadline:
+            submission_deadline = tender.deadline.date() if isinstance(tender.deadline, datetime) else tender.deadline
+        elif 'Bid Submission End Date' in critical_dates:
+            try:
+                submission_deadline = datetime.fromisoformat(critical_dates['Bid Submission End Date']).date()
+            except Exception:
+                pass
+        if submission_deadline:
+            deadlines.append({
+                'tender_id': tender.id, 'tender_title': tender.title, 'deadline_date': submission_deadline,
+                'deadline_type': 'Bid Submission', 'step_number': 2, 'tender_status': 'Shortlisted',
+                'assigned_employees': assigned_employees, 'is_manual': False
             })
+        bid_opening = critical_dates.get('Bid Opening Date')
+        if bid_opening:
+            try:
+                deadline_date = datetime.fromisoformat(bid_opening).date()
+                deadlines.append({
+                    'tender_id': tender.id, 'tender_title': tender.title, 'deadline_date': deadline_date,
+                    'deadline_type': 'Bid Opening', 'step_number': 3, 'tender_status': 'Shortlisted',
+                    'assigned_employees': assigned_employees, 'is_manual': False
+                })
+            except Exception:
+                pass
+        for step_key, step_label, manual_key in [('step4_deadline', 'Financial Proposal', 4), ('step5_deadline', 'Negotiation', 5)]:
+            step_deadline = progress.get(step_key)
+            if step_deadline:
+                try:
+                    deadline_date = datetime.fromisoformat(step_deadline).date() if isinstance(step_deadline, str) else step_deadline
+                    deadlines.append({
+                        'tender_id': tender.id, 'tender_title': tender.title, 'deadline_date': deadline_date,
+                        'deadline_type': step_label, 'step_number': manual_key, 'tender_status': 'Shortlisted',
+                        'assigned_employees': assigned_employees, 'is_manual': True
+                    })
+                except Exception:
+                    pass
 
-        # =============================================================================
-        # RETURN ANALYTICS DATA
-        # =============================================================================
+    for fav in favourited:
+        tender = fav.tender
+        if not tender:
+            continue
+        critical_dates = tender.critical_dates or {}
+        submission_deadline = None
+        if tender.deadline:
+            submission_deadline = tender.deadline.date() if isinstance(tender.deadline, datetime) else tender.deadline
+        elif 'Bid Submission End Date' in critical_dates:
+            try:
+                submission_deadline = datetime.fromisoformat(critical_dates['Bid Submission End Date']).date()
+            except Exception:
+                pass
+        if submission_deadline:
+            deadlines.append({
+                'tender_id': tender.id, 'tender_title': tender.title, 'deadline_date': submission_deadline,
+                'deadline_type': 'Bid Submission', 'step_number': None, 'tender_status': 'Favourited',
+                'assigned_employees': [], 'is_manual': False
+            })
+        pre_bid_deadline = None
+        if 'Pre Bid Meeting Date' in critical_dates:
+            try:
+                pre_bid_deadline = datetime.fromisoformat(critical_dates['Pre Bid Meeting Date']).date()
+            except Exception:
+                pass
+        elif 'Clarification End Date' in critical_dates:
+            try:
+                pre_bid_deadline = datetime.fromisoformat(critical_dates['Clarification End Date']).date()
+            except Exception:
+                pass
+        if pre_bid_deadline:
+            deadlines.append({
+                'tender_id': tender.id, 'tender_title': tender.title, 'deadline_date': pre_bid_deadline,
+                'deadline_type': 'Pre-Bid Meeting', 'step_number': None, 'tender_status': 'Favourited',
+                'assigned_employees': [], 'is_manual': False
+            })
+        bid_opening = critical_dates.get('Bid Opening Date')
+        if bid_opening:
+            try:
+                deadline_date = datetime.fromisoformat(bid_opening).date()
+                deadlines.append({
+                    'tender_id': tender.id, 'tender_title': tender.title, 'deadline_date': deadline_date,
+                    'deadline_type': 'Bid Opening', 'step_number': None, 'tender_status': 'Favourited',
+                    'assigned_employees': [], 'is_manual': False
+                })
+            except Exception:
+                pass
 
-        return templates.TemplateResponse("analytics.html", {
-            "request": request,
-            "current_user": current_user,
+    overdue, today_deadlines, this_week, next_two_weeks, later = [], [], [], [], []
+    for d in deadlines:
+        days_diff = (d['deadline_date'] - today).days
+        d['days_remaining'] = days_diff
+        if days_diff < 0:
+            d['urgency'] = 'overdue'
+            overdue.append(d)
+        elif days_diff == 0:
+            d['urgency'] = 'today'
+            today_deadlines.append(d)
+        elif 1 <= days_diff <= 7:
+            d['urgency'] = 'this_week'
+            this_week.append(d)
+        elif 8 <= days_diff <= 14:
+            d['urgency'] = 'next_two_weeks'
+            next_two_weeks.append(d)
+        else:
+            d['urgency'] = 'later'
+            later.append(d)
 
-            # Section 1: Dates & Deadlines
-            "overdue_deadlines": sorted(overdue, key=lambda x: x['deadline_date']),
-            "today_deadlines": sorted(today_deadlines, key=lambda x: x['deadline_date']),
-            "this_week_deadlines": sorted(this_week, key=lambda x: x['deadline_date']),
-            "next_two_weeks_deadlines": sorted(next_two_weeks, key=lambda x: x['deadline_date']),
-            "later_deadlines": sorted(later, key=lambda x: x['deadline_date']),
-            "active_reminders": reminders_data,
+    reminders = db.query(ReminderDB).filter(
+        ReminderDB.user_id == current_user.id,
+        ReminderDB.is_triggered == False,
+        ReminderDB.is_dismissed == False,
+        ReminderDB.reminder_datetime >= datetime.utcnow()
+    ).order_by(ReminderDB.reminder_datetime).limit(ANALYTICS_MAX_ITEMS).all()
 
-            # Section 2: Tenders Analytics
-            "favorites_count": favorites_count,
-            "shortlisted_count": shortlisted_count,
-            "rejected_count": rejected_count,
-            "dumped_count": dumped_count,
-            "awarded_count": awarded_count,
-            "shortlisted_value": shortlisted_value,
-            "awarded_value": awarded_value,
-            "dumped_value": dumped_value,
-            "win_rate": win_rate,
-            "rejection_rate": rejection_rate,
-            "favorites_timeline": [(str(d.date), d.count) for d in favorites_timeline],
-            "shortlisted_timeline": [(str(d.date), d.count) for d in shortlisted_timeline],
-            "timeline_data": timeline_data,  # Combined timeline data for charts
-
-            # Section 3: Stage Analytics
-            "stage_breakdown": stage_breakdown,
-            "stage_tenders": stage_tenders,
-            "employee_workload": employee_workload,
-
-            # Summary stats for header cards
-            "total_deadlines": len(deadlines),
-            "urgent_deadlines": len(deadlines) + len(reminders_data),  # Total deadlines + reminders
-            "total_tenders": favorites_count + shortlisted_count + rejected_count + dumped_count + awarded_count,
-
-            # Calendar data
-            "calendar_events": calendar_events,
-            "current_month": current_month,
-            "current_year": current_year,
-            "selected_font": get_active_font()
+    reminders_data = []
+    for r in reminders:
+        tender = db.query(TenderDB).filter(TenderDB.id == r.tender_id).first()
+        reminders_data.append({
+            'id': r.id, 'tender_id': r.tender_id,
+            'tender_title': r.title or (tender.title if tender else 'Unknown'),
+            'reminder_datetime': r.reminder_datetime, 'note': r.note,
+            'days_until': (r.reminder_datetime.date() - today).days if r.reminder_datetime else 0
         })
 
+    return {
+        "overdue_deadlines": sorted(overdue, key=lambda x: x['deadline_date']),
+        "today_deadlines": sorted(today_deadlines, key=lambda x: x['deadline_date']),
+        "this_week_deadlines": sorted(this_week, key=lambda x: x['deadline_date']),
+        "next_two_weeks_deadlines": sorted(next_two_weeks, key=lambda x: x['deadline_date']),
+        "later_deadlines": sorted(later, key=lambda x: x['deadline_date']),
+        "active_reminders": reminders_data,
+        "calendar_events": calendar_events,
+        "total_deadlines": len(deadlines),
+        "urgent_deadlines": len(deadlines) + len(reminders_data),
+    }
+
+
+@app.get("/api/analytics/section/deadlines", response_class=HTMLResponse)
+@require_company_details
+async def analytics_section_deadlines(request: Request, db: Session = Depends(get_db)):
+    """Return HTML fragment for Analytics section 1 (Dates & Deadlines). Lazy-loaded to save memory."""
+    current_user = get_current_user(request, db)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        from datetime import datetime as dt
+        data = _get_analytics_deadlines_data(db, current_user)
+        data["request"] = request
+        data["current_month"] = dt.now().month
+        data["current_year"] = dt.now().year
+        return templates.TemplateResponse("analytics_partial_deadlines.html", data)
     except Exception as e:
-        logger.error(f"Error in analytics page: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error loading analytics: {str(e)}")
+        logger.error(f"Error building analytics deadlines section: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _get_analytics_tenders_data(db: Session, current_user: UserDB):
+    """Build section 2 (Tenders Analytics) data - aggregates only, no large lists."""
+    from datetime import datetime, timedelta
+    from sqlalchemy import func
+
+    favorites_count = db.query(func.count(FavoriteDB.id)).filter(FavoriteDB.user_id == current_user.id).scalar() or 0
+    shortlisted_count = db.query(func.count(ShortlistedTenderDB.id)).filter(ShortlistedTenderDB.user_id == current_user.id).scalar() or 0
+    rejected_count = db.query(func.count(RejectedTenderDB.id)).filter(RejectedTenderDB.user_id == current_user.id).scalar() or 0
+    dumped_count = db.query(func.count(DumpedTenderDB.id)).filter(DumpedTenderDB.user_id == current_user.id).scalar() or 0
+    awarded_count = db.query(func.count(TenderDB.id)).filter(TenderDB.awarded == True, TenderDB.awarded_by == current_user.id).scalar() or 0
+
+    shortlisted_value = db.query(func.sum(TenderDB.estimated_value)).select_from(ShortlistedTenderDB).join(
+        TenderDB, ShortlistedTenderDB.tender_id == TenderDB.id
+    ).filter(ShortlistedTenderDB.user_id == current_user.id).scalar() or 0
+    awarded_value = db.query(func.sum(TenderDB.estimated_value)).filter(
+        TenderDB.awarded == True, TenderDB.awarded_by == current_user.id
+    ).scalar() or 0
+    dumped_value = db.query(func.sum(TenderDB.estimated_value)).select_from(DumpedTenderDB).join(
+        TenderDB, DumpedTenderDB.tender_id == TenderDB.id
+    ).filter(DumpedTenderDB.user_id == current_user.id).scalar() or 0
+
+    total_ever_shortlisted = shortlisted_count + awarded_count + dumped_count
+    win_rate = round((awarded_count / total_ever_shortlisted * 100), 1) if total_ever_shortlisted > 0 else 0
+    rejection_rate = round((rejected_count / favorites_count * 100), 1) if favorites_count > 0 else 0
+
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    favorites_timeline = db.query(func.date(FavoriteDB.created_at).label('date'), func.count(FavoriteDB.id).label('count')).filter(
+        FavoriteDB.user_id == current_user.id, FavoriteDB.created_at >= thirty_days_ago
+    ).group_by(func.date(FavoriteDB.created_at)).all()
+    shortlisted_timeline = db.query(func.date(ShortlistedTenderDB.created_at).label('date'), func.count(ShortlistedTenderDB.id).label('count')).filter(
+        ShortlistedTenderDB.user_id == current_user.id, ShortlistedTenderDB.created_at >= thirty_days_ago
+    ).group_by(func.date(ShortlistedTenderDB.created_at)).all()
+    rejected_timeline = db.query(func.date(RejectedTenderDB.created_at).label('date'), func.count(RejectedTenderDB.id).label('count')).filter(
+        RejectedTenderDB.user_id == current_user.id, RejectedTenderDB.created_at >= thirty_days_ago
+    ).group_by(func.date(RejectedTenderDB.created_at)).all()
+    dumped_timeline = db.query(func.date(DumpedTenderDB.created_at).label('date'), func.count(DumpedTenderDB.id).label('count')).filter(
+        DumpedTenderDB.user_id == current_user.id, DumpedTenderDB.created_at >= thirty_days_ago
+    ).group_by(func.date(DumpedTenderDB.created_at)).all()
+    awarded_timeline = db.query(func.date(TenderDB.updated_at).label('date'), func.count(TenderDB.id).label('count')).filter(
+        TenderDB.awarded == True, TenderDB.awarded_by == current_user.id, TenderDB.updated_at >= thirty_days_ago
+    ).group_by(func.date(TenderDB.updated_at)).all()
+
+    date_range = [(datetime.utcnow() - timedelta(days=i)).date() for i in range(29, -1, -1)]
+    favorites_dict = {str(d.date): d.count for d in favorites_timeline}
+    shortlisted_dict = {str(d.date): d.count for d in shortlisted_timeline}
+    rejected_dict = {str(d.date): d.count for d in rejected_timeline}
+    dumped_dict = {str(d.date): d.count for d in dumped_timeline}
+    awarded_dict = {str(d.date): d.count for d in awarded_timeline}
+    timeline_data = []
+    for d in date_range:
+        date_str = str(d)
+        timeline_data.append({
+            'date': date_str,
+            'favorites': favorites_dict.get(date_str, 0),
+            'shortlisted': shortlisted_dict.get(date_str, 0),
+            'rejected': rejected_dict.get(date_str, 0),
+            'dumped': dumped_dict.get(date_str, 0),
+            'awarded': awarded_dict.get(date_str, 0)
+        })
+
+    return {
+        "favorites_count": favorites_count,
+        "shortlisted_count": shortlisted_count,
+        "rejected_count": rejected_count,
+        "dumped_count": dumped_count,
+        "awarded_count": awarded_count,
+        "shortlisted_value": shortlisted_value,
+        "awarded_value": awarded_value,
+        "dumped_value": dumped_value,
+        "win_rate": win_rate,
+        "rejection_rate": rejection_rate,
+        "favorites_timeline": [(str(d.date), d.count) for d in favorites_timeline],
+        "shortlisted_timeline": [(str(d.date), d.count) for d in shortlisted_timeline],
+        "timeline_data": timeline_data,
+        "total_tenders": favorites_count + shortlisted_count + rejected_count + dumped_count + awarded_count,
+    }
+
+
+@app.get("/api/analytics/section/tenders", response_class=HTMLResponse)
+@require_company_details
+async def analytics_section_tenders(request: Request, db: Session = Depends(get_db)):
+    """Return HTML fragment for Analytics section 2 (Tenders). Lazy-loaded."""
+    current_user = get_current_user(request, db)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        data = _get_analytics_tenders_data(db, current_user)
+        data["request"] = request
+        return templates.TemplateResponse("analytics_partial_tenders.html", data)
+    except Exception as e:
+        logger.error(f"Error building analytics tenders section: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _get_analytics_stages_data(db: Session, current_user: UserDB):
+    """Build section 3 (Stage Analytics) with limit 300 and eager load."""
+    from sqlalchemy.orm import joinedload
+
+    shortlisted_tenders = db.query(ShortlistedTenderDB).options(
+        joinedload(ShortlistedTenderDB.tender),
+        joinedload(ShortlistedTenderDB.tender).joinedload(TenderDB.assignments).joinedload(TenderAssignmentDB.employee),
+    ).filter(
+        ShortlistedTenderDB.user_id == current_user.id
+    ).order_by(ShortlistedTenderDB.created_at.desc()).limit(ANALYTICS_MAX_ITEMS).all()
+
+    stage_breakdown = {
+        'step1': {'Attended': 0, 'Not Attended': 0, 'Not Applicable': 0, 'Cancelled': 0},
+        'step2': {'Submitted': 0, 'Not Submitted': 0, 'Tender Cancelled': 0},
+        'step3': {'Not Opened': 0, 'Opened & Qualified': 0, 'Opened & Not Qualified': 0, 'Tender Cancelled': 0},
+        'step4': {'Not Opened': 0, 'Opened & Won': 0, 'Opened & Lost': 0, 'Opened & Not Eligible': 0, 'Tender Cancelled': 0},
+        'step5': {'Applicable': 0, 'Not Applicable': 0, 'Tender Cancelled': 0},
+        'step6': {'Yes': 0, 'No': 0}
+    }
+    stage_tenders = {f'step{i}': [] for i in range(1, 7)}
+
+    for st in shortlisted_tenders:
+        tender = st.tender
+        if not tender:
+            continue
+        progress = st.progress_data or {}
+        has_progress = any(progress.get(f'step{i}', 'Pending') != 'Pending' for i in range(1, 7))
+        if not has_progress:
+            continue
+        assigned_employees = [{"id": e.id, "name": e.name} for a in (tender.assignments or []) for e in ([a.employee] if a.employee else [])]
+        tender_info = {'id': tender.id, 'title': tender.title, 'assigned_employees': assigned_employees, 'created_at': st.created_at}
+        for step_num in range(1, 7):
+            step_key = f'step{step_num}'
+            status = progress.get(step_key, 'Pending')
+            if status == 'Pending':
+                continue
+            if status in stage_breakdown[step_key]:
+                stage_breakdown[step_key][status] += 1
+            tender_step_info = {**tender_info, 'status': status, 'step_employees': progress.get(f'{step_key}_employees', [])}
+            stage_tenders[step_key].append(tender_step_info)
+
+    company_code_id = getattr(current_user, 'company_code_id', None)
+    all_employees = db.query(EmployeeDB).filter(EmployeeDB.company_code_id == company_code_id).all()
+
+    employee_workload = []
+    for emp in all_employees:
+        assigned_tenders = db.query(TenderAssignmentDB).filter(TenderAssignmentDB.employee_id == emp.id).count()
+        stage_dist = {f'step{i}': 0 for i in range(1, 7)}
+        for st in shortlisted_tenders:
+            progress = st.progress_data or {}
+            for step_num in range(1, 7):
+                step_emps = progress.get(f'step{step_num}_employees', [])
+                if emp.id in step_emps:
+                    stage_dist[f'step{step_num}'] += 1
+        workload_level = 'none' if assigned_tenders == 0 else 'light' if assigned_tenders <= 3 else 'medium' if assigned_tenders <= 7 else 'heavy'
+        employee_workload.append({
+            'id': emp.id, 'name': emp.name, 'email': emp.email,
+            'total_tenders': assigned_tenders, 'stage_distribution': stage_dist, 'workload_level': workload_level
+        })
+
+    return {
+        "stage_breakdown": stage_breakdown,
+        "stage_tenders": stage_tenders,
+        "employee_workload": employee_workload,
+        "shortlisted_count": len(shortlisted_tenders),
+    }
+
+
+@app.get("/api/analytics/section/stages", response_class=HTMLResponse)
+@require_company_details
+async def analytics_section_stages(request: Request, db: Session = Depends(get_db)):
+    """Return HTML fragment for Analytics section 3 (Stages). Lazy-loaded."""
+    current_user = get_current_user(request, db)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        data = _get_analytics_stages_data(db, current_user)
+        data["request"] = request
+        return templates.TemplateResponse("analytics_partial_stages.html", data)
+    except Exception as e:
+        logger.error(f"Error building analytics stages section: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/profile", response_class=HTMLResponse)
 @require_company_details

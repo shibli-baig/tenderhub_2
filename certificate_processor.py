@@ -1288,13 +1288,15 @@ class CertificateProcessor:
 
             raise
         finally:
-            # Clean up temporary file if we downloaded from S3
-            if 'temp_file' in locals() and temp_file and os.path.exists(temp_file):
-                try:
-                    os.unlink(temp_file)
-                    logger.debug(f"Cleaned up temporary file: {temp_file}")
-                except Exception as e:
-                    logger.warning(f"Failed to clean up temporary file {temp_file}: {e}")
+            # Clean up temporary file if we downloaded from S3 (use .name path, not file object)
+            if 'temp_file' in locals() and temp_file:
+                temp_path = temp_file.name
+                if temp_path and os.path.exists(temp_path):
+                    try:
+                        os.unlink(temp_path)
+                        logger.debug(f"Cleaned up temporary file: {temp_path}")
+                    except Exception as e:
+                        logger.warning(f"Failed to clean up temporary file {temp_path}: {e}")
             db.close()
 
     def _parse_date(self, date_str: Optional[str]) -> Optional[datetime]:

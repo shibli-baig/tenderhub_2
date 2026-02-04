@@ -1,0 +1,158 @@
+{# Fragment for lazy-loaded Analytics section 3: Stages. Injected into #stagesSectionContent. #}
+<div class="analytics-panel" style="margin-bottom: 1.5rem;">
+    <div class="view-toggle">
+        <button class="view-toggle-btn active" data-view="detailed">🔍 Detailed View</button>
+        <button class="view-toggle-btn" data-view="overview">📈 Overview</button>
+    </div>
+</div>
+
+<div id="detailedView">
+    {% for step_num in range(1, 7) %}
+    {% set step_key = 'step' ~ step_num %}
+    {% set step_names = {
+        'step1': 'Pre-Bid Meeting',
+        'step2': 'Proposal Submission',
+        'step3': 'Technical Proposal Opening',
+        'step4': 'Financial Proposal',
+        'step5': 'Further Negotiations',
+        'step6': 'Tender Awarded'
+    } %}
+    {% set total_tenders = stage_tenders[step_key]|length %}
+    <div class="accordion">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="accordion-title">
+                <h3>Step {{ step_num }}: {{ step_names[step_key] }}</h3>
+                <span class="urgency-badge" style="background: #dbeafe; color: #1e40af;">{{ total_tenders }} tenders</span>
+            </div>
+            <div class="accordion-stats">
+                {% for status, count in stage_breakdown[step_key].items() %}
+                {% if count > 0 %}
+                <div class="accordion-stat">
+                    <span class="accordion-stat__label">{{ status }}</span>
+                    <span class="accordion-stat__value">{{ count }}</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        <div class="accordion-content">
+            {% if stage_tenders[step_key] %}
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <th style="text-align: left; padding: 0.75rem; font-size: 0.875rem; color: #6b7280;">Tender Title</th>
+                        <th style="text-align: left; padding: 0.75rem; font-size: 0.875rem; color: #6b7280;">Status</th>
+                        <th style="text-align: left; padding: 0.75rem; font-size: 0.875rem; color: #6b7280;">Assigned To</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tender in stage_tenders[step_key] %}
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 0.75rem; font-size: 0.875rem;">{{ tender.title }}</td>
+                        <td style="padding: 0.75rem; font-size: 0.875rem;">
+                            <span class="urgency-badge" style="background: #f3f4f6; color: #374151;">{{ tender.status }}</span>
+                        </td>
+                        <td style="padding: 0.75rem; font-size: 0.875rem;">
+                            {% if tender.assigned_employees %}
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                {% for emp in tender.assigned_employees %}
+                                <span class="employee-chip">👤 {{ emp.name }}</span>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <span style="color: #9ca3af;">Not assigned</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state__icon">📋</div>
+                <div class="empty-state__title">No Tenders at This Stage</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="analytics-panel" style="margin-top: 2rem;">
+        <div class="panel-header">
+            <h2>Employee Workload Distribution</h2>
+        </div>
+        {% if employee_workload %}
+        <div class="employee-workload-grid">
+            {% for emp in employee_workload %}
+            <div class="employee-workload-card">
+                <div class="employee-workload-card__header">
+                    <div>
+                        <div class="employee-workload-card__name">{{ emp.name }}</div>
+                        <div style="font-size: 0.75rem; color: #9ca3af;">{{ emp.email }}</div>
+                    </div>
+                    <span class="workload-badge {{ emp.workload_level }}">
+                        {% if emp.workload_level == 'none' %}⚪ None
+                        {% elif emp.workload_level == 'light' %}🟢 Light
+                        {% elif emp.workload_level == 'medium' %}🟡 Medium
+                        {% elif emp.workload_level == 'heavy' %}🔴 Heavy
+                        {% endif %}
+                    </span>
+                </div>
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                    <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">
+                        Total Tenders: <strong>{{ emp.total_tenders }}</strong>
+                    </div>
+                    <div class="employee-stage-breakdown">
+                        {% for step_num in range(1, 7) %}
+                        {% set step_key = 'step' ~ step_num %}
+                        {% if emp.stage_distribution[step_key] > 0 %}
+                        <div style="display: flex; justify-content: space-between; padding: 0.25rem 0;">
+                            <span>Step {{ step_num }}:</span>
+                            <strong>{{ emp.stage_distribution[step_key] }}</strong>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state__icon">👥</div>
+            <div class="empty-state__title">No Employee Data</div>
+            <div class="empty-state__description">Add employees to track workload distribution.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="overviewView" style="display: none;">
+    <div class="analytics-panel">
+        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Stage Funnel Visualization</h3>
+        <div class="chart-container" id="stageFunnelChart" style="min-height: 400px;"></div>
+    </div>
+    <div class="analytics-panel" style="margin-top: 1.5rem;">
+        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Stage Distribution Matrix</h3>
+        <div class="chart-container" id="stageHeatmapChart" style="min-height: 500px;"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var card = document.getElementById('stagesCard');
+    if (card) {
+        var val = card.querySelector('.stat-card__value');
+        if (val) val.textContent = {{ shortlisted_count }};
+    }
+    if (!window.analyticsData) window.analyticsData = {};
+    window.analyticsData.stage_breakdown = {
+        step1: {{ stage_breakdown.step1 | tojson }},
+        step2: {{ stage_breakdown.step2 | tojson }},
+        step3: {{ stage_breakdown.step3 | tojson }},
+        step4: {{ stage_breakdown.step4 | tojson }},
+        step5: {{ stage_breakdown.step5 | tojson }},
+        step6: {{ stage_breakdown.step6 | tojson }}
+    };
+})();
+</script>
