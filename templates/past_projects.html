@@ -6060,6 +6060,10 @@ function createManualCertCard(cert, result) {
         </div>`
         : '';
 
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', function(e) {
+        if (!e.target.closest('.cert-card-actions')) viewCertificateDetails(cert.id);
+    });
     card.innerHTML = `
         <div class="compliance-badge ${badgeClass}">
             <span class="compliance-icon">${icon}</span>
@@ -6085,7 +6089,7 @@ function createManualCertCard(cert, result) {
         </div>
 
         <div class="cert-card-actions">
-            <button type="button" class="btn btn-sm btn-outline" onclick="viewCertificateDetails('${cert.id}')">
+            <button type="button" class="btn btn-sm btn-outline" onclick="event.stopPropagation(); viewCertificateDetails('${cert.id}')">
                 View Details →
             </button>
         </div>
@@ -7807,12 +7811,10 @@ function hideManualLoading() {
 }
 
 /**
- * View certificate details (placeholder)
+ * View certificate details (opens in new tab; back on that tab closes it).
  */
 function viewCertificateDetails(certId) {
-    // TODO: Implement certificate details modal or redirect
-    console.log('View certificate:', certId);
-    alert('Certificate details view coming soon!');
+    window.open('/certificate/' + certId, '_blank');
 }
 
 // ============ End Manual Clause Filtering Functionality ============
@@ -8603,10 +8605,10 @@ function certClearResults() {
 }
 
 /**
- * View certificate details
+ * Open certificate detail page in a new tab (preserves scroll on current page).
  */
 function certViewDetails(certificateId) {
-    window.location.href = `/certificate/${certificateId}`;
+    window.open('/certificate/' + certificateId, '_blank');
 }
 
 /**

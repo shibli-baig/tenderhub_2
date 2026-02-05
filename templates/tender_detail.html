@@ -7232,7 +7232,7 @@ function createModalCertCard(cert, query) {
     };
 
     return `
-        <div class="cert-material-card">
+        <div class="cert-material-card" onclick="if (!event.target.closest('.cert-attachment-section')) openCertificateInNewTab('${cert.id}')" style="cursor: pointer;">
             <div class="cert-card-header">
                 <div class="cert-card-title-block">
                     <h3 class="cert-card-title">${highlight(cert.project_name || 'Untitled Project', query)}</h3>
@@ -7729,6 +7729,10 @@ function createModalManualCertCard(cert, result = null) {
             </div>`
             : '';
 
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', function(e) {
+            if (!e.target.closest('.cert-card-actions')) openCertificateInNewTab('${cert.id}');
+        });
         card.innerHTML = `
             <div class="compliance-badge ${badgeClass}">
                 <span class="compliance-icon">${icon}</span>
@@ -7754,7 +7758,7 @@ function createModalManualCertCard(cert, result = null) {
             </div>
 
             <div class="cert-card-actions">
-                <button type="button" class="btn btn-sm btn-outline" onclick="viewCertificateDetails('${cert.id}')">
+                <button type="button" class="btn btn-sm btn-outline" onclick="event.stopPropagation(); viewCertificateDetails('${cert.id}')">
                     View Details →
                 </button>
             </div>
@@ -7762,9 +7766,9 @@ function createModalManualCertCard(cert, result = null) {
 
         return card;
     } else {
-        // Regular Filter Search Card - simple HTML string
+        // Regular Filter Search Card - simple HTML string (card click opens cert in new tab)
         return `
-            <div class="manual-cert-card">
+            <div class="manual-cert-card" onclick="openCertificateInNewTab('${cert.id}')" style="cursor: pointer;">
                 <h4 class="cert-card-title">${cert.project_name || 'Untitled Project'}</h4>
                 <p class="cert-card-client">${cert.client_name || 'Unknown Client'}</p>
 
@@ -8481,12 +8485,17 @@ function showToast(message, type = 'info') {
 }
 
 /**
- * View certificate details (placeholder)
+ * Open certificate detail page in a new tab (preserves scroll on current page).
+ */
+function openCertificateInNewTab(certId) {
+    window.open('/certificate/' + certId, '_blank');
+}
+
+/**
+ * View certificate details (opens in new tab; back on that tab closes it).
  */
 function viewCertificateDetails(certId) {
-    // TODO: Implement certificate details modal or redirect
-    console.log('View certificate:', certId);
-    alert('Certificate details view coming soon!');
+    openCertificateInNewTab(certId);
 }
 
 /**

@@ -919,6 +919,21 @@
             if (themeToggle) {
                 themeToggle.addEventListener('click', toggleTheme);
             }
+
+            // When opened in new tab (e.g. from Certificate Intelligence), back button closes the tab
+            if (window.opener) {
+                history.pushState({ fromCert: true }, '', location.href);
+                window.addEventListener('popstate', function() {
+                    window.close();
+                });
+                // Make header and footer back buttons close the tab instead of navigating
+                document.querySelectorAll('button[onclick*="history.back"]').forEach(function(btn) {
+                    btn.onclick = function(e) {
+                        e.preventDefault();
+                        window.close();
+                    };
+                });
+            }
         });
     </script>
 </body>
